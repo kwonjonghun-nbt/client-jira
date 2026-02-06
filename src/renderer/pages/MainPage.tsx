@@ -31,12 +31,15 @@ export default function MainPage() {
           <p className="text-sm text-gray-400 mb-6">
             설정에서 Jira 연결을 구성한 후 싱크해주세요
           </p>
-          <button
-            onClick={() => setPage('settings')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
-          >
-            설정으로 이동
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setPage('settings')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              설정으로 이동
+            </button>
+            <SyncButton />
+          </div>
         </div>
       </div>
     );

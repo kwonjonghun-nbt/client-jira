@@ -12,8 +12,10 @@ export function useSyncStatus() {
 
   const triggerSync = useMutation<SyncResult>({
     mutationFn: () => window.electronAPI.sync.trigger(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jira', 'issues'] });
+    onSuccess: (result) => {
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ['jira', 'issues'] });
+      }
       queryClient.invalidateQueries({ queryKey: ['sync', 'status'] });
     },
   });
@@ -23,6 +25,7 @@ export function useSyncStatus() {
     isLoading: statusQuery.isLoading,
     triggerSync: triggerSync.mutate,
     isSyncing: triggerSync.isPending || statusQuery.data?.isRunning,
+    syncResult: triggerSync.data,
     syncError: triggerSync.error,
   };
 }

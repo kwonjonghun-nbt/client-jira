@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type { AppServices } from '../services/types';
+import { reinitializeJiraServices } from '../index';
 
 export function registerSettingsHandlers(services: AppServices): void {
   ipcMain.handle('settings:load', async () => {
@@ -26,6 +27,8 @@ export function registerSettingsHandlers(services: AppServices): void {
       }
       await services.storage.saveSettings(settings);
       console.log('[DEBUG] settings:save - success');
+      // Re-initialize Jira services with updated settings
+      await reinitializeJiraServices(services);
     } catch (error: any) {
       console.error('[DEBUG] settings:save - error:', error.message);
       throw error;
@@ -36,6 +39,8 @@ export function registerSettingsHandlers(services: AppServices): void {
     try {
       if (!services.credentials) return;
       await services.credentials.saveToken(token);
+      // Re-initialize with new token
+      await reinitializeJiraServices(services);
     } catch (error: any) {
       console.error('Failed to save token:', error.message);
       throw error;

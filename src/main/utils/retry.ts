@@ -14,7 +14,7 @@ export async function retry<T>(
       lastError = error;
       if (attempt < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, attempt);
-        logger.warn(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms:`, error.message);
+        logger.warn(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms:`, error.message, error.response?.data ? JSON.stringify(error.response.data) : '');
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

@@ -10,7 +10,7 @@ const FIELDS = [
   'components', 'resolution', 'timetracking', 'parent', 'subtasks',
   'customfield_10016', // Story Points
   'customfield_10020', // Sprint
-].join(',');
+];
 
 const MAX_RESULTS = 100;
 
@@ -52,16 +52,18 @@ export class JiraClient {
     return response.data.map((p: any) => JiraProjectSchema.parse({ key: p.key, name: p.name, id: p.id }));
   }
 
-  async searchIssues(jql: string, startAt = 0): Promise<JiraSearchResponse> {
+  async searchIssues(jql: string, nextPageToken?: string): Promise<JiraSearchResponse> {
+    const body: Record<string, unknown> = {
+      jql,
+      maxResults: MAX_RESULTS,
+      fields: FIELDS,
+    };
+    if (nextPageToken) {
+      body.nextPageToken = nextPageToken;
+    }
+
     const response = await retry(() =>
-      this.client.get('/rest/api/3/search', {
-        params: {
-          jql,
-          startAt,
-          maxResults: MAX_RESULTS,
-          fields: FIELDS,
-        },
-      }),
+      this.client.post('/rest/api/3/search/jql', body),
     );
 
     return JiraSearchResponseSchema.parse(response.data);
@@ -72,18 +74,17 @@ export class JiraClient {
     onProgress?: (current: number, total: number) => void,
   ): Promise<JiraIssue[]> {
     const allIssues: JiraIssue[] = [];
-    let startAt = 0;
-    let total = 0;
+    let nextPageToken: string | undefined;
 
     do {
-      const result = await this.searchIssues(jql, startAt);
+      const result = await this.searchIssues(jql, nextPageToken);
       allIssues.push(...result.issues);
-      total = result.total;
-      startAt += result.maxResults;
+      nextPageToken = result.nextPageToken;
 
+      const total = result.total ?? allIssues.length;
       logger.debug(`Fetched ${allIssues.length}/${total} issues`);
       onProgress?.(allIssues.length, total);
-    } while (allIssues.length < total);
+    } while (nextPageToken);
 
     return allIssues;
   }
@@ -99,6 +100,9 @@ export class JiraClient {
     if (assignees.length > 0) {
       const assigneeList = assignees.map((a) => `"${a}"`).join(', ');
       parts.push(`assignee IN (${assigneeList})`);
+    } else {
+      // 담당자 미지정 시 현재 사용자의 이슈만 가져옴
+      parts.push('assignee = currentUser()');
     }
 
     if (customJql.trim()) {
