@@ -20,25 +20,68 @@ const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
 
+const DATE_PRESETS = [
+  { label: '1개월', days: 30 },
+  { label: '3개월', days: 90 },
+  { label: '6개월', days: 180 },
+  { label: '전체', days: 0 },
+];
+
+function formatDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 export default function TimelinePage() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [zoom, setZoom] = useState(1);
   const [scrollToTodayTrigger, setScrollToTodayTrigger] = useState(0);
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
+  const [dateStart, setDateStart] = useState('');
+  const [dateEnd, setDateEnd] = useState('');
   const { data, isLoading, error } = useJiraIssues();
   const issues = data?.issues ?? [];
   const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
   const setPage = useUIStore((s) => s.setPage);
 
+  const applyDatePreset = (days: number) => {
+    if (days === 0) {
+      setDateStart('');
+      setDateEnd('');
+    } else {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - days);
+      setDateStart(formatDate(start));
+      setDateEnd(formatDate(end));
+    }
+  };
+
+  // 기간 필터: created 또는 dueDate가 선택 기간과 겹치면 표시
+  const dateFilteredIssues = useMemo(() => {
+    if (!dateStart && !dateEnd) return filteredIssues;
+    const startMs = dateStart ? new Date(dateStart).getTime() : 0;
+    const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
+
+    return filteredIssues.filter((issue) => {
+      const createdMs = new Date(issue.created).getTime();
+      const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
+      // created가 기간 안에 있거나, dueDate가 기간 안에 있거나, 이슈 기간이 선택 기간을 감싸는 경우
+      const createdInRange = createdMs >= startMs && createdMs <= endMs;
+      const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;
+      const spansRange = dueMs !== null && createdMs <= startMs && dueMs >= endMs;
+      return createdInRange || dueInRange || spansRange;
+    });
+  }, [filteredIssues, dateStart, dateEnd]);
+
   // 실제 데이터에 존재하는 이슈타입 옵션 (중복 제거)
   const issueTypeOptions = useMemo(() => {
     const types = new Map<string, string>();
-    for (const issue of filteredIssues) {
+    for (const issue of dateFilteredIssues) {
       const key = issue.issueType.toLowerCase();
       if (!types.has(key)) types.set(key, issue.issueType);
     }
     return Array.from(types.entries()).map(([key, name]) => ({ value: key, label: name }));
-  }, [filteredIssues]);
+  }, [dateFilteredIssues]);
 
   // 보이는 타입 = 전체 - hiddenTypes
   const visibleTypes = useMemo(
@@ -102,14 +145,46 @@ export default function TimelinePage() {
           <SyncButton />
         </div>
 
-        <div className="flex items-center justify-between gap-4">
-          <IssueFilters
-            filters={filters}
-            filterOptions={filterOptions}
-            onChangeFilter={setFilter}
-            onToggleStatus={toggleStatus}
-          />
-          <div className="flex items-center gap-3 shrink-0">
+        <IssueFilters
+          filters={filters}
+          filterOptions={filterOptions}
+          onChangeFilter={setFilter}
+          onToggleStatus={toggleStatus}
+        />
+
+        <div className="flex items-center justify-between mt-3">
+          {/* 기간 필터 */}
+          <div className="flex items-center gap-1">
+            {DATE_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => applyDatePreset(p.days)}
+                className={`px-2 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
+                  (p.days === 0 && !dateStart && !dateEnd)
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+            <input
+              type="date"
+              value={dateStart}
+              onChange={(e) => setDateStart(e.target.value)}
+              className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
+            />
+            <span className="text-xs text-gray-400">~</span>
+            <input
+              type="date"
+              value={dateEnd}
+              onChange={(e) => setDateEnd(e.target.value)}
+              className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
             {/* 이슈타입 표시 토글 */}
             {issueTypeOptions.length > 0 && (
               <MultiSelect
@@ -174,13 +249,13 @@ export default function TimelinePage() {
 
       {/* Issue Count */}
       <div className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
-        {filteredIssues.length}건 표시
-        {filteredIssues.length !== issues.length && ` (전체 ${issues.length}건)`}
+        {dateFilteredIssues.length}건 표시
+        {dateFilteredIssues.length !== issues.length && ` (전체 ${issues.length}건)`}
       </div>
 
       {/* Timeline Chart */}
       <div className="flex-1 overflow-hidden">
-        <TimelineChart issues={filteredIssues} baseUrl={data.source.baseUrl} viewMode={viewMode} zoom={zoom} onZoomChange={setZoom} scrollToTodayTrigger={scrollToTodayTrigger} hiddenTypes={hiddenTypes} />
+        <TimelineChart issues={dateFilteredIssues} baseUrl={data.source.baseUrl} viewMode={viewMode} zoom={zoom} onZoomChange={setZoom} scrollToTodayTrigger={scrollToTodayTrigger} hiddenTypes={hiddenTypes} />
       </div>
     </div>
   );

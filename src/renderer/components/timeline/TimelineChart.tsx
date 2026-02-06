@@ -18,7 +18,11 @@ interface TreeNode {
   issue: NormalizedIssue;
   depth: number;
   hasChildren: boolean;
+  parentKey: string | null;
 }
+
+// parentKey -> key[] 순서 오버라이드 (null = 루트)
+type OrderOverrides = Map<string | null, string[]>;
 
 const ROW_HEIGHT = 32;
 const LABEL_WIDTH = 380;
@@ -31,7 +35,7 @@ const DAY_WIDTH_MAP: Record<ViewMode, number> = {
   day: 40,
 };
 
-function buildTree(issues: NormalizedIssue[]): TreeNode[] {
+function buildTree(issues: NormalizedIssue[], orderOverrides: OrderOverrides): TreeNode[] {
   const issueMap = new Map<string, NormalizedIssue>();
   for (const issue of issues) {
     issueMap.set(issue.key, issue);
@@ -52,28 +56,46 @@ function buildTree(issues: NormalizedIssue[]): TreeNode[] {
   }
 
   // 에픽을 먼저, 나머지를 created 순으로 정렬
-  const sortFn = (a: NormalizedIssue, b: NormalizedIssue) => {
+  const defaultSort = (a: NormalizedIssue, b: NormalizedIssue) => {
     const aIsEpic = a.issueType.toLowerCase() === 'epic' ? 0 : 1;
     const bIsEpic = b.issueType.toLowerCase() === 'epic' ? 0 : 1;
     if (aIsEpic !== bIsEpic) return aIsEpic - bIsEpic;
     return new Date(a.created).getTime() - new Date(b.created).getTime();
   };
 
-  roots.sort(sortFn);
+  // 커스텀 순서가 있으면 적용, 없으면 기본 정렬
+  const applySortOrder = (items: NormalizedIssue[], parentKey: string | null) => {
+    const override = orderOverrides.get(parentKey);
+    if (!override) {
+      items.sort(defaultSort);
+      return;
+    }
+    const orderMap = new Map(override.map((key, idx) => [key, idx]));
+    items.sort((a, b) => {
+      const ai = orderMap.get(a.key);
+      const bi = orderMap.get(b.key);
+      if (ai !== undefined && bi !== undefined) return ai - bi;
+      if (ai !== undefined) return -1;
+      if (bi !== undefined) return 1;
+      return defaultSort(a, b);
+    });
+  };
+
+  applySortOrder(roots, null);
 
   const result: TreeNode[] = [];
 
-  function walk(node: NormalizedIssue, depth: number) {
+  function walk(node: NormalizedIssue, depth: number, parentKey: string | null) {
     const children = childrenOf.get(node.key) ?? [];
-    children.sort(sortFn);
-    result.push({ issue: node, depth, hasChildren: children.length > 0 });
+    applySortOrder(children, node.key);
+    result.push({ issue: node, depth, hasChildren: children.length > 0, parentKey });
     for (const child of children) {
-      walk(child, depth + 1);
+      walk(child, depth + 1, node.key);
     }
   }
 
   for (const root of roots) {
-    walk(root, 0);
+    walk(root, 0, null);
   }
 
   return result;
@@ -141,8 +163,29 @@ const depthBadge: Record<number, string> = {
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 4;
 
+const ORDER_STORAGE_KEY = 'timeline-order-overrides';
+
+function loadOrderOverrides(): OrderOverrides {
+  try {
+    const raw = localStorage.getItem(ORDER_STORAGE_KEY);
+    if (!raw) return new Map();
+    const entries: [string | null, string[]][] = JSON.parse(raw);
+    return new Map(entries);
+  } catch {
+    return new Map();
+  }
+}
+
+function saveOrderOverrides(overrides: OrderOverrides) {
+  const entries = Array.from(overrides.entries());
+  localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(entries));
+}
+
 export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomChange, scrollToTodayTrigger, hiddenTypes }: TimelineChartProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [orderOverrides, setOrderOverrides] = useState<OrderOverrides>(loadOrderOverrides);
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
@@ -167,7 +210,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     return () => el.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
-  const tree = useMemo(() => buildTree(issues), [issues]);
+  const tree = useMemo(() => buildTree(issues, orderOverrides), [issues, orderOverrides]);
   const { rangeStart, rangeEnd } = useMemo(() => computeRange(issues), [issues]);
 
   const visibleNodes = useMemo(() => {
@@ -225,6 +268,42 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     isSyncing.current = false;
   }, []);
 
+  // 드래그앤드롭: 같은 부모 안에서만 순서 변경
+  const handleDrop = useCallback(
+    (targetKey: string) => {
+      if (!dragKey || dragKey === targetKey) return;
+      const dragNode = visibleNodes.find((n) => n.issue.key === dragKey);
+      const targetNode = visibleNodes.find((n) => n.issue.key === targetKey);
+      if (!dragNode || !targetNode) return;
+      // 같은 부모가 아니면 무시
+      if (dragNode.parentKey !== targetNode.parentKey) return;
+
+      const parentKey = dragNode.parentKey;
+      // 현재 형제 순서 가져오기
+      const siblings = tree
+        .filter((n) => n.parentKey === parentKey)
+        .map((n) => n.issue.key);
+
+      const fromIdx = siblings.indexOf(dragKey);
+      const toIdx = siblings.indexOf(targetKey);
+      if (fromIdx === -1 || toIdx === -1) return;
+
+      const newOrder = [...siblings];
+      newOrder.splice(fromIdx, 1);
+      newOrder.splice(toIdx, 0, dragKey);
+
+      setOrderOverrides((prev) => {
+        const next = new Map(prev);
+        next.set(parentKey, newOrder);
+        saveOrderOverrides(next);
+        return next;
+      });
+      setDragKey(null);
+      setDropTarget(null);
+    },
+    [dragKey, visibleNodes, tree],
+  );
+
   if (issues.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -253,13 +332,45 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             const badgeClass = issueTypeBadge[typeKey] ?? depthBadge[node.depth] ?? 'bg-gray-100 text-gray-600';
             const zebra = index % 2 === 1 ? 'bg-gray-50/50' : '';
 
+            const isDragging = dragKey === node.issue.key;
+            const isDropTarget = dropTarget === node.issue.key;
+
             return (
               <div
                 key={node.issue.key}
-                className={`flex items-center border-b border-gray-100 text-xs ${isEpic ? 'bg-purple-50' : zebra}`}
-                style={{ height: ROW_HEIGHT, paddingLeft: 8 + node.depth * INDENT_PX }}
+                className={`flex items-center border-b text-xs ${
+                  isDropTarget ? 'border-t-2 border-t-blue-400 border-b-gray-100' : 'border-b-gray-100'
+                } ${isEpic ? 'bg-purple-50' : zebra} ${isDragging ? 'opacity-40' : ''}`}
+                style={{ height: ROW_HEIGHT, paddingLeft: 4 + node.depth * INDENT_PX }}
                 title={`${node.issue.key}: ${node.issue.summary}`}
+                draggable
+                onDragStart={(e) => {
+                  setDragKey(node.issue.key);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragKey && dragKey !== node.issue.key) {
+                    const dragNode = visibleNodes.find((n) => n.issue.key === dragKey);
+                    if (dragNode && dragNode.parentKey === node.parentKey) {
+                      setDropTarget(node.issue.key);
+                    }
+                  }
+                }}
+                onDragLeave={() => {
+                  if (dropTarget === node.issue.key) setDropTarget(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleDrop(node.issue.key);
+                }}
+                onDragEnd={() => {
+                  setDragKey(null);
+                  setDropTarget(null);
+                }}
               >
+                {/* 드래그 핸들 */}
+                <span className="w-4 shrink-0 text-gray-300 hover:text-gray-500 cursor-grab text-[10px] text-center select-none">⋮⋮</span>
                 {/* 접기/펼치기 버튼 */}
                 {node.hasChildren ? (
                   <button
@@ -310,8 +421,9 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
 
             {/* Grid rows + bars */}
             {visibleNodes.map((node, index) => {
+              const hasDueDate = !!node.issue.dueDate;
               const startDate = new Date(node.issue.created);
-              const endDate = node.issue.dueDate ? new Date(node.issue.dueDate) : today;
+              const endDate = hasDueDate ? new Date(node.issue.dueDate!) : today;
 
               const left = ((startDate.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
               const width = ((endDate.getTime() - startDate.getTime()) / totalMs) * totalWidth;
@@ -320,7 +432,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
               const isEpicRow = typeKey === 'epic';
               const zebra = index % 2 === 1 ? 'bg-gray-50/50' : '';
 
-              const isBarHidden = hiddenTypes.size > 0 && hiddenTypes.has(typeKey);
+              const isBarHidden = (hiddenTypes.size > 0 && hiddenTypes.has(typeKey)) || !hasDueDate;
 
               return (
                 <div
