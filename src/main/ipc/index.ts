@@ -1,3 +1,4 @@
+import { ipcMain, shell } from 'electron';
 import { registerJiraHandlers } from './jira.handlers';
 import { registerSettingsHandlers } from './settings.handlers';
 import { registerStorageHandlers } from './storage.handlers';
@@ -9,4 +10,8 @@ export function registerAllHandlers(services: AppServices): void {
   registerSettingsHandlers(services);
   registerStorageHandlers(services);
   registerSyncHandlers(services);
+
+  ipcMain.handle('shell:open-external', (_event, url: string) => {
+    return shell.openExternal(url);
+  });
 }

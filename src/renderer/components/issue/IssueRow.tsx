@@ -2,6 +2,7 @@ import type { NormalizedIssue } from '../../types/jira.types';
 
 interface IssueRowProps {
   issue: NormalizedIssue;
+  baseUrl?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -24,14 +25,25 @@ function formatDate(dateStr: string | null): string {
   return d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
 }
 
-export default function IssueRow({ issue }: IssueRowProps) {
+export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
   const statusColor = statusColors[issue.statusCategory] || 'bg-gray-100 text-gray-700';
   const priorityColor = priorityColors[issue.priority || ''] || 'text-gray-400';
+  const issueUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/browse/${issue.key}` : null;
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
       <td className="px-4 py-2.5">
-        <span className="font-mono text-xs text-blue-600 font-medium">{issue.key}</span>
+        {issueUrl ? (
+          <button
+            type="button"
+            onClick={() => window.electronAPI.shell.openExternal(issueUrl)}
+            className="font-mono text-xs text-blue-600 font-medium hover:underline cursor-pointer bg-transparent border-none p-0"
+          >
+            {issue.key}
+          </button>
+        ) : (
+          <span className="font-mono text-xs text-blue-600 font-medium">{issue.key}</span>
+        )}
       </td>
       <td className="px-4 py-2.5">
         <span className="text-gray-900 line-clamp-1">{issue.summary}</span>

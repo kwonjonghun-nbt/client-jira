@@ -26,6 +26,9 @@ export interface ElectronAPI {
     onProgress: (callback: (progress: SyncProgress) => void) => () => void;
     onComplete: (callback: () => void) => () => void;
   };
+  shell: {
+    openExternal: (url: string) => Promise<void>;
+  };
 }
 
 declare global {

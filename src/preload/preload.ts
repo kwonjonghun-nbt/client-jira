@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 const api = {
+  shell: {
+    openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
+  },
   jira: {
     testConnection: (params: { url: string; email: string; token: string }) =>
       ipcRenderer.invoke('jira:test-connection', params),

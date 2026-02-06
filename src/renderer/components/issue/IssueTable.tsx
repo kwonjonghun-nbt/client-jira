@@ -3,9 +3,10 @@ import IssueRow from './IssueRow';
 
 interface IssueTableProps {
   issues: NormalizedIssue[];
+  baseUrl?: string;
 }
 
-export default function IssueTable({ issues }: IssueTableProps) {
+export default function IssueTable({ issues, baseUrl }: IssueTableProps) {
   if (issues.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -31,7 +32,7 @@ export default function IssueTable({ issues }: IssueTableProps) {
         </thead>
         <tbody>
           {issues.map((issue) => (
-            <IssueRow key={issue.key} issue={issue} />
+            <IssueRow key={issue.key} issue={issue} baseUrl={baseUrl} />
           ))}
         </tbody>
       </table>

@@ -89,7 +89,7 @@ export default function MainPage() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <IssueTable issues={filteredIssues} />
+        <IssueTable issues={filteredIssues} baseUrl={data.source.baseUrl} />
       </div>
     </div>
   );
