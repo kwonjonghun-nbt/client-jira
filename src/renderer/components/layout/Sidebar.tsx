@@ -7,6 +7,7 @@ export default function Sidebar() {
   const navItems = [
     { page: 'main' as const, label: '과제', icon: '📋' },
     { page: 'timeline' as const, label: '타임라인', icon: '📅' },
+    { page: 'stats' as const, label: '통계', icon: '📊' },
     { page: 'settings' as const, label: '설정', icon: '⚙️' },
   ];
 
