@@ -98,8 +98,9 @@ export class JiraClient {
     }
 
     if (assignees.length > 0) {
+      // 본인 + 지정 담당자 모두 조회
       const assigneeList = assignees.map((a) => `"${a}"`).join(', ');
-      parts.push(`assignee IN (${assigneeList})`);
+      parts.push(`assignee IN (currentUser(), ${assigneeList})`);
     } else {
       // 담당자 미지정 시 현재 사용자의 이슈만 가져옴
       parts.push('assignee = currentUser()');

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import JiraConnectionForm from '../components/settings/JiraConnectionForm';
 import ProjectSelector from '../components/settings/ProjectSelector';
+import AssigneeInput from '../components/settings/AssigneeInput';
 import ScheduleConfig from '../components/settings/ScheduleConfig';
 import StorageConfig from '../components/settings/StorageConfig';
 import Button from '../components/common/Button';
@@ -96,6 +97,12 @@ export default function SettingsPage() {
             setDraft({ ...draft, collection: { ...draft.collection, projects } })
           }
           onFetchProjects={() => window.electronAPI.jira.getProjects()}
+        />
+        <AssigneeInput
+          assignees={draft.collection.assignees}
+          onChange={(assignees) =>
+            setDraft({ ...draft, collection: { ...draft.collection, assignees } })
+          }
         />
       </section>
 
