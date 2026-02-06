@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist/
+.vite/
+data/
+*.log
+.DS_Store
+.env
+token.enc
+package-lock.json
+
+.omc/

@@ -1,0 +1,26 @@
+import { ipcMain } from 'electron';
+import type { AppServices } from '../services/types';
+
+export function registerJiraHandlers(services: AppServices): void {
+  ipcMain.handle('jira:test-connection', async (_event, params: { url: string; email: string; token: string }) => {
+    try {
+      const { JiraClient } = await import('../services/jira-client');
+      const client = new JiraClient(params.url, params.email, params.token);
+      return await client.testConnection();
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('jira:get-projects', async () => {
+    try {
+      if (!services.jiraClient) {
+        return [];
+      }
+      return await services.jiraClient.getProjects();
+    } catch (error: any) {
+      console.error('Failed to get projects:', error.message);
+      return [];
+    }
+  });
+}
