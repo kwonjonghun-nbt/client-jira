@@ -5,6 +5,7 @@ import { useUIStore } from '../store/uiStore';
 export function useFilters(issues: NormalizedIssue[]) {
   const filters = useUIStore((s) => s.filters);
   const setFilter = useUIStore((s) => s.setFilter);
+  const toggleStatus = useUIStore((s) => s.toggleStatus);
   const clearFilters = useUIStore((s) => s.clearFilters);
 
   const filteredIssues = useMemo(() => {
@@ -14,8 +15,8 @@ export function useFilters(issues: NormalizedIssue[]) {
       result = result.filter((issue) => issue.key.startsWith(filters.project + '-'));
     }
 
-    if (filters.status) {
-      result = result.filter((issue) => issue.status === filters.status);
+    if (filters.statuses.length > 0) {
+      result = result.filter((issue) => filters.statuses.includes(issue.status));
     }
 
     if (filters.assignee) {
@@ -41,5 +42,5 @@ export function useFilters(issues: NormalizedIssue[]) {
     return { projects, statuses, assignees };
   }, [issues]);
 
-  return { filters, setFilter, clearFilters, filteredIssues, filterOptions };
+  return { filters, setFilter, toggleStatus, clearFilters, filteredIssues, filterOptions };
 }

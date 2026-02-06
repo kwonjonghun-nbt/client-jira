@@ -11,7 +11,7 @@ import { useUIStore } from '../store/uiStore';
 export default function MainPage() {
   const { data, isLoading, error } = useJiraIssues();
   const issues = data?.issues ?? [];
-  const { filters, setFilter, filteredIssues, filterOptions } = useFilters(issues);
+  const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
   const setPage = useUIStore((s) => s.setPage);
 
   if (isLoading && !data) {
@@ -66,6 +66,7 @@ export default function MainPage() {
             filters={filters}
             filterOptions={filterOptions}
             onChangeFilter={setFilter}
+            onToggleStatus={toggleStatus}
           />
           <IssueSearch
             value={filters.search}

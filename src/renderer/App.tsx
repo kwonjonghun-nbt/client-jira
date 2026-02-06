@@ -1,6 +1,7 @@
 import Layout from './components/layout/Layout';
 import MainPage from './pages/MainPage';
 import SettingsPage from './pages/SettingsPage';
+import TimelinePage from './pages/TimelinePage';
 import SyncProgress from './components/sync/SyncProgress';
 import { useUIStore } from './store/uiStore';
 
@@ -10,6 +11,7 @@ export default function App() {
   return (
     <Layout>
       {currentPage === 'main' && <MainPage />}
+      {currentPage === 'timeline' && <TimelinePage />}
       {currentPage === 'settings' && <SettingsPage />}
       <SyncProgress />
     </Layout>

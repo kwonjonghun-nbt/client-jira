@@ -2,22 +2,25 @@ import { create } from 'zustand';
 
 interface Filters {
   project: string;
-  status: string;
+  statuses: string[];
   assignee: string;
   search: string;
 }
 
+type Page = 'main' | 'settings' | 'timeline';
+
 interface UIState {
-  currentPage: 'main' | 'settings';
+  currentPage: Page;
   filters: Filters;
-  setPage: (page: 'main' | 'settings') => void;
-  setFilter: (key: keyof Filters, value: string) => void;
+  setPage: (page: Page) => void;
+  setFilter: (key: 'project' | 'assignee' | 'search', value: string) => void;
+  toggleStatus: (status: string) => void;
   clearFilters: () => void;
 }
 
 const DEFAULT_FILTERS: Filters = {
   project: '',
-  status: '',
+  statuses: [],
   assignee: '',
   search: '',
 };
@@ -28,5 +31,13 @@ export const useUIStore = create<UIState>((set) => ({
   setPage: (page) => set({ currentPage: page }),
   setFilter: (key, value) =>
     set((state) => ({ filters: { ...state.filters, [key]: value } })),
+  toggleStatus: (status) =>
+    set((state) => {
+      const current = state.filters.statuses;
+      const next = current.includes(status)
+        ? current.filter((s) => s !== status)
+        : [...current, status];
+      return { filters: { ...state.filters, statuses: next } };
+    }),
   clearFilters: () => set({ filters: DEFAULT_FILTERS }),
 }));

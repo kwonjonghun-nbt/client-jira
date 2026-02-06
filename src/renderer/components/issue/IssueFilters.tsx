@@ -1,4 +1,5 @@
 import Select from '../common/Select';
+import MultiSelect from '../common/MultiSelect';
 
 interface FilterOptions {
   projects: string[];
@@ -7,25 +8,26 @@ interface FilterOptions {
 }
 
 interface IssueFiltersProps {
-  filters: { project: string; status: string; assignee: string };
+  filters: { project: string; statuses: string[]; assignee: string };
   filterOptions: FilterOptions;
-  onChangeFilter: (key: 'project' | 'status' | 'assignee', value: string) => void;
+  onChangeFilter: (key: 'project' | 'assignee', value: string) => void;
+  onToggleStatus: (status: string) => void;
 }
 
-export default function IssueFilters({ filters, filterOptions, onChangeFilter }: IssueFiltersProps) {
+export default function IssueFilters({ filters, filterOptions, onChangeFilter, onToggleStatus }: IssueFiltersProps) {
   return (
-    <div className="flex gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       <Select
         placeholder="전체 프로젝트"
         value={filters.project}
         onChange={(e) => onChangeFilter('project', e.target.value)}
         options={filterOptions.projects.map((p) => ({ value: p, label: p }))}
       />
-      <Select
+      <MultiSelect
         placeholder="전체 상태"
-        value={filters.status}
-        onChange={(e) => onChangeFilter('status', e.target.value)}
         options={filterOptions.statuses.map((s) => ({ value: s, label: s }))}
+        selected={filters.statuses}
+        onToggle={onToggleStatus}
       />
       <Select
         placeholder="전체 담당자"
