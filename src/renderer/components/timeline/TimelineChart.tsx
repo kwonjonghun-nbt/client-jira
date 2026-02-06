@@ -175,11 +175,6 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     const hiddenParents = new Set<string>();
 
     for (const node of tree) {
-      // 이슈타입 숨기기
-      if (hiddenTypes.size > 0 && hiddenTypes.has(node.issue.issueType.toLowerCase())) {
-        hiddenParents.add(node.issue.key);
-        continue;
-      }
       if (node.issue.parent && hiddenParents.has(node.issue.parent)) {
         hiddenParents.add(node.issue.key);
         continue;
@@ -190,7 +185,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
       result.push(node);
     }
     return result;
-  }, [tree, collapsed, hiddenTypes]);
+  }, [tree, collapsed]);
 
   const dayWidth = DAY_WIDTH_MAP[viewMode] * zoom;
   const totalDays = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
@@ -325,19 +320,23 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
               const isEpicRow = typeKey === 'epic';
               const zebra = index % 2 === 1 ? 'bg-gray-50/50' : '';
 
+              const isBarHidden = hiddenTypes.size > 0 && hiddenTypes.has(typeKey);
+
               return (
                 <div
                   key={node.issue.key}
                   className={`relative border-b border-gray-100 ${isEpicRow ? 'bg-purple-50' : zebra}`}
                   style={{ height: ROW_HEIGHT }}
                 >
-                  <TimelineBar
-                    issue={node.issue}
-                    left={left}
-                    width={width}
-                    depth={node.depth}
-                    baseUrl={baseUrl}
-                  />
+                  {!isBarHidden && (
+                    <TimelineBar
+                      issue={node.issue}
+                      left={left}
+                      width={width}
+                      depth={node.depth}
+                      baseUrl={baseUrl}
+                    />
+                  )}
                 </div>
               );
             })}

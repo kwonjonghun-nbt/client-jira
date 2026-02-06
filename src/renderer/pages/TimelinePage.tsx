@@ -2,21 +2,13 @@ import { useMemo, useState } from 'react';
 import TimelineChart from '../components/timeline/TimelineChart';
 import type { ViewMode } from '../components/timeline/TimelineHeader';
 import IssueFilters from '../components/issue/IssueFilters';
+import MultiSelect from '../components/common/MultiSelect';
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useFilters } from '../hooks/useFilters';
 import { useUIStore } from '../store/uiStore';
-
-const ISSUE_TYPE_CONFIG: Record<string, { icon: string; label: string; color: string; activeColor: string }> = {
-  epic: { icon: '⚡', label: 'Epic', color: 'bg-gray-100 text-gray-500', activeColor: 'bg-purple-100 text-purple-700' },
-  story: { icon: '📗', label: 'Story', color: 'bg-gray-100 text-gray-500', activeColor: 'bg-blue-100 text-blue-700' },
-  task: { icon: '✅', label: 'Task', color: 'bg-gray-100 text-gray-500', activeColor: 'bg-emerald-100 text-emerald-700' },
-  'sub-task': { icon: '🔹', label: 'Sub-task', color: 'bg-gray-100 text-gray-500', activeColor: 'bg-cyan-100 text-cyan-700' },
-  subtask: { icon: '🔹', label: 'Sub-task', color: 'bg-gray-100 text-gray-500', activeColor: 'bg-cyan-100 text-cyan-700' },
-  bug: { icon: '🐛', label: 'Bug', color: 'bg-gray-100 text-gray-500', activeColor: 'bg-red-100 text-red-700' },
-};
 
 const VIEW_MODE_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'month', label: '월' },
@@ -38,15 +30,21 @@ export default function TimelinePage() {
   const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
   const setPage = useUIStore((s) => s.setPage);
 
-  // 실제 데이터에 존재하는 이슈타입 목록 (중복 제거, 소문자 키)
-  const issueTypes = useMemo(() => {
+  // 실제 데이터에 존재하는 이슈타입 옵션 (중복 제거)
+  const issueTypeOptions = useMemo(() => {
     const types = new Map<string, string>();
     for (const issue of filteredIssues) {
       const key = issue.issueType.toLowerCase();
       if (!types.has(key)) types.set(key, issue.issueType);
     }
-    return Array.from(types.entries());
+    return Array.from(types.entries()).map(([key, name]) => ({ value: key, label: name }));
   }, [filteredIssues]);
+
+  // 보이는 타입 = 전체 - hiddenTypes
+  const visibleTypes = useMemo(
+    () => issueTypeOptions.map((o) => o.value).filter((v) => !hiddenTypes.has(v)),
+    [issueTypeOptions, hiddenTypes],
+  );
 
   const toggleType = (typeKey: string) => {
     setHiddenTypes((prev) => {
@@ -112,32 +110,15 @@ export default function TimelinePage() {
             onToggleStatus={toggleStatus}
           />
           <div className="flex items-center gap-3 shrink-0">
-            {/* 이슈타입 토글 */}
-            {issueTypes.length > 0 && (
-              <div className="flex items-center gap-1">
-                {issueTypes.map(([key, originalName]) => {
-                  const config = ISSUE_TYPE_CONFIG[key];
-                  const isVisible = !hiddenTypes.has(key);
-                  const icon = config?.icon ?? '📄';
-                  const label = config?.label ?? originalName;
-                  const colorClass = isVisible
-                    ? (config?.activeColor ?? 'bg-gray-200 text-gray-700')
-                    : 'bg-gray-100 text-gray-400 line-through';
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => toggleType(key)}
-                      className={`px-2 py-0.5 text-xs rounded-full cursor-pointer border-none transition-colors ${colorClass}`}
-                      title={isVisible ? `${label} 숨기기` : `${label} 보이기`}
-                    >
-                      {icon} {label}
-                    </button>
-                  );
-                })}
-              </div>
+            {/* 이슈타입 표시 토글 */}
+            {issueTypeOptions.length > 0 && (
+              <MultiSelect
+                placeholder="이슈타입"
+                options={issueTypeOptions}
+                selected={visibleTypes}
+                onToggle={toggleType}
+              />
             )}
-            <div className="w-px h-5 bg-gray-200" />
             <div className="flex items-center gap-1">
               {VIEW_MODE_OPTIONS.map((opt) => (
                 <button
