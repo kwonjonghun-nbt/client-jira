@@ -18,6 +18,11 @@ const api = {
   storage: {
     getLatest: () => ipcRenderer.invoke('storage:get-latest'),
     getMeta: () => ipcRenderer.invoke('storage:get-meta'),
+    getLabelNotes: () => ipcRenderer.invoke('storage:get-label-notes'),
+    saveLabelNotes: (notes: unknown) => ipcRenderer.invoke('storage:save-label-notes', notes),
+    listReports: () => ipcRenderer.invoke('storage:list-reports'),
+    getReport: (filename: string) => ipcRenderer.invoke('storage:get-report', filename),
+    saveReport: (filename: string, content: string) => ipcRenderer.invoke('storage:save-report', filename, content),
   },
   sync: {
     trigger: () => ipcRenderer.invoke('sync:trigger'),

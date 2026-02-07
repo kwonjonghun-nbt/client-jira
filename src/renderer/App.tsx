@@ -3,6 +3,8 @@ import MainPage from './pages/MainPage';
 import SettingsPage from './pages/SettingsPage';
 import TimelinePage from './pages/TimelinePage';
 import StatsPage from './pages/StatsPage';
+import LabelNotesPage from './pages/LabelNotesPage';
+import ReportsPage from './pages/ReportsPage';
 import SyncProgress from './components/sync/SyncProgress';
 import { useUIStore } from './store/uiStore';
 
@@ -14,6 +16,8 @@ export default function App() {
       {currentPage === 'main' && <MainPage />}
       {currentPage === 'timeline' && <TimelinePage />}
       {currentPage === 'stats' && <StatsPage />}
+      {currentPage === 'label-notes' && <LabelNotesPage />}
+      {currentPage === 'reports' && <ReportsPage />}
       {currentPage === 'settings' && <SettingsPage />}
       <SyncProgress />
     </Layout>

@@ -1,6 +1,28 @@
 import type { JiraIssue } from '../schemas/jira.schema';
 import type { NormalizedIssue } from '../schemas/storage.schema';
 
+/** ADF(Atlassian Document Format) JSON → 플레인 텍스트 */
+function extractTextFromAdf(adf: unknown): string | null {
+  if (!adf || typeof adf !== 'object') return null;
+  const doc = adf as Record<string, unknown>;
+  if (doc.type !== 'doc' || !Array.isArray(doc.content)) return null;
+
+  const texts: string[] = [];
+  function walk(nodes: unknown[]): void {
+    for (const node of nodes) {
+      if (!node || typeof node !== 'object') continue;
+      const n = node as Record<string, unknown>;
+      if (n.type === 'text' && typeof n.text === 'string') {
+        texts.push(n.text);
+      }
+      if (Array.isArray(n.content)) walk(n.content);
+    }
+  }
+  walk(doc.content as unknown[]);
+  const result = texts.join('').trim();
+  return result || null;
+}
+
 /**
  * Jira API 응답의 이슈를 플랫한 구조로 정규화
  */
@@ -13,6 +35,7 @@ export function normalizeIssue(issue: JiraIssue): NormalizedIssue {
   return {
     key: issue.key,
     summary: fields.summary,
+    description: extractTextFromAdf(fields.description),
     status: fields.status.name,
     statusCategory: fields.status.statusCategory.key,
     assignee: fields.assignee?.displayName ?? null,

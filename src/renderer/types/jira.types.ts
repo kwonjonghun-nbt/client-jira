@@ -3,6 +3,7 @@
 export interface NormalizedIssue {
   key: string;
   summary: string;
+  description?: string | null;
   status: string;
   statusCategory: string;
   assignee: string | null;
@@ -72,4 +73,16 @@ export interface SyncResult {
   issueCount: number;
   duration: number;
   error?: string;
+}
+
+export interface LabelNote {
+  label: string;
+  description: string;
+  updatedAt: string;
+}
+
+export interface ReportMeta {
+  filename: string;
+  title: string;
+  modifiedAt: string;
 }

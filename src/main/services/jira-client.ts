@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
 import type { JiraIssue, JiraProject, JiraSearchResponse } from '../schemas/jira.schema';
 
 const FIELDS = [
-  'summary', 'status', 'assignee', 'reporter', 'priority',
+  'summary', 'description', 'status', 'assignee', 'reporter', 'priority',
   'issuetype', 'created', 'updated', 'duedate', 'labels',
   'components', 'resolution', 'timetracking', 'parent', 'subtasks',
   'customfield_10016', // Story Points

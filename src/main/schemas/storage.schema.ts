@@ -5,6 +5,7 @@ import { JiraIssueSchema } from './jira.schema';
 export const NormalizedIssueSchema = z.object({
   key: z.string(),
   summary: z.string(),
+  description: z.string().nullable().optional(),
   status: z.string(),
   statusCategory: z.string(),
   assignee: z.string().nullable(),
@@ -66,6 +67,14 @@ export const SyncProgressSchema = z.object({
   percentage: z.number(),
 });
 
+export const LabelNoteSchema = z.object({
+  label: z.string(),
+  description: z.string(),
+  updatedAt: z.string(),
+});
+
+export const LabelNotesDataSchema = z.array(LabelNoteSchema);
+
 // Type exports
 export type NormalizedIssue = z.infer<typeof NormalizedIssueSchema>;
 export type StoredData = z.infer<typeof StoredDataSchema>;
@@ -73,3 +82,4 @@ export type SyncHistoryEntry = z.infer<typeof SyncHistoryEntrySchema>;
 export type MetaData = z.infer<typeof MetaDataSchema>;
 export type SyncStatus = z.infer<typeof SyncStatusSchema>;
 export type SyncProgress = z.infer<typeof SyncProgressSchema>;
+export type LabelNote = z.infer<typeof LabelNoteSchema>;

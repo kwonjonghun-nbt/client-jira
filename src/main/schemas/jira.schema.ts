@@ -45,6 +45,7 @@ export const JiraTimeTrackingSchema = z.object({
 
 export const JiraIssueFieldsSchema = z.object({
   summary: z.string(),
+  description: z.unknown().nullable().optional(),
   status: JiraStatusSchema,
   assignee: JiraUserSchema.nullable(),
   reporter: JiraUserSchema.nullable().optional(),

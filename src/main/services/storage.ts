@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath } from '../utils/paths';
-import { StoredDataSchema, MetaDataSchema } from '../schemas/storage.schema';
+import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir } from '../utils/paths';
+import { StoredDataSchema, MetaDataSchema, LabelNotesDataSchema } from '../schemas/storage.schema';
 import { SettingsSchema, DEFAULT_SETTINGS } from '../schemas/settings.schema';
 import { logger } from '../utils/logger';
-import type { StoredData, MetaData } from '../schemas/storage.schema';
+import type { StoredData, MetaData, LabelNote } from '../schemas/storage.schema';
 import type { Settings } from '../schemas/settings.schema';
 
 export class StorageService {
@@ -86,6 +86,66 @@ export class StorageService {
   async saveMeta(meta: MetaData): Promise<void> {
     const validated = MetaDataSchema.parse(meta);
     await fs.writeFile(getMetaPath(), JSON.stringify(validated, null, 2), 'utf-8');
+  }
+
+  // --- Label Notes ---
+
+  async loadLabelNotes(): Promise<LabelNote[]> {
+    try {
+      const content = await fs.readFile(getLabelNotesPath(), 'utf-8');
+      return LabelNotesDataSchema.parse(JSON.parse(content));
+    } catch {
+      return [];
+    }
+  }
+
+  async saveLabelNotes(notes: unknown): Promise<void> {
+    const validated = LabelNotesDataSchema.parse(notes);
+    await fs.writeFile(getLabelNotesPath(), JSON.stringify(validated, null, 2), 'utf-8');
+    logger.info(`Label notes saved: ${validated.length} entries`);
+  }
+
+  // --- Reports ---
+
+  async listReports(): Promise<{ filename: string; title: string; modifiedAt: string }[]> {
+    const dir = getReportsDir();
+    try {
+      await fs.mkdir(dir, { recursive: true });
+      const entries = await fs.readdir(dir);
+      const mdFiles = entries.filter((e) => e.endsWith('.md'));
+      const results: { filename: string; title: string; modifiedAt: string }[] = [];
+      for (const file of mdFiles) {
+        const stat = await fs.stat(path.join(dir, file));
+        results.push({
+          filename: file,
+          title: file.replace(/\.md$/, ''),
+          modifiedAt: stat.mtime.toISOString(),
+        });
+      }
+      results.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+      return results;
+    } catch {
+      return [];
+    }
+  }
+
+  async getReport(filename: string): Promise<string | null> {
+    try {
+      const filePath = path.join(getReportsDir(), filename);
+      return await fs.readFile(filePath, 'utf-8');
+    } catch {
+      return null;
+    }
+  }
+
+  async saveReport(filename: string, content: string): Promise<void> {
+    const dir = getReportsDir();
+    await fs.mkdir(dir, { recursive: true });
+    // 파일명에 사용할 수 없는 문자 치환
+    const sanitized = filename.replace(/[/\\:*?"<>|]/g, '_');
+    const safeName = sanitized.endsWith('.md') ? sanitized : `${sanitized}.md`;
+    await fs.writeFile(path.join(dir, safeName), content, 'utf-8');
+    logger.info(`Report saved: ${safeName}`);
   }
 
   // --- Cleanup ---

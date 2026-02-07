@@ -25,6 +25,14 @@ export function getTokenPath(): string {
   return path.join(app.getPath('userData'), 'token.enc');
 }
 
+export function getLabelNotesPath(): string {
+  return path.join(app.getPath('userData'), 'label-notes.json');
+}
+
+export function getReportsDir(): string {
+  return path.join(app.getPath('userData'), 'reports');
+}
+
 export function getSnapshotDir(date: Date): string {
   const dateStr = date.toISOString().split('T')[0];
   return path.join(getRawDir(), dateStr);

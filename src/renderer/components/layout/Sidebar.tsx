@@ -8,6 +8,8 @@ export default function Sidebar() {
     { page: 'main' as const, label: '과제', icon: '📋' },
     { page: 'timeline' as const, label: '타임라인', icon: '📅' },
     { page: 'stats' as const, label: '통계', icon: '📊' },
+    { page: 'label-notes' as const, label: '라벨 메모', icon: '🏷️' },
+    { page: 'reports' as const, label: '리포트', icon: '📄' },
     { page: 'settings' as const, label: '설정', icon: '⚙️' },
   ];
 

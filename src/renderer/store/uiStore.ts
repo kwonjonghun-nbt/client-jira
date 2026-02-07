@@ -7,7 +7,7 @@ interface Filters {
   search: string;
 }
 
-type Page = 'main' | 'settings' | 'timeline' | 'stats';
+type Page = 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports';
 
 interface UIState {
   currentPage: Page;
