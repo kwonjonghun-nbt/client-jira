@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { NormalizedIssue } from '../types/jira.types';
 
 interface Filters {
   project: string;
@@ -12,10 +13,14 @@ type Page = 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'report
 interface UIState {
   currentPage: Page;
   filters: Filters;
+  selectedIssue: NormalizedIssue | null;
+  issueBaseUrl: string | null;
   setPage: (page: Page) => void;
   setFilter: (key: 'project' | 'assignee' | 'search', value: string) => void;
   toggleStatus: (status: string) => void;
   clearFilters: () => void;
+  openIssueDetail: (issue: NormalizedIssue, baseUrl?: string) => void;
+  closeIssueDetail: () => void;
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -28,6 +33,8 @@ const DEFAULT_FILTERS: Filters = {
 export const useUIStore = create<UIState>((set) => ({
   currentPage: 'main',
   filters: DEFAULT_FILTERS,
+  selectedIssue: null,
+  issueBaseUrl: null,
   setPage: (page) => set({ currentPage: page }),
   setFilter: (key, value) =>
     set((state) => ({ filters: { ...state.filters, [key]: value } })),
@@ -40,4 +47,6 @@ export const useUIStore = create<UIState>((set) => ({
       return { filters: { ...state.filters, statuses: next } };
     }),
   clearFilters: () => set({ filters: DEFAULT_FILTERS }),
+  openIssueDetail: (issue, baseUrl) => set({ selectedIssue: issue, issueBaseUrl: baseUrl ?? null }),
+  closeIssueDetail: () => set({ selectedIssue: null, issueBaseUrl: null }),
 }));

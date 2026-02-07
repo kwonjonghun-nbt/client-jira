@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NormalizedIssue } from '../../types/jira.types';
+import { useUIStore } from '../../store/uiStore';
 import TimelineHeader from './TimelineHeader';
 import type { ViewMode } from './TimelineHeader';
 import TimelineBar from './TimelineBar';
@@ -182,6 +183,7 @@ function saveOrderOverrides(overrides: OrderOverrides) {
 }
 
 export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomChange, scrollToTodayTrigger, hiddenTypes }: TimelineChartProps) {
+  const openIssueDetail = useUIStore((s) => s.openIssueDetail);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [orderOverrides, setOrderOverrides] = useState<OrderOverrides>(loadOrderOverrides);
   const [dragKey, setDragKey] = useState<string | null>(null);
@@ -384,12 +386,26 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                   <span className="w-4 shrink-0" />
                 )}
                 <span className="mr-1 shrink-0">{getIssueIcon(node.issue.issueType, node.depth)}</span>
-                <span className={`px-1 py-0.5 rounded text-[9px] font-medium shrink-0 mr-1.5 ${badgeClass}`}>
-                  {node.issue.key}
-                </span>
-                <span className={`truncate flex-1 min-w-0 ${isEpic ? 'text-purple-800 font-semibold' : 'text-gray-600'}`}>
+                {baseUrl ? (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); window.electronAPI.shell.openExternal(`${baseUrl.replace(/\/+$/, '')}/browse/${node.issue.key}`); }}
+                    className={`px-1 py-0.5 rounded text-[9px] font-medium shrink-0 mr-1.5 cursor-pointer border-none hover:opacity-70 ${badgeClass}`}
+                  >
+                    {node.issue.key}
+                  </button>
+                ) : (
+                  <span className={`px-1 py-0.5 rounded text-[9px] font-medium shrink-0 mr-1.5 ${badgeClass}`}>
+                    {node.issue.key}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openIssueDetail(node.issue, baseUrl); }}
+                  className={`truncate flex-1 min-w-0 cursor-pointer bg-transparent border-none p-0 text-left text-xs hover:text-blue-600 ${isEpic ? 'text-purple-800 font-semibold' : 'text-gray-600'}`}
+                >
                   {node.issue.summary}
-                </span>
+                </button>
                 {node.issue.assignee && (
                   <span className="text-gray-400 shrink-0 ml-1 text-[10px]">{node.issue.assignee}</span>
                 )}

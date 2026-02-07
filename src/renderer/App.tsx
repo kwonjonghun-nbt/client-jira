@@ -6,6 +6,7 @@ import StatsPage from './pages/StatsPage';
 import LabelNotesPage from './pages/LabelNotesPage';
 import ReportsPage from './pages/ReportsPage';
 import SyncProgress from './components/sync/SyncProgress';
+import IssueDetailModal from './components/issue/IssueDetailModal';
 import { useUIStore } from './store/uiStore';
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
       {currentPage === 'reports' && <ReportsPage />}
       {currentPage === 'settings' && <SettingsPage />}
       <SyncProgress />
+      <IssueDetailModal />
     </Layout>
   );
 }

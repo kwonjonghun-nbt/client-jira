@@ -1,4 +1,5 @@
 import type { NormalizedIssue } from '../../types/jira.types';
+import { useUIStore } from '../../store/uiStore';
 
 interface IssueRowProps {
   issue: NormalizedIssue;
@@ -26,6 +27,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
+  const openIssueDetail = useUIStore((s) => s.openIssueDetail);
   const statusColor = statusColors[issue.statusCategory] || 'bg-gray-100 text-gray-700';
   const priorityColor = priorityColors[issue.priority || ''] || 'text-gray-400';
   const issueUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/browse/${issue.key}` : null;
@@ -46,7 +48,13 @@ export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
         )}
       </td>
       <td className="px-4 py-2.5">
-        <span className="text-gray-900 line-clamp-1">{issue.summary}</span>
+        <button
+          type="button"
+          onClick={() => openIssueDetail(issue, baseUrl)}
+          className="text-gray-900 line-clamp-1 hover:text-blue-600 cursor-pointer bg-transparent border-none p-0 text-left text-sm"
+        >
+          {issue.summary}
+        </button>
         {issue.sprint && (
           <span className="ml-2 text-xs text-gray-400">{issue.sprint}</span>
         )}
