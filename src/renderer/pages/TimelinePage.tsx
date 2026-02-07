@@ -32,18 +32,24 @@ function formatDate(d: Date): string {
 }
 
 export default function TimelinePage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [zoom, setZoom] = useState(1);
-  const [scrollToTodayTrigger, setScrollToTodayTrigger] = useState(0);
+  const [scrollToTodayTrigger, setScrollToTodayTrigger] = useState(1);
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
-  const [dateStart, setDateStart] = useState('');
-  const [dateEnd, setDateEnd] = useState('');
+  const [activePreset, setActivePreset] = useState(30);
+  const [dateStart, setDateStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return formatDate(d);
+  });
+  const [dateEnd, setDateEnd] = useState(() => formatDate(new Date()));
   const { data, isLoading, error } = useJiraIssues();
   const issues = data?.issues ?? [];
   const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
   const setPage = useUIStore((s) => s.setPage);
 
   const applyDatePreset = (days: number) => {
+    setActivePreset(days);
     if (days === 0) {
       setDateStart('');
       setDateEnd('');
@@ -161,7 +167,7 @@ export default function TimelinePage() {
                 type="button"
                 onClick={() => applyDatePreset(p.days)}
                 className={`px-2 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
-                  (p.days === 0 && !dateStart && !dateEnd)
+                  activePreset === p.days
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
@@ -172,14 +178,14 @@ export default function TimelinePage() {
             <input
               type="date"
               value={dateStart}
-              onChange={(e) => setDateStart(e.target.value)}
+              onChange={(e) => { setDateStart(e.target.value); setActivePreset(-1); }}
               className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
             />
             <span className="text-xs text-gray-400">~</span>
             <input
               type="date"
               value={dateEnd}
-              onChange={(e) => setDateEnd(e.target.value)}
+              onChange={(e) => { setDateEnd(e.target.value); setActivePreset(-1); }}
               className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
             />
           </div>

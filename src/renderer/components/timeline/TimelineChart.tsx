@@ -322,7 +322,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
         style={{ width: LABEL_WIDTH }}
         onScroll={() => syncScroll('label')}
       >
-        <div className="sticky top-0 z-10 h-10 border-b border-gray-200 bg-gray-50 flex items-center px-3">
+        <div className={`sticky top-0 z-10 border-b border-gray-200 bg-gray-50 flex items-end px-3 pb-2 ${viewMode === 'month' ? 'h-10' : 'h-14'}`}>
           <span className="text-xs font-medium text-gray-500">이슈</span>
         </div>
         <div>
