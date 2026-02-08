@@ -37,6 +37,7 @@ export default function TimelinePage() {
   const [hiddenRowTypes, setHiddenRowTypes] = useState<Set<string>>(new Set());
   const [activePreset, setActivePreset] = useState(30);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const [dateStart, setDateStart] = useState(() => {
     const d = new Date();
@@ -267,48 +268,6 @@ export default function TimelinePage() {
                 )}
               </div>
             )}
-            <div className="flex items-center gap-1">
-              {VIEW_MODE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setViewMode(opt.value)}
-                  className={`px-3 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
-                    viewMode === opt.value
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setScrollToTodayTrigger((t) => t + 1)}
-              className="px-3 py-1 text-xs rounded cursor-pointer border-none bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-            >
-              오늘
-            </button>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}
-                disabled={zoom <= ZOOM_MIN}
-                className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                -
-              </button>
-              <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}
-                disabled={zoom >= ZOOM_MAX}
-                className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                +
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -327,8 +286,78 @@ export default function TimelinePage() {
       </div>
 
       {/* Timeline Chart */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <TimelineChart issues={dateFilteredIssues} baseUrl={data.source.baseUrl} viewMode={viewMode} zoom={zoom} onZoomChange={setZoom} scrollToTodayTrigger={scrollToTodayTrigger} hiddenTypes={hiddenTypes} hiddenRowTypes={hiddenRowTypes} />
+
+        {/* Floating controls */}
+        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg px-2 py-1.5">
+          {controlsCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setControlsCollapsed(false)}
+              className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+              title="컨트롤 펼치기"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          ) : (
+            <>
+              {VIEW_MODE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setViewMode(opt.value)}
+                  className={`px-3 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
+                    viewMode === opt.value
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-gray-200" />
+              <button
+                type="button"
+                onClick={() => setScrollToTodayTrigger((t) => t + 1)}
+                className="px-3 py-1 text-xs rounded cursor-pointer border-none bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+              >
+                오늘
+              </button>
+              <div className="w-px h-5 bg-gray-200" />
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}
+                disabled={zoom <= ZOOM_MIN}
+                className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                -
+              </button>
+              <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}
+                disabled={zoom >= ZOOM_MAX}
+                className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                +
+              </button>
+              <div className="w-px h-5 bg-gray-200" />
+              <button
+                type="button"
+                onClick={() => setControlsCollapsed(true)}
+                className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                title="컨트롤 접기"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
