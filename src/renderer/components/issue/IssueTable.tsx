@@ -22,6 +22,7 @@ export default function IssueTable({ issues, baseUrl }: IssueTableProps) {
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
             <th className="text-left px-4 py-2.5 font-medium text-gray-600 w-28">키</th>
+            <th className="text-left px-4 py-2.5 font-medium text-gray-600 w-20">타입</th>
             <th className="text-left px-4 py-2.5 font-medium text-gray-600">제목</th>
             <th className="text-left px-4 py-2.5 font-medium text-gray-600 w-24">상태</th>
             <th className="text-left px-4 py-2.5 font-medium text-gray-600 w-24">담당자</th>

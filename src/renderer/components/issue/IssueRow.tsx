@@ -20,6 +20,30 @@ const priorityColors: Record<string, string> = {
   Lowest: 'text-gray-400',
 };
 
+const issueTypeAliases: Record<string, string> = {
+  epic: 'epic', '에픽': 'epic',
+  story: 'story', '스토리': 'story', '새기능': 'story', '새 기능': 'story',
+  task: 'task', '작업': 'task',
+  'sub-task': 'sub-task', subtask: 'sub-task', '하위작업': 'sub-task', '하위 작업': 'sub-task',
+  bug: 'bug', '버그': 'bug',
+};
+
+const issueTypeColors: Record<string, string> = {
+  epic: 'bg-purple-100 text-purple-700',
+  story: 'bg-blue-100 text-blue-700',
+  task: 'bg-emerald-100 text-emerald-700',
+  'sub-task': 'bg-cyan-100 text-cyan-700',
+  bug: 'bg-red-100 text-red-700',
+};
+
+const issueTypeLabels: Record<string, string> = {
+  epic: '에픽',
+  story: '스토리',
+  task: '작업',
+  'sub-task': '하위작업',
+  bug: '버그',
+};
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
@@ -30,6 +54,9 @@ export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
   const statusColor = statusColors[issue.statusCategory] || 'bg-gray-100 text-gray-700';
   const priorityColor = priorityColors[issue.priority || ''] || 'text-gray-400';
+  const normalizedType = issueTypeAliases[issue.issueType.toLowerCase()] ?? 'task';
+  const typeColor = issueTypeColors[normalizedType] ?? 'bg-gray-100 text-gray-700';
+  const typeLabel = issueTypeLabels[normalizedType] ?? issue.issueType;
   const issueUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/browse/${issue.key}` : null;
 
   return (
@@ -46,6 +73,11 @@ export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
         ) : (
           <span className="font-mono text-xs text-blue-600 font-medium">{issue.key}</span>
         )}
+      </td>
+      <td className="px-4 py-2.5">
+        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${typeColor}`}>
+          {typeLabel}
+        </span>
       </td>
       <td className="px-4 py-2.5">
         <button
