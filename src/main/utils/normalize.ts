@@ -48,6 +48,7 @@ export function normalizeIssue(issue: JiraIssue): NormalizedIssue {
     components: fields.components?.map((c) => c.name) ?? [],
     created: fields.created,
     updated: fields.updated,
+    startDate: activeSprint?.startDate ?? null,
     dueDate: fields.duedate,
     resolution: fields.resolution?.name ?? null,
     timeTracking: fields.timetracking
@@ -59,6 +60,14 @@ export function normalizeIssue(issue: JiraIssue): NormalizedIssue {
       : null,
     parent: fields.parent?.key ?? null,
     subtasks: fields.subtasks?.map((s) => s.key) ?? [],
+    issueLinks: (fields.issuelinks ?? []).map((link) => {
+      const isOutward = !!link.outwardIssue;
+      return {
+        type: link.type.name,
+        direction: isOutward ? 'outward' as const : 'inward' as const,
+        linkedIssueKey: isOutward ? link.outwardIssue!.key : link.inwardIssue!.key,
+      };
+    }),
   };
 }
 

@@ -55,8 +55,9 @@ export default function TimelineBar({ issue, left, width, baseUrl }: TimelineBar
   const normalized = normalizeType(issue.issueType);
   const barColor = issueTypeBarColor[normalized] ?? 'bg-gray-400';
   const overlay = statusOverlay[issue.statusCategory] ?? '';
-  const minWidth = Math.max(width, 4);
-  const showLabel = width > 60;
+  const MIN_BAR_PX = 24;
+  const minWidth = Math.max(width, MIN_BAR_PX);
+  const showLabel = minWidth > 50;
   const isEpic = normalized === 'epic';
   const isSubtask = normalized === 'sub-task';
   const barHeight = isEpic ? 'h-7' : isSubtask ? 'h-4' : 'h-5';
@@ -82,10 +83,12 @@ export default function TimelineBar({ issue, left, width, baseUrl }: TimelineBar
         onClick={handleClick}
         className={`w-full h-full rounded ${barColor} ${overlay} hover:opacity-70 transition-opacity cursor-pointer border-none p-0 flex items-center ${issue.statusCategory === 'done' ? 'bg-stripes' : ''}`}
       >
-        {showLabel && (
+        {showLabel ? (
           <span className="text-[10px] text-white font-medium px-1.5 truncate">
             {issue.key}
           </span>
+        ) : (
+          <span className="text-[10px] text-white font-bold mx-auto">●</span>
         )}
       </button>
 

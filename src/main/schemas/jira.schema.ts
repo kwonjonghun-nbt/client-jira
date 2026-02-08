@@ -32,6 +32,8 @@ export const JiraSprintSchema = z.object({
   id: z.number(),
   name: z.string(),
   state: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 export const JiraTimeTrackingSchema = z.object({
@@ -75,6 +77,21 @@ export const JiraIssueFieldsSchema = z.object({
       z.object({
         key: z.string(),
         fields: z.object({ summary: z.string() }).optional(),
+      }),
+    )
+    .optional(),
+  // Issue links (blocking relationships etc.)
+  issuelinks: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        type: z.object({
+          name: z.string(),
+          inward: z.string(),
+          outward: z.string(),
+        }),
+        inwardIssue: z.object({ key: z.string() }).optional(),
+        outwardIssue: z.object({ key: z.string() }).optional(),
       }),
     )
     .optional(),

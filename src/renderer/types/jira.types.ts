@@ -16,6 +16,7 @@ export interface NormalizedIssue {
   components: string[];
   created: string;
   updated: string;
+  startDate: string | null;
   dueDate: string | null;
   resolution: string | null;
   timeTracking: {
@@ -25,6 +26,11 @@ export interface NormalizedIssue {
   } | null;
   parent: string | null;
   subtasks: string[];
+  issueLinks: {
+    type: string;
+    direction: 'inward' | 'outward';
+    linkedIssueKey: string;
+  }[];
 }
 
 export interface StoredData {

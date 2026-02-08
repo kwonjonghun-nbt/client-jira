@@ -7,7 +7,7 @@ import type { JiraIssue, JiraProject, JiraSearchResponse } from '../schemas/jira
 const FIELDS = [
   'summary', 'description', 'status', 'assignee', 'reporter', 'priority',
   'issuetype', 'created', 'updated', 'duedate', 'labels',
-  'components', 'resolution', 'timetracking', 'parent', 'subtasks',
+  'components', 'resolution', 'timetracking', 'parent', 'subtasks', 'issuelinks',
   'customfield_10016', // Story Points
   'customfield_10020', // Sprint
 ];

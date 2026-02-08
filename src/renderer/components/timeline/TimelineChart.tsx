@@ -449,11 +449,20 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             {/* Grid rows + bars */}
             {displayNodes.map((node, index) => {
               const hasDueDate = !!node.issue.dueDate;
-              const startDate = new Date(node.issue.created);
-              const endDate = hasDueDate ? new Date(node.issue.dueDate!) : today;
+
+              // 날짜 시작(00:00)에 스냅 — startDate(스프린트 시작일) 우선, 없으면 created
+              const startDate = new Date(node.issue.startDate ?? node.issue.created);
+              startDate.setHours(0, 0, 0, 0);
+
+              // 종료일 다음날 00:00에 스냅 (그 날짜 끝까지 바가 차지)
+              const endRaw = hasDueDate ? new Date(node.issue.dueDate!) : today;
+              const endDate = new Date(endRaw);
+              endDate.setHours(0, 0, 0, 0);
+              endDate.setDate(endDate.getDate() + 1);
 
               const left = ((startDate.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
-              const width = ((endDate.getTime() - startDate.getTime()) / totalMs) * totalWidth;
+              const rawWidth = ((endDate.getTime() - startDate.getTime()) / totalMs) * totalWidth;
+              const width = Math.max(rawWidth, dayWidth);
 
               const normalizedType = normalizeType(node.issue.issueType);
               const chartRowStyle = issueTypeRowStyle[normalizedType];
@@ -478,6 +487,53 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                 </div>
               );
             })}
+
+            {/* Blocking relationship arrows */}
+            <svg
+              className="absolute top-0 left-0 pointer-events-none"
+              style={{ width: totalWidth, height: displayNodes.length * ROW_HEIGHT }}
+            >
+              <defs>
+                <marker id="block-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                  <path d="M0,0 L8,3 L0,6 Z" fill="#e11d48" />
+                </marker>
+              </defs>
+              {displayNodes.flatMap((node, srcIdx) =>
+                node.issue.issueLinks
+                  .filter((link) => link.type === 'Blocks' && link.direction === 'outward')
+                  .map((link) => {
+                    const tgtIdx = displayNodes.findIndex((n) => n.issue.key === link.linkedIssueKey);
+                    if (tgtIdx === -1) return null;
+
+                    const tgtNode = displayNodes[tgtIdx];
+
+                    // Source bar: right edge (end of blocker)
+                    const srcEnd = node.issue.dueDate ? new Date(node.issue.dueDate) : today;
+                    const srcEndX = ((srcEnd.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
+                    const srcY = srcIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+                    // Target bar: left edge (start of blocked)
+                    const tgtStart = new Date(tgtNode.issue.startDate ?? tgtNode.issue.created);
+                    const tgtStartX = ((tgtStart.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
+                    const tgtY = tgtIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+                    const midX = srcEndX + (tgtStartX - srcEndX) / 2;
+
+                    return (
+                      <path
+                        key={`block-${node.issue.key}-${link.linkedIssueKey}`}
+                        d={`M${srcEndX},${srcY} C${midX},${srcY} ${midX},${tgtY} ${tgtStartX},${tgtY}`}
+                        fill="none"
+                        stroke="#e11d48"
+                        strokeWidth="1.5"
+                        strokeDasharray="6 3"
+                        markerEnd="url(#block-arrow)"
+                        opacity="0.7"
+                      />
+                    );
+                  }),
+              )}
+            </svg>
           </div>
         </div>
       </div>

@@ -18,6 +18,7 @@ export const NormalizedIssueSchema = z.object({
   components: z.array(z.string()),
   created: z.string(),
   updated: z.string(),
+  startDate: z.string().nullable(),
   dueDate: z.string().nullable(),
   resolution: z.string().nullable(),
   timeTracking: z
@@ -29,6 +30,13 @@ export const NormalizedIssueSchema = z.object({
     .nullable(),
   parent: z.string().nullable(),
   subtasks: z.array(z.string()),
+  issueLinks: z.array(
+    z.object({
+      type: z.string(),
+      direction: z.enum(['inward', 'outward']),
+      linkedIssueKey: z.string(),
+    }),
+  ),
 });
 
 export const StoredDataSchema = z.object({

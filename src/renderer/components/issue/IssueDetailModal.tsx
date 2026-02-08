@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useUIStore } from '../../store/uiStore';
 import type { NormalizedIssue } from '../../types/jira.types';
 
@@ -134,6 +134,15 @@ export default function IssueDetailModal() {
   const baseUrl = useUIStore((s) => s.issueBaseUrl);
   const close = useUIStore((s) => s.closeIssueDetail);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!issue) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [issue, close]);
 
   if (!issue) return null;
 
