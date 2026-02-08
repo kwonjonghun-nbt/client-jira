@@ -8,7 +8,7 @@ interface Filters {
   search: string;
 }
 
-type Page = 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports';
+type Page = 'dashboard' | 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports';
 
 interface UIState {
   currentPage: Page;
@@ -31,7 +31,7 @@ const DEFAULT_FILTERS: Filters = {
 };
 
 export const useUIStore = create<UIState>((set) => ({
-  currentPage: 'main',
+  currentPage: 'dashboard',
   filters: DEFAULT_FILTERS,
   selectedIssue: null,
   issueBaseUrl: null,

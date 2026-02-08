@@ -1,0 +1,527 @@
+import { useMemo, useState } from 'react';
+import SyncButton from '../components/sync/SyncButton';
+import SyncStatusDisplay from '../components/sync/SyncStatus';
+import Spinner from '../components/common/Spinner';
+import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useUIStore } from '../store/uiStore';
+import type { NormalizedIssue } from '../types/jira.types';
+
+const issueTypeAliases: Record<string, string> = {
+  epic: 'epic',
+  '에픽': 'epic',
+  story: 'story',
+  '스토리': 'story',
+  '새기능': 'story',
+  '새 기능': 'story',
+  task: 'task',
+  '작업': 'task',
+  'sub-task': 'sub-task',
+  subtask: 'sub-task',
+  '하위작업': 'sub-task',
+  '하위 작업': 'sub-task',
+  bug: 'bug',
+  '버그': 'bug',
+};
+
+function normalizeType(t: string): string {
+  return issueTypeAliases[t.toLowerCase()] ?? 'task';
+}
+
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}일 전`;
+  return `${Math.floor(days / 30)}개월 전`;
+}
+
+function getWeekRange(): [Date, Date] {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Monday as week start
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  return [monday, sunday];
+}
+
+function formatDateISO(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+const DATE_PRESETS = [
+  { label: '7일', days: 7 },
+  { label: '30일', days: 30 },
+  { label: '90일', days: 90 },
+  { label: '전체', days: 0 },
+];
+
+const issueTypeColors: Record<string, string> = {
+  epic: 'bg-purple-100 text-purple-700',
+  story: 'bg-blue-100 text-blue-700',
+  task: 'bg-emerald-100 text-emerald-700',
+  'sub-task': 'bg-cyan-100 text-cyan-700',
+  bug: 'bg-red-100 text-red-700',
+};
+
+export default function DashboardPage() {
+  const { data, isLoading } = useJiraIssues();
+  const setPage = useUIStore((s) => s.setPage);
+  const openIssueDetail = useUIStore((s) => s.openIssueDetail);
+
+  const [activePreset, setActivePreset] = useState(30);
+  const [dateStart, setDateStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return formatDateISO(d);
+  });
+  const [dateEnd, setDateEnd] = useState(() => formatDateISO(new Date()));
+
+  const applyDatePreset = (days: number) => {
+    setActivePreset(days);
+    if (days === 0) {
+      setDateStart('');
+      setDateEnd('');
+    } else {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - days);
+      setDateStart(formatDateISO(start));
+      setDateEnd(formatDateISO(end));
+    }
+  };
+
+  const filteredIssues = useMemo(() => {
+    if (!data) return [];
+    if (!dateStart && !dateEnd) return data.issues;
+    const startMs = dateStart ? new Date(dateStart).getTime() : 0;
+    const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
+
+    return data.issues.filter((issue) => {
+      const createdMs = new Date(issue.created).getTime();
+      const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
+      const createdInRange = createdMs >= startMs && createdMs <= endMs;
+      const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;
+      const spansRange = dueMs !== null && createdMs <= startMs && dueMs >= endMs;
+      return createdInRange || dueInRange || spansRange;
+    });
+  }, [data, dateStart, dateEnd]);
+
+  const stats = useMemo(() => {
+    if (!data) return null;
+    const issues = filteredIssues;
+
+    const totalCount = issues.length;
+    const inProgressCount = issues.filter(
+      (i) => i.statusCategory === 'indeterminate'
+    ).length;
+    const doneCount = issues.filter((i) => i.statusCategory === 'done').length;
+    const newCount = issues.filter((i) => i.statusCategory === 'new').length;
+
+    // Due this week
+    const [weekStart, weekEnd] = getWeekRange();
+    const dueThisWeek = issues
+      .filter((i) => {
+        if (!i.dueDate) return false;
+        const due = new Date(i.dueDate);
+        return due >= weekStart && due <= weekEnd;
+      })
+      .sort(
+        (a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
+      )
+      .slice(0, 10);
+
+    // Workload by assignee (non-done issues only)
+    const workloadMap = new Map<string, number>();
+    issues
+      .filter((i) => i.statusCategory !== 'done')
+      .forEach((i) => {
+        const assignee = i.assignee || '(미할당)';
+        workloadMap.set(assignee, (workloadMap.get(assignee) || 0) + 1);
+      });
+    const workload = Array.from(workloadMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+    const maxWorkload = Math.max(...workload.map((w) => w.count), 1);
+
+    // Recently updated
+    const recentlyUpdated = [...issues]
+      .sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime())
+      .slice(0, 8);
+
+    // Issue type distribution
+    const typeMap = new Map<string, number>();
+    issues.forEach((i) => {
+      const normalized = normalizeType(i.issueType);
+      typeMap.set(normalized, (typeMap.get(normalized) || 0) + 1);
+    });
+    const typeDistribution = Array.from(typeMap.entries()).map(([type, count]) => ({
+      type,
+      count,
+    }));
+
+    return {
+      totalCount,
+      inProgressCount,
+      doneCount,
+      newCount,
+      dueThisWeek,
+      workload,
+      maxWorkload,
+      recentlyUpdated,
+      typeDistribution,
+    };
+  }, [data, filteredIssues]);
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!data || !stats) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 text-gray-500">
+        <p>동기화된 데이터가 없습니다</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setPage('settings')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            설정으로 이동
+          </button>
+          <SyncButton />
+        </div>
+      </div>
+    );
+  }
+
+  const baseUrl = data.source.baseUrl;
+
+  return (
+    <div className="h-full overflow-auto px-6">
+      {/* Header */}
+      <div className="sticky top-0 bg-white z-10 border-b border-gray-200 px-6 py-4 -mx-6 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">대시보드</h1>
+            <SyncStatusDisplay
+              syncedAt={data.syncedAt}
+              totalCount={data.totalCount}
+              projects={data.source.projects}
+            />
+          </div>
+          <SyncButton />
+        </div>
+        <div className="flex items-center gap-1">
+          {DATE_PRESETS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => applyDatePreset(p.days)}
+              className={`px-2 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
+                activePreset === p.days
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+          <input
+            type="date"
+            value={dateStart}
+            onChange={(e) => { setDateStart(e.target.value); setActivePreset(-1); }}
+            className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
+          />
+          <span className="text-xs text-gray-400">~</span>
+          <input
+            type="date"
+            value={dateEnd}
+            onChange={(e) => { setDateEnd(e.target.value); setActivePreset(-1); }}
+            className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
+          />
+          <span className="text-xs text-gray-400 ml-2">
+            {filteredIssues.length}건 표시
+            {filteredIssues.length !== data.issues.length && ` (전체 ${data.issues.length}건)`}
+          </span>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">전체 이슈</p>
+              <p className="text-3xl font-bold text-gray-800 mt-1">
+                {stats.totalCount}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">진행중</p>
+              <p className="text-3xl font-bold text-blue-600 mt-1">
+                {stats.inProgressCount}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">완료</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">
+                {stats.doneCount}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">미착수</p>
+              <p className="text-3xl font-bold text-gray-800 mt-1">{stats.newCount}</p>
+            </div>
+            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Two Column Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Due This Week */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            이번 주 마감 이슈
+          </h2>
+          {stats.dueThisWeek.length === 0 ? (
+            <p className="text-gray-500 text-sm">이번 주 마감 이슈가 없습니다</p>
+          ) : (
+            <div className="space-y-3">
+              {stats.dueThisWeek.map((issue) => (
+                <div
+                  key={issue.key}
+                  className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-mono text-blue-600">
+                        {issue.key}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 text-xs rounded ${
+                          issue.statusCategory === 'done'
+                            ? 'bg-green-100 text-green-700'
+                            : issue.statusCategory === 'indeterminate'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {issue.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-800 truncate">{issue.summary}</p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                      <span>
+                        {new Date(issue.dueDate!).toLocaleDateString('ko-KR')}
+                      </span>
+                      {issue.assignee && <span>· {issue.assignee}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Workload by Assignee */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            담당자별 워크로드
+          </h2>
+          {stats.workload.length === 0 ? (
+            <p className="text-gray-500 text-sm">진행중인 이슈가 없습니다</p>
+          ) : (
+            <div className="space-y-3">
+              {stats.workload.map((w) => (
+                <div key={w.name}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-gray-700">{w.name}</span>
+                    <span className="text-sm font-semibold text-gray-800">
+                      {w.count}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all"
+                      style={{ width: `${(w.count / stats.maxWorkload) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Second Two Column Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Recently Updated */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            최근 업데이트 이슈
+          </h2>
+          <div className="space-y-3">
+            {stats.recentlyUpdated.map((issue) => {
+              const normalized = normalizeType(issue.issueType);
+              const colorClass =
+                issueTypeColors[normalized] || 'bg-gray-100 text-gray-700';
+
+              return (
+                <div
+                  key={issue.key}
+                  onClick={() => openIssueDetail(issue, baseUrl)}
+                  className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 -mx-2 px-2 rounded transition-colors"
+                >
+                  <span
+                    className={`px-2 py-1 text-xs rounded font-medium ${colorClass}`}
+                  >
+                    {issue.key}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 truncate">{issue.summary}</p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                      <span>{relativeTime(issue.updated)}</span>
+                      <span>·</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded ${
+                          issue.statusCategory === 'done'
+                            ? 'bg-green-100 text-green-700'
+                            : issue.statusCategory === 'indeterminate'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {issue.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Issue Type Distribution */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            이슈 타입별 분포
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {stats.typeDistribution.map((item) => {
+              const colorClass =
+                issueTypeColors[item.type] || 'bg-gray-100 text-gray-700';
+              const typeLabel: Record<string, string> = {
+                epic: '에픽',
+                story: '스토리',
+                task: '작업',
+                'sub-task': '하위작업',
+                bug: '버그',
+              };
+
+              return (
+                <div
+                  key={item.type}
+                  className={`px-4 py-2 rounded-lg ${colorClass} flex items-center gap-2`}
+                >
+                  <span className="font-medium">
+                    {typeLabel[item.type] || item.type}
+                  </span>
+                  <span className="font-bold">{item.count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

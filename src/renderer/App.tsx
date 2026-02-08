@@ -5,6 +5,7 @@ import TimelinePage from './pages/TimelinePage';
 import StatsPage from './pages/StatsPage';
 import LabelNotesPage from './pages/LabelNotesPage';
 import ReportsPage from './pages/ReportsPage';
+import DashboardPage from './pages/DashboardPage';
 import SyncProgress from './components/sync/SyncProgress';
 import IssueDetailModal from './components/issue/IssueDetailModal';
 import { useUIStore } from './store/uiStore';
@@ -14,6 +15,7 @@ export default function App() {
 
   return (
     <Layout>
+      {currentPage === 'dashboard' && <DashboardPage />}
       {currentPage === 'main' && <MainPage />}
       {currentPage === 'timeline' && <TimelinePage />}
       {currentPage === 'stats' && <StatsPage />}

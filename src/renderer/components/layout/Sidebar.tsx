@@ -8,6 +8,7 @@ export default function Sidebar() {
   const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
 
   const navItems = [
+    { page: 'dashboard' as const, label: '대시보드', icon: '🏠' },
     { page: 'main' as const, label: '과제', icon: '📋' },
     { page: 'timeline' as const, label: '타임라인', icon: '📅' },
     { page: 'stats' as const, label: '통계', icon: '📊' },
