@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import TimelineChart from '../components/timeline/TimelineChart';
 import type { ViewMode } from '../components/timeline/TimelineHeader';
 import IssueFilters from '../components/issue/IssueFilters';
-import MultiSelect from '../components/common/MultiSelect';
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
@@ -36,7 +35,10 @@ export default function TimelinePage() {
   const [zoom, setZoom] = useState(1);
   const [scrollToTodayTrigger, setScrollToTodayTrigger] = useState(1);
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
+  const [hiddenRowTypes, setHiddenRowTypes] = useState<Set<string>>(new Set());
   const [activePreset, setActivePreset] = useState(30);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const [dateStart, setDateStart] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -47,6 +49,16 @@ export default function TimelinePage() {
   const issues = data?.issues ?? [];
   const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
   const setPage = useUIStore((s) => s.setPage);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const applyDatePreset = (days: number) => {
     setActivePreset(days);
@@ -79,6 +91,11 @@ export default function TimelinePage() {
     });
   }, [filteredIssues, dateStart, dateEnd]);
 
+  const displayedIssues = useMemo(() => {
+    if (hiddenRowTypes.size === 0) return dateFilteredIssues;
+    return dateFilteredIssues.filter((issue) => !hiddenRowTypes.has(issue.issueType.toLowerCase()));
+  }, [dateFilteredIssues, hiddenRowTypes]);
+
   // 실제 데이터에 존재하는 이슈타입 옵션 (중복 제거)
   const issueTypeOptions = useMemo(() => {
     const types = new Map<string, string>();
@@ -89,14 +106,17 @@ export default function TimelinePage() {
     return Array.from(types.entries()).map(([key, name]) => ({ value: key, label: name }));
   }, [dateFilteredIssues]);
 
-  // 보이는 타입 = 전체 - hiddenTypes
-  const visibleTypes = useMemo(
-    () => issueTypeOptions.map((o) => o.value).filter((v) => !hiddenTypes.has(v)),
-    [issueTypeOptions, hiddenTypes],
-  );
-
   const toggleType = (typeKey: string) => {
     setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(typeKey)) next.delete(typeKey);
+      else next.add(typeKey);
+      return next;
+    });
+  };
+
+  const toggleRowType = (typeKey: string) => {
+    setHiddenRowTypes((prev) => {
       const next = new Set(prev);
       if (next.has(typeKey)) next.delete(typeKey);
       else next.add(typeKey);
@@ -191,14 +211,62 @@ export default function TimelinePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* 이슈타입 표시 토글 */}
+            {/* 타임라인 설정 */}
             {issueTypeOptions.length > 0 && (
-              <MultiSelect
-                placeholder="이슈타입"
-                options={issueTypeOptions}
-                selected={visibleTypes}
-                onToggle={toggleType}
-              />
+              <div ref={settingsRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen((v) => !v)}
+                  className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors"
+                  title="타임라인 설정"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+                {settingsOpen && (
+                  <div className="absolute right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[280px]">
+                    <div className="px-3 py-2 border-b border-gray-100">
+                      <span className="text-xs font-semibold text-gray-700">타임라인 설정</span>
+                    </div>
+                    <div className="px-3 py-1.5">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="flex-1 text-[11px] font-medium text-gray-500">이슈타입</span>
+                        <span className="w-12 text-center text-[10px] text-gray-400">바</span>
+                        <span className="w-12 text-center text-[10px] text-gray-400">로우</span>
+                      </div>
+                      {issueTypeOptions.map((opt) => {
+                        const barVisible = !hiddenTypes.has(opt.value);
+                        const rowVisible = !hiddenRowTypes.has(opt.value);
+                        return (
+                          <div key={opt.value} className="flex items-center gap-2 py-1">
+                            <span className="flex-1 text-xs text-gray-700">{opt.label}</span>
+                            <div className="w-12 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleType(opt.value)}
+                                className={`w-8 h-4 rounded-full transition-colors cursor-pointer border-none relative ${barVisible ? 'bg-blue-500' : 'bg-gray-300'}`}
+                              >
+                                <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${barVisible ? 'left-4' : 'left-0.5'}`} />
+                              </button>
+                            </div>
+                            <div className="w-12 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleRowType(opt.value)}
+                                className={`w-8 h-4 rounded-full transition-colors cursor-pointer border-none relative ${rowVisible ? 'bg-blue-500' : 'bg-gray-300'}`}
+                              >
+                                <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${rowVisible ? 'left-4' : 'left-0.5'}`} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             <div className="flex items-center gap-1">
               {VIEW_MODE_OPTIONS.map((opt) => (
@@ -255,13 +323,13 @@ export default function TimelinePage() {
 
       {/* Issue Count */}
       <div className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
-        {dateFilteredIssues.length}건 표시
-        {dateFilteredIssues.length !== issues.length && ` (전체 ${issues.length}건)`}
+        {displayedIssues.length}건 표시
+        {displayedIssues.length !== issues.length && ` (전체 ${issues.length}건)`}
       </div>
 
       {/* Timeline Chart */}
       <div className="flex-1 overflow-hidden">
-        <TimelineChart issues={dateFilteredIssues} baseUrl={data.source.baseUrl} viewMode={viewMode} zoom={zoom} onZoomChange={setZoom} scrollToTodayTrigger={scrollToTodayTrigger} hiddenTypes={hiddenTypes} />
+        <TimelineChart issues={dateFilteredIssues} baseUrl={data.source.baseUrl} viewMode={viewMode} zoom={zoom} onZoomChange={setZoom} scrollToTodayTrigger={scrollToTodayTrigger} hiddenTypes={hiddenTypes} hiddenRowTypes={hiddenRowTypes} />
       </div>
     </div>
   );

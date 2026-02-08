@@ -13,6 +13,7 @@ interface TimelineChartProps {
   onZoomChange: (zoom: number) => void;
   scrollToTodayTrigger: number;
   hiddenTypes: Set<string>;
+  hiddenRowTypes: Set<string>;
 }
 
 interface TreeNode {
@@ -127,23 +128,29 @@ function computeRange(issues: NormalizedIssue[]): { rangeStart: Date; rangeEnd: 
   return { rangeStart: start, rangeEnd: futureEnd };
 }
 
+// 한글/영문 이슈타입을 정규화된 키로 변환
+const issueTypeAliases: Record<string, string> = {
+  epic: 'epic', '에픽': 'epic',
+  story: 'story', '스토리': 'story', '새기능': 'story', '새 기능': 'story',
+  task: 'task', '작업': 'task',
+  'sub-task': 'sub-task', subtask: 'sub-task', '하위작업': 'sub-task', '하위 작업': 'sub-task',
+  bug: 'bug', '버그': 'bug',
+};
+
+function normalizeType(issueType: string): string {
+  return issueTypeAliases[issueType.toLowerCase()] ?? 'task';
+}
+
 const issueTypeIcons: Record<string, string> = {
   epic: '⚡',
   story: '📗',
   task: '✅',
   'sub-task': '🔹',
-  subtask: '🔹',
   bug: '🐛',
 };
 
-const depthIcons: Record<number, string> = {
-  0: '⚡',
-  1: '📗',
-  2: '🔹',
-};
-
-function getIssueIcon(issueType: string, depth: number): string {
-  return issueTypeIcons[issueType.toLowerCase()] ?? depthIcons[depth] ?? '📄';
+function getIssueIcon(issueType: string): string {
+  return issueTypeIcons[normalizeType(issueType)] ?? '📄';
 }
 
 const issueTypeBadge: Record<string, string> = {
@@ -151,14 +158,13 @@ const issueTypeBadge: Record<string, string> = {
   story: 'bg-blue-100 text-blue-700',
   task: 'bg-emerald-100 text-emerald-700',
   'sub-task': 'bg-cyan-100 text-cyan-700',
-  subtask: 'bg-cyan-100 text-cyan-700',
   bug: 'bg-red-100 text-red-700',
 };
 
-const depthBadge: Record<number, string> = {
-  0: 'bg-purple-100 text-purple-700',
-  1: 'bg-blue-100 text-blue-700',
-  2: 'bg-cyan-100 text-cyan-700',
+// 로우 좌측 보더 + 배경 스타일
+const issueTypeRowStyle: Record<string, string> = {
+  epic: 'bg-purple-50 border-l-3 border-l-purple-500',
+  story: 'bg-blue-50/40 border-l-3 border-l-blue-400',
 };
 
 const ZOOM_MIN = 0.25;
@@ -182,7 +188,7 @@ function saveOrderOverrides(overrides: OrderOverrides) {
   localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(entries));
 }
 
-export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomChange, scrollToTodayTrigger, hiddenTypes }: TimelineChartProps) {
+export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomChange, scrollToTodayTrigger, hiddenTypes, hiddenRowTypes }: TimelineChartProps) {
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [orderOverrides, setOrderOverrides] = useState<OrderOverrides>(loadOrderOverrides);
@@ -231,6 +237,11 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     }
     return result;
   }, [tree, collapsed]);
+
+  const displayNodes = useMemo(() => {
+    if (hiddenRowTypes.size === 0) return visibleNodes;
+    return visibleNodes.filter((node) => !hiddenRowTypes.has(node.issue.issueType.toLowerCase()));
+  }, [visibleNodes, hiddenRowTypes]);
 
   const dayWidth = DAY_WIDTH_MAP[viewMode] * zoom;
   const totalDays = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
@@ -328,10 +339,10 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
           <span className="text-xs font-medium text-gray-500">이슈</span>
         </div>
         <div>
-          {visibleNodes.map((node, index) => {
-            const typeKey = node.issue.issueType.toLowerCase();
-            const isEpic = typeKey === 'epic';
-            const badgeClass = issueTypeBadge[typeKey] ?? depthBadge[node.depth] ?? 'bg-gray-100 text-gray-600';
+          {displayNodes.map((node, index) => {
+            const normalized = normalizeType(node.issue.issueType);
+            const rowStyle = issueTypeRowStyle[normalized];
+            const badgeClass = issueTypeBadge[normalized] ?? 'bg-gray-100 text-gray-600';
             const zebra = index % 2 === 1 ? 'bg-gray-50/50' : '';
 
             const isDragging = dragKey === node.issue.key;
@@ -342,8 +353,8 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                 key={node.issue.key}
                 className={`flex items-center border-b text-xs ${
                   isDropTarget ? 'border-t-2 border-t-blue-400 border-b-gray-100' : 'border-b-gray-100'
-                } ${isEpic ? 'bg-purple-50' : zebra} ${isDragging ? 'opacity-40' : ''}`}
-                style={{ height: ROW_HEIGHT, paddingLeft: 4 + node.depth * INDENT_PX }}
+                } ${rowStyle ?? zebra} ${isDragging ? 'opacity-40' : ''}`}
+                style={{ height: ROW_HEIGHT, paddingLeft: rowStyle ? 1 + node.depth * INDENT_PX : 4 + node.depth * INDENT_PX }}
                 title={`${node.issue.key}: ${node.issue.summary}`}
                 draggable
                 onDragStart={(e) => {
@@ -385,7 +396,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                 ) : (
                   <span className="w-4 shrink-0" />
                 )}
-                <span className="mr-1 shrink-0">{getIssueIcon(node.issue.issueType, node.depth)}</span>
+                <span className="mr-1 shrink-0">{getIssueIcon(node.issue.issueType)}</span>
                 {baseUrl ? (
                   <button
                     type="button"
@@ -402,7 +413,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openIssueDetail(node.issue, baseUrl); }}
-                  className={`truncate flex-1 min-w-0 cursor-pointer bg-transparent border-none p-0 text-left text-xs hover:text-blue-600 ${isEpic ? 'text-purple-800 font-semibold' : 'text-gray-600'}`}
+                  className={`truncate flex-1 min-w-0 cursor-pointer bg-transparent border-none p-0 text-left text-xs hover:text-blue-600 ${normalized === 'epic' ? 'text-purple-800 font-semibold' : normalized === 'story' ? 'text-blue-700 font-medium' : 'text-gray-600'}`}
                 >
                   {node.issue.summary}
                 </button>
@@ -431,12 +442,12 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             {showTodayLine && (
               <div
                 className="absolute top-0 w-px bg-red-400 z-10"
-                style={{ left: todayOffset, height: visibleNodes.length * ROW_HEIGHT }}
+                style={{ left: todayOffset, height: displayNodes.length * ROW_HEIGHT }}
               />
             )}
 
             {/* Grid rows + bars */}
-            {visibleNodes.map((node, index) => {
+            {displayNodes.map((node, index) => {
               const hasDueDate = !!node.issue.dueDate;
               const startDate = new Date(node.issue.created);
               const endDate = hasDueDate ? new Date(node.issue.dueDate!) : today;
@@ -444,16 +455,16 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
               const left = ((startDate.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
               const width = ((endDate.getTime() - startDate.getTime()) / totalMs) * totalWidth;
 
-              const typeKey = node.issue.issueType.toLowerCase();
-              const isEpicRow = typeKey === 'epic';
+              const normalizedType = normalizeType(node.issue.issueType);
+              const chartRowStyle = issueTypeRowStyle[normalizedType];
               const zebra = index % 2 === 1 ? 'bg-gray-50/50' : '';
 
-              const isBarHidden = (hiddenTypes.size > 0 && hiddenTypes.has(typeKey)) || !hasDueDate;
+              const isBarHidden = (hiddenTypes.size > 0 && hiddenTypes.has(node.issue.issueType.toLowerCase())) || !hasDueDate;
 
               return (
                 <div
                   key={node.issue.key}
-                  className={`relative border-b border-gray-100 ${isEpicRow ? 'bg-purple-50' : zebra}`}
+                  className={`relative border-b border-gray-100 ${chartRowStyle ?? zebra}`}
                   style={{ height: ROW_HEIGHT }}
                 >
                   {!isBarHidden && (
@@ -461,7 +472,6 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                       issue={node.issue}
                       left={left}
                       width={width}
-                      depth={node.depth}
                       baseUrl={baseUrl}
                     />
                   )}

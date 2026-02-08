@@ -5,8 +5,20 @@ interface TimelineBarProps {
   issue: NormalizedIssue;
   left: number;
   width: number;
-  depth: number;
   baseUrl?: string;
+}
+
+// 한글/영문 이슈타입을 정규화된 키로 변환
+const issueTypeAliases: Record<string, string> = {
+  epic: 'epic', '에픽': 'epic',
+  story: 'story', '스토리': 'story', '새기능': 'story', '새 기능': 'story',
+  task: 'task', '작업': 'task',
+  'sub-task': 'sub-task', subtask: 'sub-task', '하위작업': 'sub-task', '하위 작업': 'sub-task',
+  bug: 'bug', '버그': 'bug',
+};
+
+function normalizeType(issueType: string): string {
+  return issueTypeAliases[issueType.toLowerCase()] ?? 'task';
 }
 
 const issueTypeBarColor: Record<string, string> = {
@@ -14,14 +26,7 @@ const issueTypeBarColor: Record<string, string> = {
   story: 'bg-blue-400',
   task: 'bg-emerald-400',
   'sub-task': 'bg-cyan-400',
-  subtask: 'bg-cyan-400',
   bug: 'bg-red-400',
-};
-
-const depthBarColor: Record<number, string> = {
-  0: 'bg-purple-400',
-  1: 'bg-blue-400',
-  2: 'bg-cyan-400',
 };
 
 const statusOverlay: Record<string, string> = {
@@ -42,19 +47,18 @@ const issueTypeLabels: Record<string, string> = {
   story: 'Story',
   task: 'Task',
   'sub-task': 'Sub-task',
-  subtask: 'Sub-task',
   bug: 'Bug',
 };
 
-export default function TimelineBar({ issue, left, width, depth, baseUrl }: TimelineBarProps) {
+export default function TimelineBar({ issue, left, width, baseUrl }: TimelineBarProps) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const barColor = issueTypeBarColor[issue.issueType.toLowerCase()] ?? depthBarColor[depth] ?? 'bg-gray-400';
+  const normalized = normalizeType(issue.issueType);
+  const barColor = issueTypeBarColor[normalized] ?? 'bg-gray-400';
   const overlay = statusOverlay[issue.statusCategory] ?? '';
   const minWidth = Math.max(width, 4);
   const showLabel = width > 60;
-  const type = issue.issueType.toLowerCase();
-  const isEpic = type === 'epic';
-  const isSubtask = type === 'sub-task' || type === 'subtask';
+  const isEpic = normalized === 'epic';
+  const isSubtask = normalized === 'sub-task';
   const barHeight = isEpic ? 'h-7' : isSubtask ? 'h-4' : 'h-5';
   const topOffset = isEpic ? 'top-0.5' : isSubtask ? 'top-2' : 'top-1';
 
@@ -88,7 +92,7 @@ export default function TimelineBar({ issue, left, width, depth, baseUrl }: Time
       {showTooltip && (
         <div className="absolute z-50 bottom-full left-0 mb-1 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none">
           <div className="font-medium mb-1">
-            <span className="text-gray-400 mr-1">{issueTypeLabels[issue.issueType.toLowerCase()] ?? issue.issueType}</span>
+            <span className="text-gray-400 mr-1">{issueTypeLabels[normalized] ?? issue.issueType}</span>
             {issue.key}: {issue.summary}
           </div>
           <div className="text-gray-300 space-y-0.5">
