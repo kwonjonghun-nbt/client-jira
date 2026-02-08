@@ -34,6 +34,14 @@ export interface ElectronAPI {
   shell: {
     openExternal: (url: string) => Promise<void>;
   };
+  terminal: {
+    create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) => Promise<string>;
+    write: (id: string, data: string) => Promise<void>;
+    resize: (id: string, cols: number, rows: number) => Promise<void>;
+    close: (id: string) => Promise<void>;
+    onData: (callback: (id: string, data: string) => void) => () => void;
+    onExit: (callback: (id: string, exitCode: number) => void) => () => void;
+  };
 }
 
 declare global {

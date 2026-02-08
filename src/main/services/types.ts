@@ -11,4 +11,5 @@ export interface AppServices {
   jiraClient: any;
   sync: any;
   scheduler: any;
+  terminal: any;
 }

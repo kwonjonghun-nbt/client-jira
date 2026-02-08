@@ -19,6 +19,7 @@ const services: AppServices = {
   jiraClient: null,
   sync: null,
   scheduler: null,
+  terminal: null,
 };
 
 const createWindow = (): BrowserWindow => {
@@ -52,6 +53,9 @@ const createWindow = (): BrowserWindow => {
 
 async function initializeServices(): Promise<void> {
   try {
+    const { TerminalService } = await import('./services/terminal');
+    services.terminal = new TerminalService();
+
     const { StorageService } = await import('./services/storage');
     const { CredentialsService } = await import('./services/credentials');
 
@@ -152,4 +156,5 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   services.scheduler?.stop();
+  services.terminal?.closeAll();
 });

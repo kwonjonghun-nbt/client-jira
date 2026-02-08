@@ -43,6 +43,32 @@ const api = {
       };
     },
   },
+  terminal: {
+    create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) =>
+      ipcRenderer.invoke('terminal:create', aiType, initialPrompt, cols, rows),
+    write: (id: string, data: string) =>
+      ipcRenderer.invoke('terminal:write', id, data),
+    resize: (id: string, cols: number, rows: number) =>
+      ipcRenderer.invoke('terminal:resize', id, cols, rows),
+    close: (id: string) =>
+      ipcRenderer.invoke('terminal:close', id),
+    onData: (callback: (id: string, data: string) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, id: string, data: string) =>
+        callback(id, data);
+      ipcRenderer.on('terminal:data', handler);
+      return () => {
+        ipcRenderer.removeListener('terminal:data', handler);
+      };
+    },
+    onExit: (callback: (id: string, exitCode: number) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, id: string, exitCode: number) =>
+        callback(id, exitCode);
+      ipcRenderer.on('terminal:exit', handler);
+      return () => {
+        ipcRenderer.removeListener('terminal:exit', handler);
+      };
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

@@ -1,8 +1,11 @@
 import { useUIStore } from '../../store/uiStore';
+import { useTerminalStore } from '../../store/terminalStore';
 
 export default function Sidebar() {
   const currentPage = useUIStore((s) => s.currentPage);
   const setPage = useUIStore((s) => s.setPage);
+  const isTerminalOpen = useTerminalStore((s) => s.isOpen);
+  const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
 
   const navItems = [
     { page: 'main' as const, label: '과제', icon: '📋' },
@@ -32,6 +35,20 @@ export default function Sidebar() {
           {item.icon}
         </button>
       ))}
+      <div className="flex-1" />
+      <button
+        onClick={toggleTerminal}
+        title="Claude 터미널"
+        className={`
+          w-10 h-10 rounded-lg flex items-center justify-center text-lg
+          transition-colors cursor-pointer
+          ${isTerminalOpen
+            ? 'bg-purple-600 text-white'
+            : 'text-gray-400 hover:bg-gray-800 hover:text-white'}
+        `}
+      >
+        🤖
+      </button>
     </aside>
   );
 }
