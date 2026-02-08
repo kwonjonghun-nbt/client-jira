@@ -34,7 +34,6 @@ const INDENT_PX = 20;
 const DAY_WIDTH_MAP: Record<ViewMode, number> = {
   month: 3,
   week: 12,
-  day: 40,
 };
 
 function buildTree(issues: NormalizedIssue[], orderOverrides: OrderOverrides): TreeNode[] {
@@ -249,8 +248,55 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
   const totalMs = rangeEnd.getTime() - rangeStart.getTime();
 
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const todayOffset = ((today.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
   const showTodayLine = today >= rangeStart && today <= rangeEnd;
+
+  // Calculate today column highlight for the chart area
+  const todayHighlightColumns = useMemo(() => {
+    const columns: { left: number; width: number }[] = [];
+
+    if (viewMode === 'month') {
+      // Highlight the entire month containing today
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const left = ((monthStart.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
+      const right = ((monthEnd.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
+      columns.push({ left, width: right - left });
+    } else {
+      // week view: highlight the entire week containing today (Monday-aligned)
+      const dow = today.getDay();
+      const mondayDiff = dow === 0 ? -6 : 1 - dow;
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() + mondayDiff);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      const left = ((weekStart.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
+      const right = ((weekEnd.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
+      columns.push({ left, width: right - left });
+    }
+
+    return columns;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, rangeStart.getTime(), totalMs, totalWidth]);
+
+  // 주 뷰: 주 경계선 위치 (월요일)
+  const weekBorderOffsets = useMemo(() => {
+    if (viewMode !== 'week') return [];
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+    const ticks: number[] = [];
+    const current = new Date(rangeStart);
+    const day = current.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    current.setDate(current.getDate() + diff);
+    current.setHours(0, 0, 0, 0);
+    while (current.getTime() <= rangeEnd.getTime() + MS_PER_DAY) {
+      ticks.push(((current.getTime() - rangeStart.getTime()) / totalMs) * totalWidth);
+      current.setDate(current.getDate() + 7);
+    }
+    return ticks;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, rangeStart.getTime(), rangeEnd.getTime(), totalMs, totalWidth]);
 
   // 오늘 날짜로 스크롤
   useEffect(() => {
@@ -438,6 +484,24 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
           </div>
 
           <div className="relative">
+            {/* Today column highlight */}
+            {todayHighlightColumns.map((col, i) => (
+              <div
+                key={`today-col-${i}`}
+                className="absolute top-0 bg-blue-50/60 pointer-events-none"
+                style={{ left: col.left, width: col.width, height: displayNodes.length * ROW_HEIGHT }}
+              />
+            ))}
+
+            {/* Week boundary lines */}
+            {weekBorderOffsets.map((offset, i) => (
+              <div
+                key={`week-border-${i}`}
+                className="absolute top-0 pointer-events-none"
+                style={{ left: offset, height: displayNodes.length * ROW_HEIGHT, borderLeft: '2px solid #cbd5e1' }}
+              />
+            ))}
+
             {/* Today line */}
             {showTodayLine && (
               <div

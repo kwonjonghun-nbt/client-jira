@@ -12,7 +12,6 @@ import { useUIStore } from '../store/uiStore';
 const VIEW_MODE_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'month', label: '월' },
   { value: 'week', label: '주' },
-  { value: 'day', label: '일' },
 ];
 
 const ZOOM_MIN = 0.25;
@@ -31,7 +30,7 @@ function formatDate(d: Date): string {
 }
 
 export default function TimelinePage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('day');
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [zoom, setZoom] = useState(1);
   const [scrollToTodayTrigger, setScrollToTodayTrigger] = useState(1);
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
