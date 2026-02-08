@@ -16,30 +16,42 @@ export class StorageService {
   // --- Settings ---
 
   async loadSettings(): Promise<Settings> {
+    const settingsPath = getSettingsPath();
+    logger.info(`[Settings] Loading from: ${settingsPath}`);
     try {
-      const content = await fs.readFile(getSettingsPath(), 'utf-8');
+      const content = await fs.readFile(settingsPath, 'utf-8');
+      logger.info(`[Settings] File content length: ${content.length}`);
       const parsed = JSON.parse(content);
       const result = SettingsSchema.safeParse(parsed);
       if (!result.success) {
         logger.warn('Settings validation failed:', JSON.stringify(result.error));
         return parsed as Settings;
       }
+      logger.info(`[Settings] Loaded successfully: baseUrl=${result.data.jira.baseUrl}`);
       return result.data;
     } catch (error: any) {
-      logger.warn('Settings load failed:', error.message);
+      logger.warn(`[Settings] Load failed from ${settingsPath}:`, error.message);
       return DEFAULT_SETTINGS;
     }
   }
 
   async saveSettings(settings: unknown): Promise<void> {
+    const settingsPath = getSettingsPath();
+    logger.info(`[Settings] Saving to: ${settingsPath}`);
     const result = SettingsSchema.safeParse(settings);
     if (!result.success) {
       logger.warn('Settings save validation failed, saving raw:', JSON.stringify(result.error));
-      await fs.writeFile(getSettingsPath(), JSON.stringify(settings, null, 2), 'utf-8');
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
     } else {
-      await fs.writeFile(getSettingsPath(), JSON.stringify(result.data, null, 2), 'utf-8');
+      await fs.writeFile(settingsPath, JSON.stringify(result.data, null, 2), 'utf-8');
     }
-    logger.info('Settings saved');
+    // 저장 후 파일 존재 확인
+    try {
+      const stat = await fs.stat(settingsPath);
+      logger.info(`[Settings] Saved successfully: ${stat.size} bytes at ${settingsPath}`);
+    } catch (e: any) {
+      logger.error(`[Settings] File not found after save: ${e.message}`);
+    }
   }
 
   // --- Latest Data ---

@@ -51,20 +51,27 @@ const createWindow = (): BrowserWindow => {
   return mainWindow;
 };
 
-async function initializeServices(): Promise<void> {
+async function initializeCoreServices(): Promise<void> {
+  const { StorageService } = await import('./services/storage');
+  const { CredentialsService } = await import('./services/credentials');
+
+  services.storage = new StorageService();
+  await services.storage.ensureDirectories();
+
+  services.credentials = new CredentialsService();
+
   try {
     const { TerminalService } = await import('./services/terminal');
     services.terminal = new TerminalService();
+  } catch (error) {
+    console.warn('Terminal service initialization failed (node-pty not available):', error);
+  }
+}
 
-    const { StorageService } = await import('./services/storage');
-    const { CredentialsService } = await import('./services/credentials');
+async function initializeNetworkServices(): Promise<void> {
+  try {
+    if (!services.storage || !services.credentials) return;
 
-    services.storage = new StorageService();
-    await services.storage.ensureDirectories();
-
-    services.credentials = new CredentialsService();
-
-    // Jira client와 sync는 설정이 로드된 후 초기화
     const settings = await services.storage.loadSettings();
     if (settings && settings.jira.baseUrl && settings.jira.email) {
       const token = await services.credentials.getToken();
@@ -130,15 +137,18 @@ export async function reinitializeJiraServices(services: AppServices): Promise<v
 }
 
 app.whenReady().then(async () => {
-  // Register IPC handlers first (before window creation)
+  // Register IPC handlers first
   registerAllHandlers(services);
 
-  // Create window
+  // Initialize core services (storage, credentials) BEFORE creating window
+  await initializeCoreServices();
+
+  // Create window (renderer can now safely load settings)
   const mainWindow = createWindow();
   services.mainWindow = mainWindow;
 
-  // Initialize services
-  await initializeServices();
+  // Initialize network-dependent services (Jira, sync, scheduler)
+  await initializeNetworkServices();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
