@@ -33,7 +33,7 @@ const INDENT_PX = 20;
 
 const DAY_WIDTH_MAP: Record<ViewMode, number> = {
   month: 3,
-  week: 12,
+  week: 36,
 };
 
 function buildTree(issues: NormalizedIssue[], orderOverrides: OrderOverrides): TreeNode[] {
