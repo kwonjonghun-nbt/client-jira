@@ -4,6 +4,7 @@ import type { StorageService } from './storage';
 import type { StoredData, SyncHistoryEntry, SyncStatus } from '../schemas/storage.schema';
 import type { Settings } from '../schemas/settings.schema';
 import { normalizeIssues } from '../utils/normalize';
+import { diffIssues } from '../utils/diff';
 import { logger } from '../utils/logger';
 
 export interface SyncResult {
@@ -73,6 +74,15 @@ export class SyncService {
         issues,
         totalCount: issues.length,
       };
+
+      // Diff 계산 (이전 데이터와 비교)
+      const prevData = await this.storage.getLatest();
+      if (prevData) {
+        const changes = diffIssues(prevData.issues, issues, data.syncedAt);
+        if (changes.length > 0) {
+          await this.storage.appendChangelog(changes, data.syncedAt);
+        }
+      }
 
       await this.storage.saveLatest(data);
       await this.storage.saveSnapshot(data);

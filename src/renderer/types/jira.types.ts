@@ -92,3 +92,17 @@ export interface ReportMeta {
   title: string;
   modifiedAt: string;
 }
+
+export interface ChangelogEntry {
+  issueKey: string;
+  summary: string;
+  changeType: 'created' | 'status' | 'assignee' | 'priority' | 'storyPoints' | 'resolved';
+  oldValue: string | null;
+  newValue: string | null;
+  detectedAt: string;
+}
+
+export interface ChangelogData {
+  syncedAt: string;
+  entries: ChangelogEntry[];
+}

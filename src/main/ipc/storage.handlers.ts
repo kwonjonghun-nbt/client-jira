@@ -71,4 +71,14 @@ export function registerStorageHandlers(services: AppServices): void {
       return { lastSync: null, syncHistory: [] };
     }
   });
+
+  ipcMain.handle('storage:get-changelog', async () => {
+    try {
+      if (!services.storage) return null;
+      return await services.storage.getChangelog();
+    } catch (error: any) {
+      console.error('Failed to get changelog:', error.message);
+      return null;
+    }
+  });
 }

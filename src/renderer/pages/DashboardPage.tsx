@@ -3,8 +3,9 @@ import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
 import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useChangelog } from '../hooks/useChangelog';
 import { useUIStore } from '../store/uiStore';
-import type { NormalizedIssue } from '../types/jira.types';
+import type { NormalizedIssue, ChangelogEntry } from '../types/jira.types';
 
 const issueTypeAliases: Record<string, string> = {
   epic: 'epic',
@@ -73,8 +74,26 @@ const issueTypeColors: Record<string, string> = {
   bug: 'bg-red-100 text-red-700',
 };
 
+const changeTypeConfig: Record<ChangelogEntry['changeType'], { label: string; color: string }> = {
+  created: { label: '신규 생성', color: 'bg-green-100 text-green-700' },
+  status: { label: '상태 변경', color: 'bg-blue-100 text-blue-700' },
+  assignee: { label: '담당자 변경', color: 'bg-purple-100 text-purple-700' },
+  priority: { label: '우선순위 변경', color: 'bg-orange-100 text-orange-700' },
+  storyPoints: { label: 'SP 변경', color: 'bg-yellow-100 text-yellow-700' },
+  resolved: { label: '해결됨', color: 'bg-emerald-100 text-emerald-700' },
+};
+
+function formatChangeValue(entry: ChangelogEntry): string {
+  if (entry.changeType === 'created') return '신규 생성';
+  if (entry.changeType === 'resolved') return `해결: ${entry.newValue}`;
+  const old = entry.oldValue ?? '(없음)';
+  const next = entry.newValue ?? '(없음)';
+  return `${old} → ${next}`;
+}
+
 export default function DashboardPage() {
   const { data, isLoading } = useJiraIssues();
+  const { data: changelog } = useChangelog();
   const setPage = useUIStore((s) => s.setPage);
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
 
@@ -520,6 +539,49 @@ export default function DashboardPage() {
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* Change Tracking */}
+      <div className="mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">최근 변경 추적</h2>
+            {changelog && changelog.entries.length > 0 && (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                {changelog.entries.length}
+              </span>
+            )}
+          </div>
+          {!changelog || changelog.entries.length === 0 ? (
+            <p className="text-gray-500 text-sm">변경사항이 없습니다</p>
+          ) : (
+            <div className="space-y-3">
+              {changelog.entries.slice(0, 15).map((entry, idx) => {
+                const config = changeTypeConfig[entry.changeType];
+                return (
+                  <div
+                    key={`${entry.issueKey}-${entry.changeType}-${idx}`}
+                    className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-b-0"
+                  >
+                    <span className={`px-2 py-0.5 text-xs rounded font-medium shrink-0 ${config.color}`}>
+                      {config.label}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-mono text-blue-600">{entry.issueKey}</span>
+                        <span className="text-sm text-gray-800 truncate">{entry.summary}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span>{formatChangeValue(entry)}</span>
+                        <span>· {relativeTime(entry.detectedAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

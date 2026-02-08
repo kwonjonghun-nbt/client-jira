@@ -43,3 +43,7 @@ export function getSnapshotPath(date: Date): string {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return path.join(getSnapshotDir(date), `${hours}-${minutes}.json`);
 }
+
+export function getChangelogPath(): string {
+  return path.join(getDataDir(), 'changelog.json');
+}

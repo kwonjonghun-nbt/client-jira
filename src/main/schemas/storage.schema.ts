@@ -83,6 +83,20 @@ export const LabelNoteSchema = z.object({
 
 export const LabelNotesDataSchema = z.array(LabelNoteSchema);
 
+export const ChangelogEntrySchema = z.object({
+  issueKey: z.string(),
+  summary: z.string(),
+  changeType: z.enum(['created', 'status', 'assignee', 'priority', 'storyPoints', 'resolved']),
+  oldValue: z.string().nullable(),
+  newValue: z.string().nullable(),
+  detectedAt: z.string(),
+});
+
+export const ChangelogDataSchema = z.object({
+  syncedAt: z.string(),
+  entries: z.array(ChangelogEntrySchema),
+});
+
 // Type exports
 export type NormalizedIssue = z.infer<typeof NormalizedIssueSchema>;
 export type StoredData = z.infer<typeof StoredDataSchema>;
@@ -91,3 +105,5 @@ export type MetaData = z.infer<typeof MetaDataSchema>;
 export type SyncStatus = z.infer<typeof SyncStatusSchema>;
 export type SyncProgress = z.infer<typeof SyncProgressSchema>;
 export type LabelNote = z.infer<typeof LabelNoteSchema>;
+export type ChangelogEntry = z.infer<typeof ChangelogEntrySchema>;
+export type ChangelogData = z.infer<typeof ChangelogDataSchema>;

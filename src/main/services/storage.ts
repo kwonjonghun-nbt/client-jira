@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir } from '../utils/paths';
-import { StoredDataSchema, MetaDataSchema, LabelNotesDataSchema } from '../schemas/storage.schema';
+import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir, getChangelogPath } from '../utils/paths';
+import { StoredDataSchema, MetaDataSchema, LabelNotesDataSchema, ChangelogDataSchema } from '../schemas/storage.schema';
 import { SettingsSchema, DEFAULT_SETTINGS } from '../schemas/settings.schema';
 import { logger } from '../utils/logger';
-import type { StoredData, MetaData, LabelNote } from '../schemas/storage.schema';
+import type { StoredData, MetaData, LabelNote, ChangelogData, ChangelogEntry } from '../schemas/storage.schema';
 import type { Settings } from '../schemas/settings.schema';
 
 export class StorageService {
@@ -103,6 +103,29 @@ export class StorageService {
     const validated = LabelNotesDataSchema.parse(notes);
     await fs.writeFile(getLabelNotesPath(), JSON.stringify(validated, null, 2), 'utf-8');
     logger.info(`Label notes saved: ${validated.length} entries`);
+  }
+
+  // --- Changelog ---
+
+  async getChangelog(): Promise<ChangelogData | null> {
+    try {
+      const content = await fs.readFile(getChangelogPath(), 'utf-8');
+      return ChangelogDataSchema.parse(JSON.parse(content));
+    } catch {
+      return null;
+    }
+  }
+
+  async saveChangelog(data: ChangelogData): Promise<void> {
+    const validated = ChangelogDataSchema.parse(data);
+    await fs.writeFile(getChangelogPath(), JSON.stringify(validated, null, 2), 'utf-8');
+  }
+
+  async appendChangelog(entries: ChangelogEntry[], syncedAt: string): Promise<void> {
+    const existing = await this.getChangelog();
+    const allEntries = [...entries, ...(existing?.entries ?? [])].slice(0, 500);
+    await this.saveChangelog({ syncedAt, entries: allEntries });
+    logger.info(`Changelog updated: ${entries.length} new entries (${allEntries.length} total)`);
   }
 
   // --- Reports ---

@@ -23,6 +23,7 @@ const api = {
     listReports: () => ipcRenderer.invoke('storage:list-reports'),
     getReport: (filename: string) => ipcRenderer.invoke('storage:get-report', filename),
     saveReport: (filename: string, content: string) => ipcRenderer.invoke('storage:save-report', filename, content),
+    getChangelog: () => ipcRenderer.invoke('storage:get-changelog'),
   },
   sync: {
     trigger: () => ipcRenderer.invoke('sync:trigger'),
