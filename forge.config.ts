@@ -5,6 +5,21 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import path from 'node:path';
+import fs from 'node:fs';
+
+function copyDirSync(src: string, dest: string) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -15,6 +30,20 @@ const config: ForgeConfig = {
     icon: './resources/icon',
   },
   rebuildConfig: {},
+  hooks: {
+    packageAfterCopy: async (_config, buildPath) => {
+      // Vite plugin doesn't include node_modules in the asar.
+      // Copy node-pty native module so it can be found at runtime.
+      const src = path.resolve(__dirname, 'node_modules', 'node-pty');
+      const dest = path.join(buildPath, 'node_modules', 'node-pty');
+      if (fs.existsSync(src)) {
+        copyDirSync(src, dest);
+        console.log('[forge hook] Copied node-pty to', dest);
+      } else {
+        console.warn('[forge hook] node-pty not found at', src);
+      }
+    },
+  },
   makers: [
     new MakerZIP({}, ['darwin']),
     new MakerDMG({ format: 'ULFO' }),

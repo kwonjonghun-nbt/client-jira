@@ -42,7 +42,7 @@ export interface ElectronAPI {
     close: (id: string) => Promise<void>;
     onData: (callback: (id: string, data: string) => void) => () => void;
     onExit: (callback: (id: string, exitCode: number) => void) => () => void;
-  };
+};
 }
 
 declare global {

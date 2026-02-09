@@ -35,25 +35,26 @@ export class TerminalService {
     const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/zsh';
     const config = AI_CONFIG[aiType];
 
-    let ptyProcess: pty.IPty;
-    try {
-      ptyProcess = pty.spawn(config.cmd, config.args, {
-        name: 'xterm-256color',
-        cols,
-        rows,
-        cwd: process.env.HOME || '/',
-        env: { ...process.env } as Record<string, string>,
-      });
-    } catch {
-      logger.warn(`${config.cmd} CLI not found, falling back to shell`);
-      ptyProcess = pty.spawn(shell, [], {
-        name: 'xterm-256color',
-        cols,
-        rows,
-        cwd: process.env.HOME || '/',
-        env: { ...process.env } as Record<string, string>,
-      });
-    }
+    // Spawn an interactive login shell so ~/.zshrc (PATH, nvm, volta, etc.) is loaded.
+    // Then send the CLI command via write() after shell is ready.
+    // Using -c flag skips .zshrc in non-interactive mode, so we avoid it.
+    const cliCommand = [config.cmd, ...config.args.map(a => `'${a}'`)].join(' ');
+    const shellArgs = process.platform === 'win32'
+      ? []
+      : ['-l', '-i'];
+
+    const ptyProcess = pty.spawn(shell, shellArgs, {
+      name: 'xterm-256color',
+      cols,
+      rows,
+      cwd: process.env.HOME || '/',
+      env: {
+        ...process.env,
+        DISABLE_AUTO_UPDATE: 'true',        // oh-my-zsh v1 style
+        DISABLE_UPDATE_PROMPT: 'true',       // oh-my-zsh v1 style
+        ZSH_DISABLE_AUTO_UPDATE: 'true',     // oh-my-zsh v2 style (omz update mode)
+      } as Record<string, string>,
+    });
 
     ptyProcess.onData((data: string) => {
       if (!window.isDestroyed()) {
@@ -70,15 +71,46 @@ export class TerminalService {
     });
 
     this.sessions.set(id, { ptyProcess, id });
-    logger.info(`Terminal session ${id} created (${aiType})`);
+    logger.info(`Terminal session ${id} created (${aiType}) via interactive login shell`);
 
-    if (initialPrompt) {
-      setTimeout(() => {
-        if (this.sessions.has(id)) {
-          ptyProcess.write(initialPrompt + '\n');
+    // Detect shell readiness by watching for prompt characters (➜, $, %, #)
+    // then send the CLI command. This avoids oh-my-zsh update prompts eating input.
+    let commandSent = false;
+    const readyListener = ptyProcess.onData((data: string) => {
+      if (commandSent) return;
+      // Look for common shell prompt endings that indicate shell is ready
+      // Strip ANSI escape codes for reliable matching
+      const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').trim();
+      const hasPrompt = /[➜$%#>]\s*$/.test(clean);
+      if (hasPrompt) {
+        commandSent = true;
+        readyListener.dispose();
+        // Small delay to ensure prompt is fully rendered
+        setTimeout(() => {
+          if (this.sessions.has(id)) {
+            ptyProcess.write(cliCommand + '\n');
+          }
+        }, 200);
+
+        if (initialPrompt) {
+          setTimeout(() => {
+            if (this.sessions.has(id)) {
+              ptyProcess.write(initialPrompt + '\n');
+            }
+          }, 2000);
         }
-      }, 2000);
-    }
+      }
+    });
+
+    // Fallback: if prompt not detected within 5s, send anyway
+    setTimeout(() => {
+      if (!commandSent && this.sessions.has(id)) {
+        commandSent = true;
+        readyListener.dispose();
+        ptyProcess.write(cliCommand + '\n');
+        logger.warn(`Terminal ${id}: prompt not detected, sending command after timeout`);
+      }
+    }, 5000);
 
     return id;
   }
