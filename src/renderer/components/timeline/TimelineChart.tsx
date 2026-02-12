@@ -27,7 +27,9 @@ interface TreeNode {
 type OrderOverrides = Map<string | null, string[]>;
 
 const ROW_HEIGHT = 32;
-const LABEL_WIDTH = 380;
+const DEFAULT_LABEL_WIDTH = 380;
+const MIN_LABEL_WIDTH = 200;
+const MAX_LABEL_WIDTH = 600;
 const MIN_CHART_WIDTH = 800;
 const INDENT_PX = 20;
 
@@ -160,6 +162,12 @@ const issueTypeBadge: Record<string, string> = {
   bug: 'bg-red-100 text-red-700',
 };
 
+const statusCategoryCls: Record<string, string> = {
+  new: 'bg-gray-200 text-gray-600',
+  indeterminate: 'bg-blue-100 text-blue-700',
+  done: 'bg-green-100 text-green-700',
+};
+
 // 로우 좌측 보더 + 배경 스타일
 const issueTypeRowStyle: Record<string, string> = {
   epic: 'bg-purple-50 border-l-3 border-l-purple-500',
@@ -189,6 +197,7 @@ function saveOrderOverrides(overrides: OrderOverrides) {
 
 export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomChange, scrollToTodayTrigger, hiddenTypes, hiddenRowTypes }: TimelineChartProps) {
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
+  const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [orderOverrides, setOrderOverrides] = useState<OrderOverrides>(loadOrderOverrides);
   const [dragKey, setDragKey] = useState<string | null>(null);
@@ -327,6 +336,30 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     isSyncing.current = false;
   }, []);
 
+  // 패널 리사이즈 핸들 드래그
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = labelWidth;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const newWidth = Math.min(MAX_LABEL_WIDTH, Math.max(MIN_LABEL_WIDTH, startWidth + (ev.clientX - startX)));
+      setLabelWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [labelWidth]);
+
   // 드래그앤드롭: 같은 부모 안에서만 순서 변경
   const handleDrop = useCallback(
     (targetKey: string) => {
@@ -378,7 +411,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
       <div
         ref={labelRef}
         className="shrink-0 border-r border-gray-200 bg-white overflow-y-auto overflow-x-hidden"
-        style={{ width: LABEL_WIDTH }}
+        style={{ width: labelWidth }}
         onScroll={() => syncScroll('label')}
       >
         <div className={`sticky top-0 z-10 border-b border-gray-200 bg-gray-50 flex items-end px-3 pb-2 ${viewMode === 'month' ? 'h-10' : 'h-14'}`}>
@@ -397,7 +430,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             return (
               <div
                 key={node.issue.key}
-                className={`flex items-center border-b text-xs ${
+                className={`flex items-center border-b text-xs pr-4 ${
                   isDropTarget ? 'border-t-2 border-t-blue-400 border-b-gray-100' : 'border-b-gray-100'
                 } ${rowStyle ?? zebra} ${isDragging ? 'opacity-40' : ''}`}
                 style={{ height: ROW_HEIGHT, paddingLeft: rowStyle ? 1 + node.depth * INDENT_PX : 4 + node.depth * INDENT_PX }}
@@ -463,6 +496,9 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                 >
                   {node.issue.summary}
                 </button>
+                <span className={`shrink-0 ml-1 px-1 py-px rounded text-[9px] font-medium leading-none ${statusCategoryCls[node.issue.statusCategory] ?? 'bg-gray-100 text-gray-500'}`}>
+                  {node.issue.status}
+                </span>
                 {node.issue.assignee && (
                   <span className="text-gray-400 shrink-0 ml-1 text-[10px]">{node.issue.assignee}</span>
                 )}
@@ -471,6 +507,12 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
           })}
         </div>
       </div>
+
+      {/* Resize handle */}
+      <div
+        className="shrink-0 w-1 cursor-col-resize bg-transparent hover:bg-blue-300 active:bg-blue-400 transition-colors"
+        onMouseDown={handleResizeStart}
+      />
 
       {/* Right: Chart area */}
       <div

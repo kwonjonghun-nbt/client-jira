@@ -34,6 +34,7 @@ const statusOverlay: Record<string, string> = {
   new: 'opacity-80',
 };
 
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', {
     year: 'numeric',
