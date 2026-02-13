@@ -399,11 +399,15 @@ function KRCanvasModal({
     () => okr.links.filter((l) => l.keyResultId === kr.id).sort((a, b) => a.order - b.order),
     [okr.links, kr.id],
   );
-  const krGroups = useMemo(
+  const allKRGroups = useMemo(
     () => okr.groups.filter((g) => g.keyResultId === kr.id).sort((a, b) => a.order - b.order),
     [okr.groups, kr.id],
   );
-  groupsRef.current = krGroups;
+  const krGroups = useMemo(
+    () => allKRGroups.filter((g) => !g.parentGroupId),
+    [allKRGroups],
+  );
+  groupsRef.current = allKRGroups;
   const ungroupedLinks = useMemo(() => krLinks.filter((l) => !l.groupId), [krLinks]);
   const krProgress = calcKRProgress(kr.id, okr.links, issueMap);
   const existingIssueKeys = useMemo(
@@ -625,7 +629,7 @@ function KRCanvasModal({
             />
             <button
               type="button"
-              onClick={groups.handleAddGroup}
+              onClick={() => groups.handleAddGroup()}
               disabled={!groups.newGroupTitle.trim()}
               className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
@@ -681,30 +685,42 @@ function KRCanvasModal({
             {/* Groups */}
             {krGroups.map((group) => {
               const groupLinks = krLinks.filter((l) => l.groupId === group.id);
+              const childGroups = allKRGroups.filter((g) => g.parentGroupId === group.id);
               return (
                 <GroupContainer
                   key={group.id}
                   group={group}
                   groupLinks={groupLinks}
+                  childGroups={childGroups}
+                  allLinks={krLinks}
+                  allGroups={allKRGroups}
+                  depth={1}
                   isDragging={drag.dragInfo?.id === group.id}
                   zoom={transform.zoom}
                   dragInfo={drag.dragInfo}
                   editingGroupId={groups.editingGroupId}
                   editingGroupTitle={groups.editingGroupTitle}
+                  addingSubgroupForId={groups.addingSubgroupForId}
+                  newGroupTitle={groups.newGroupTitle}
                   onMouseDown={(e) => drag.startDrag(e, 'group', group.id, group.x ?? 0, group.y ?? 0)}
-                  onResize={(w, h) => {
+                  onResizeGroup={(groupId: string, w: number, h: number) => {
                     updateOKR((d) => ({
                       ...d,
-                      groups: d.groups.map((g) => g.id === group.id ? { ...g, w, h } : g),
+                      groups: d.groups.map((g) => g.id === groupId ? { ...g, w, h } : g),
                     }));
                   }}
-                  onStartEdit={() => { groups.setEditingGroupId(group.id); groups.setEditingGroupTitle(group.title); }}
+                  onStartEditGroup={(groupId: string, title: string) => { groups.setEditingGroupId(groupId); groups.setEditingGroupTitle(title); }}
                   onChangeTitle={groups.setEditingGroupTitle}
                   onSaveEdit={groups.renameGroup}
                   onCancelEdit={() => groups.setEditingGroupId(null)}
-                  onDelete={() => groups.deleteGroup(group.id)}
+                  onDeleteGroup={(groupId: string) => groups.deleteGroup(groupId)}
+                  onStartAddSubgroup={(groupId: string) => { groups.setAddingSubgroupForId(groupId); groups.setNewGroupTitle(''); }}
+                  onNewGroupTitleChange={groups.setNewGroupTitle}
+                  onConfirmAddSubgroup={(parentGroupId: string) => groups.handleAddGroup(parentGroupId)}
+                  onCancelAddSubgroup={() => groups.setAddingSubgroupForId(null)}
                   renderCard={renderCard}
-                  startDrag={(e, linkId, x, y) => drag.startDrag(e, 'card', linkId, x, y, group.id)}
+                  startDrag={(e, linkId: string, x: number, y: number, parentGroupId?: string) => drag.startDrag(e, 'card', linkId, x, y, parentGroupId ?? group.id)}
+                  startGroupDrag={(e, groupId: string, x: number, y: number, parentGroupId?: string) => drag.startDrag(e, 'group', groupId, x, y, parentGroupId)}
                 />
               );
             })}

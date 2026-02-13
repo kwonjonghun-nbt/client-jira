@@ -1,18 +1,51 @@
 import { useState, useCallback } from 'react';
-import { CARD_W, CARD_H, assignDefaultPosition, type Rect, type UpdateOKR } from './okr-canvas.types';
+import { CARD_W, CARD_H, GROUP_HEADER_H, assignDefaultPosition, getDescendantGroupIds, type Rect, type UpdateOKR } from './okr-canvas.types';
 
 export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroupTitle, setNewGroupTitle] = useState('');
+  const [addingSubgroupForId, setAddingSubgroupForId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingGroupTitle, setEditingGroupTitle] = useState('');
 
-  const handleAddGroup = useCallback(() => {
+  const handleAddGroup = useCallback((parentGroupId?: string) => {
     const title = newGroupTitle.trim();
     if (!title) return;
     updateOKR((d) => {
+      if (parentGroupId) {
+        // Adding subgroup inside a parent group
+        const siblings = d.groups.filter((g) => g.parentGroupId === parentGroupId);
+        const parentLinks = d.links.filter((l) => l.groupId === parentGroupId);
+        const occupied: Rect[] = [
+          ...parentLinks.map((l) => ({ x: l.x ?? 0, y: l.y ?? 0, w: CARD_W, h: CARD_H })),
+          ...siblings.map((g) => ({ x: g.x ?? 0, y: g.y ?? 0, w: g.w ?? 280, h: g.h ?? 160 })),
+        ];
+        const defaultW = 280;
+        const defaultH = 160;
+        const parent = d.groups.find((g) => g.id === parentGroupId);
+        const containerW = (parent?.w ?? 320) - 8; // slight padding
+        const pos = assignDefaultPosition(occupied, defaultW, defaultH, containerW);
+        return {
+          ...d,
+          groups: [
+            ...d.groups,
+            {
+              id: crypto.randomUUID(),
+              keyResultId: krId,
+              parentGroupId,
+              title,
+              order: siblings.length,
+              x: pos.x,
+              y: pos.y,
+              w: defaultW,
+              h: defaultH,
+            },
+          ],
+        };
+      }
+      // Adding top-level group (existing behavior)
       const links = d.links.filter((l) => l.keyResultId === krId);
-      const grps = d.groups.filter((g) => g.keyResultId === krId);
+      const grps = d.groups.filter((g) => g.keyResultId === krId && !g.parentGroupId);
       const occupied: Rect[] = [
         ...links.filter((l) => !l.groupId).map((l) => ({ x: l.x ?? 0, y: l.y ?? 0, w: CARD_W, h: CARD_H })),
         ...grps.map((g) => ({ x: g.x ?? 0, y: g.y ?? 0, w: g.w ?? 320, h: g.h ?? 200 })),
@@ -39,17 +72,22 @@ export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
     });
     setNewGroupTitle('');
     setAddingGroup(false);
+    setAddingSubgroupForId(null);
   }, [newGroupTitle, updateOKR, krId]);
 
   const deleteGroup = useCallback((groupId: string) => {
     if (!window.confirm('이 그룹을 삭제하시겠습니까? 포함된 카드는 그룹 해제됩니다.')) return;
-    updateOKR((d) => ({
-      ...d,
-      groups: d.groups.filter((g) => g.id !== groupId),
-      links: d.links.map((l) =>
-        l.groupId === groupId ? { ...l, groupId: undefined } : l,
-      ),
-    }));
+    updateOKR((d) => {
+      const descendantIds = getDescendantGroupIds(groupId, d.groups);
+      const allDeletedIds = new Set([groupId, ...descendantIds]);
+      return {
+        ...d,
+        groups: d.groups.filter((g) => !allDeletedIds.has(g.id)),
+        links: d.links.map((l) =>
+          l.groupId && allDeletedIds.has(l.groupId) ? { ...l, groupId: undefined } : l,
+        ),
+      };
+    });
   }, [updateOKR]);
 
   const renameGroup = useCallback(() => {
@@ -70,10 +108,12 @@ export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
   return {
     addingGroup,
     newGroupTitle,
+    addingSubgroupForId,
     editingGroupId,
     editingGroupTitle,
     setAddingGroup,
     setNewGroupTitle,
+    setAddingSubgroupForId,
     setEditingGroupId,
     setEditingGroupTitle,
     handleAddGroup,

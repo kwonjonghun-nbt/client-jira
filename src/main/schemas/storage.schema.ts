@@ -138,6 +138,7 @@ export const OKRLinkSchema = z.object({
 export const OKRGroupSchema = z.object({
   id: z.string(),
   keyResultId: z.string(),
+  parentGroupId: z.string().optional(),
   title: z.string(),
   order: z.number(),
   x: z.number().optional(),

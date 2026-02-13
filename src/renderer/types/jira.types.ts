@@ -146,6 +146,7 @@ export interface OKRLink {
 export interface OKRGroup {
   id: string;
   keyResultId: string;
+  parentGroupId?: string;
   title: string;
   order: number;
   x?: number;
