@@ -898,9 +898,16 @@ export default function OKRPage() {
 
   // ── Local UI state ────────────────────────────────────────────────────────
 
-  const [collapsedObjectives, setCollapsedObjectives] = useState<Set<string>>(
-    new Set(),
-  );
+  const [collapsedObjectives, setCollapsedObjectives] = useState<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+
+  // 데이터 로드 후 최초 1회만 모든 objective를 닫힌 상태로 설정
+  useEffect(() => {
+    if (!initializedRef.current && okr.objectives.length > 0) {
+      initializedRef.current = true;
+      setCollapsedObjectives(new Set(okr.objectives.map((o) => o.id)));
+    }
+  }, [okr.objectives]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [addingObjective, setAddingObjective] = useState(false);
