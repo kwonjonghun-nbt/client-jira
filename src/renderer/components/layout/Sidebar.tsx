@@ -14,6 +14,7 @@ export default function Sidebar() {
     { page: 'stats' as const, label: '통계', icon: '📊' },
     { page: 'label-notes' as const, label: '라벨 메모', icon: '🏷️' },
     { page: 'reports' as const, label: '리포트', icon: '📄' },
+    { page: 'okr' as const, label: 'OKR', icon: '🎯' },
     { page: 'settings' as const, label: '설정', icon: '⚙️' },
   ];
 

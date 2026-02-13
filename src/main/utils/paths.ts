@@ -47,3 +47,7 @@ export function getSnapshotPath(date: Date): string {
 export function getChangelogPath(): string {
   return path.join(getDataDir(), 'changelog.json');
 }
+
+export function getOKRPath(): string {
+  return path.join(app.getPath('userData'), 'okr.json');
+}

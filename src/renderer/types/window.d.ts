@@ -1,4 +1,4 @@
-import type { NormalizedIssue, StoredData, MetaData, SyncStatus, SyncProgress, SyncResult, JiraProject, LabelNote, ReportMeta, ChangelogData } from './jira.types';
+import type { NormalizedIssue, StoredData, MetaData, SyncStatus, SyncProgress, SyncResult, JiraProject, LabelNote, ReportMeta, ChangelogData, OKRData } from './jira.types';
 import type { Settings } from './settings.types';
 
 export interface ElectronAPI {
@@ -25,6 +25,8 @@ export interface ElectronAPI {
     getReport: (filename: string) => Promise<string | null>;
     saveReport: (filename: string, content: string) => Promise<void>;
     getChangelog: () => Promise<ChangelogData | null>;
+    getOKR: () => Promise<OKRData | null>;
+    saveOKR: (data: OKRData) => Promise<void>;
   };
   sync: {
     trigger: () => Promise<SyncResult>;

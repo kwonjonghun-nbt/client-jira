@@ -81,4 +81,23 @@ export function registerStorageHandlers(services: AppServices): void {
       return null;
     }
   });
+
+  ipcMain.handle('storage:get-okr', async () => {
+    try {
+      if (!services.storage) return null;
+      return await services.storage.getOKR();
+    } catch (error: any) {
+      console.error('Failed to get OKR data:', error.message);
+      return null;
+    }
+  });
+
+  ipcMain.handle('storage:save-okr', async (_event, data: unknown) => {
+    try {
+      if (!services.storage) return;
+      await services.storage.saveOKR(data);
+    } catch (error: any) {
+      console.error('Failed to save OKR data:', error.message);
+    }
+  });
 }

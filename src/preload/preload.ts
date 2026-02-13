@@ -24,6 +24,8 @@ const api = {
     getReport: (filename: string) => ipcRenderer.invoke('storage:get-report', filename),
     saveReport: (filename: string, content: string) => ipcRenderer.invoke('storage:save-report', filename, content),
     getChangelog: () => ipcRenderer.invoke('storage:get-changelog'),
+    getOKR: () => ipcRenderer.invoke('storage:get-okr'),
+    saveOKR: (data: unknown) => ipcRenderer.invoke('storage:save-okr', data),
   },
   sync: {
     trigger: () => ipcRenderer.invoke('sync:trigger'),

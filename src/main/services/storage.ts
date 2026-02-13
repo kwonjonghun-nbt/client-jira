@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir, getChangelogPath } from '../utils/paths';
-import { StoredDataSchema, MetaDataSchema, LabelNotesDataSchema, ChangelogDataSchema } from '../schemas/storage.schema';
+import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir, getChangelogPath, getOKRPath } from '../utils/paths';
+import { StoredDataSchema, MetaDataSchema, LabelNotesDataSchema, ChangelogDataSchema, OKRDataSchema } from '../schemas/storage.schema';
 import { SettingsSchema, DEFAULT_SETTINGS } from '../schemas/settings.schema';
 import { logger } from '../utils/logger';
-import type { StoredData, MetaData, LabelNote, ChangelogData, ChangelogEntry } from '../schemas/storage.schema';
+import type { StoredData, MetaData, LabelNote, ChangelogData, ChangelogEntry, OKRData } from '../schemas/storage.schema';
 import type { Settings } from '../schemas/settings.schema';
 
 export class StorageService {
@@ -138,6 +138,23 @@ export class StorageService {
     const allEntries = [...entries, ...(existing?.entries ?? [])].slice(0, 500);
     await this.saveChangelog({ syncedAt, entries: allEntries });
     logger.info(`Changelog updated: ${entries.length} new entries (${allEntries.length} total)`);
+  }
+
+  // --- OKR ---
+
+  async getOKR(): Promise<OKRData | null> {
+    try {
+      const content = await fs.readFile(getOKRPath(), 'utf-8');
+      return OKRDataSchema.parse(JSON.parse(content));
+    } catch {
+      return null;
+    }
+  }
+
+  async saveOKR(data: unknown): Promise<void> {
+    const validated = OKRDataSchema.parse(data);
+    await fs.writeFile(getOKRPath(), JSON.stringify(validated, null, 2), 'utf-8');
+    logger.info(`OKR data saved: ${validated.objectives.length} objectives`);
   }
 
   // --- Reports ---

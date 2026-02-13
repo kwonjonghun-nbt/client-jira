@@ -8,7 +8,7 @@ interface Filters {
   search: string;
 }
 
-type Page = 'dashboard' | 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports';
+type Page = 'dashboard' | 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports' | 'okr';
 
 interface UIState {
   currentPage: Page;

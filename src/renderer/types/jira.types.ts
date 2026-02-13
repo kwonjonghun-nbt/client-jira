@@ -106,3 +106,67 @@ export interface ChangelogData {
   syncedAt: string;
   entries: ChangelogEntry[];
 }
+
+export interface OKRObjective {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+}
+
+export interface OKRKeyResult {
+  id: string;
+  objectiveId: string;
+  title: string;
+  description?: string;
+  order: number;
+}
+
+export interface VirtualTicket {
+  id: string;
+  title: string;
+  description?: string;
+  issueType: string;
+  assignee?: string;
+  createdAt: string;
+}
+
+export interface OKRLink {
+  id: string;
+  keyResultId: string;
+  type: 'jira' | 'virtual';
+  issueKey?: string;
+  virtualTicketId?: string;
+  groupId?: string;
+  order: number;
+  x?: number;
+  y?: number;
+}
+
+export interface OKRGroup {
+  id: string;
+  keyResultId: string;
+  title: string;
+  order: number;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+}
+
+export interface OKRRelation {
+  id: string;
+  fromLinkId: string;
+  toLinkId: string;
+  label?: string;
+}
+
+export interface OKRData {
+  objectives: OKRObjective[];
+  keyResults: OKRKeyResult[];
+  virtualTickets: VirtualTicket[];
+  links: OKRLink[];
+  groups: OKRGroup[];
+  relations: OKRRelation[];
+  updatedAt: string;
+}

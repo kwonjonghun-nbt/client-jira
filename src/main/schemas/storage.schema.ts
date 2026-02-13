@@ -97,6 +97,72 @@ export const ChangelogDataSchema = z.object({
   entries: z.array(ChangelogEntrySchema),
 });
 
+// --- OKR ---
+
+export const OKRObjectiveSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  order: z.number(),
+});
+
+export const OKRKeyResultSchema = z.object({
+  id: z.string(),
+  objectiveId: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  order: z.number(),
+});
+
+export const VirtualTicketSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  issueType: z.string(),
+  assignee: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export const OKRLinkSchema = z.object({
+  id: z.string(),
+  keyResultId: z.string(),
+  type: z.enum(['jira', 'virtual']),
+  issueKey: z.string().optional(),
+  virtualTicketId: z.string().optional(),
+  groupId: z.string().optional(),
+  order: z.number(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+});
+
+export const OKRGroupSchema = z.object({
+  id: z.string(),
+  keyResultId: z.string(),
+  title: z.string(),
+  order: z.number(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  w: z.number().optional(),
+  h: z.number().optional(),
+});
+
+export const OKRRelationSchema = z.object({
+  id: z.string(),
+  fromLinkId: z.string(),  // source OKRLink id
+  toLinkId: z.string(),    // target OKRLink id
+  label: z.string().optional(), // e.g. "선행 작업", "의존"
+});
+
+export const OKRDataSchema = z.object({
+  objectives: z.array(OKRObjectiveSchema),
+  keyResults: z.array(OKRKeyResultSchema),
+  virtualTickets: z.array(VirtualTicketSchema),
+  links: z.array(OKRLinkSchema),
+  groups: z.array(OKRGroupSchema).default([]),
+  relations: z.array(OKRRelationSchema).default([]),
+  updatedAt: z.string(),
+});
+
 // Type exports
 export type NormalizedIssue = z.infer<typeof NormalizedIssueSchema>;
 export type StoredData = z.infer<typeof StoredDataSchema>;
@@ -107,3 +173,10 @@ export type SyncProgress = z.infer<typeof SyncProgressSchema>;
 export type LabelNote = z.infer<typeof LabelNoteSchema>;
 export type ChangelogEntry = z.infer<typeof ChangelogEntrySchema>;
 export type ChangelogData = z.infer<typeof ChangelogDataSchema>;
+export type OKRObjective = z.infer<typeof OKRObjectiveSchema>;
+export type OKRKeyResult = z.infer<typeof OKRKeyResultSchema>;
+export type VirtualTicket = z.infer<typeof VirtualTicketSchema>;
+export type OKRLink = z.infer<typeof OKRLinkSchema>;
+export type OKRGroup = z.infer<typeof OKRGroupSchema>;
+export type OKRRelation = z.infer<typeof OKRRelationSchema>;
+export type OKRData = z.infer<typeof OKRDataSchema>;
