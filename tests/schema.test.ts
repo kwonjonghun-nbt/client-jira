@@ -39,8 +39,12 @@ describe('OKRDataSchema', () => {
       }],
       relations: [{
         id: 'r1',
-        fromLinkId: 'l1',
-        toLinkId: 'l2',
+        fromType: 'link',
+        fromId: 'l1',
+        fromAnchor: 'right',
+        toType: 'link',
+        toId: 'l2',
+        toAnchor: 'left',
       }],
       updatedAt: '2025-01-01T00:00:00Z',
     };

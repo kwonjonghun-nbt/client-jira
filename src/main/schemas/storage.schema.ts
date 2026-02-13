@@ -149,9 +149,17 @@ export const OKRGroupSchema = z.object({
 
 export const OKRRelationSchema = z.object({
   id: z.string(),
-  fromLinkId: z.string(),  // source OKRLink id
-  toLinkId: z.string(),    // target OKRLink id
-  label: z.string().optional(), // e.g. "선행 작업", "의존"
+  fromType: z.enum(['link', 'group']),
+  fromId: z.string(),
+  fromAnchor: z.enum(['top', 'bottom', 'left', 'right']),
+  toType: z.enum(['link', 'group']),
+  toId: z.string(),
+  toAnchor: z.enum(['top', 'bottom', 'left', 'right']),
+  waypoints: z.array(z.object({ x: z.number(), y: z.number() })).optional(),
+  label: z.string().optional(),
+  // Migration compatibility: old format fields
+  fromLinkId: z.string().optional(),
+  toLinkId: z.string().optional(),
 });
 
 export const OKRDataSchema = z.object({

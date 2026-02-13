@@ -86,6 +86,10 @@ export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
         links: d.links.map((l) =>
           l.groupId && allDeletedIds.has(l.groupId) ? { ...l, groupId: undefined } : l,
         ),
+        relations: d.relations.filter((r) =>
+          !(r.fromType === 'group' && allDeletedIds.has(r.fromId)) &&
+          !(r.toType === 'group' && allDeletedIds.has(r.toId))
+        ),
       };
     });
   }, [updateOKR]);

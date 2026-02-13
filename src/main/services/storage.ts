@@ -6,6 +6,7 @@ import { SettingsSchema, DEFAULT_SETTINGS } from '../schemas/settings.schema';
 import { logger } from '../utils/logger';
 import type { StoredData, MetaData, LabelNote, ChangelogData, ChangelogEntry, OKRData } from '../schemas/storage.schema';
 import type { Settings } from '../schemas/settings.schema';
+import { migrateOKRRelations } from '../utils/okr-migration';
 
 export class StorageService {
   async ensureDirectories(): Promise<void> {
@@ -145,7 +146,9 @@ export class StorageService {
   async getOKR(): Promise<OKRData | null> {
     try {
       const content = await fs.readFile(getOKRPath(), 'utf-8');
-      return OKRDataSchema.parse(JSON.parse(content));
+      const raw = JSON.parse(content);
+      const migrated = migrateOKRRelations(raw);
+      return OKRDataSchema.parse(migrated);
     } catch {
       return null;
     }

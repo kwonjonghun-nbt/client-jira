@@ -155,10 +155,18 @@ export interface OKRGroup {
   h?: number;
 }
 
+export type AnchorPosition = 'top' | 'bottom' | 'left' | 'right';
+export type ConnectionEndpointType = 'link' | 'group';
+
 export interface OKRRelation {
   id: string;
-  fromLinkId: string;
-  toLinkId: string;
+  fromType: ConnectionEndpointType;
+  fromId: string;
+  fromAnchor: AnchorPosition;
+  toType: ConnectionEndpointType;
+  toId: string;
+  toAnchor: AnchorPosition;
+  waypoints?: { x: number; y: number }[];
   label?: string;
 }
 

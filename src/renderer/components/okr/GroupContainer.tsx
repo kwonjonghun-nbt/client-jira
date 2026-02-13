@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import type { OKRGroup, OKRLink } from '../../types/jira.types';
 import type { DragInfo } from '../../hooks/okr/okr-canvas.types';
 import { CARD_W, GROUP_HEADER_H, MAX_GROUP_DEPTH } from '../../hooks/okr/okr-canvas.types';
+import type { AnchorPosition, ConnectionEndpointType } from '../../types/jira.types';
+import type { ConnectFrom } from '../../hooks/okr/useCanvasRelations';
+import AnchorDots from './AnchorDots';
 
 interface GroupContainerProps {
   group: OKRGroup;
@@ -29,6 +32,10 @@ interface GroupContainerProps {
   onConfirmAddSubgroup: (parentGroupId: string) => void;
   onCancelAddSubgroup: () => void;
   renderCard: (link: OKRLink) => ReactNode;
+  connectMode: boolean;
+  connectFrom: ConnectFrom | null;
+  onAnchorClick: (type: ConnectionEndpointType, id: string, anchor: AnchorPosition) => void;
+  setGroupRef: (groupId: string, el: HTMLDivElement | null) => void;
   startDrag: (e: React.MouseEvent, linkId: string, x: number, y: number, parentGroupId?: string) => void;
   startGroupDrag: (e: React.MouseEvent, groupId: string, x: number, y: number, parentGroupId?: string) => void;
 }
@@ -59,6 +66,10 @@ export default function GroupContainer({
   onConfirmAddSubgroup,
   onCancelAddSubgroup,
   renderCard,
+  connectMode,
+  connectFrom,
+  onAnchorClick,
+  setGroupRef,
   startDrag,
   startGroupDrag,
 }: GroupContainerProps) {
@@ -66,7 +77,15 @@ export default function GroupContainer({
 
   return (
     <div
+      ref={(el) => setGroupRef(group.id, el)}
       data-canvas-item
+      className={`group/group border rounded-lg ${
+        depth > 1 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-200 bg-white/80'
+      } ${isDragging ? 'shadow-lg ring-2 ring-blue-400' : 'shadow-sm'} ${
+        connectMode && connectFrom?.type === 'group' && connectFrom?.id === group.id
+          ? 'ring-2 ring-indigo-500'
+          : ''
+      }`}
       style={{
         position: 'absolute',
         left: `${isDragging && dragInfo ? dragInfo.currentX : (group.x ?? 0)}px`,
@@ -75,11 +94,17 @@ export default function GroupContainer({
         minHeight: `${group.h ?? 200}px`,
         zIndex: isDragging ? 50 : 2,
       }}
-      className={`border rounded-lg ${
-        depth > 1 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-200 bg-white/80'
-      } ${isDragging ? 'shadow-lg ring-2 ring-blue-400' : 'shadow-sm'}`}
       onMouseDown={onMouseDown}
     >
+      {/* Anchor dots for group connections */}
+      <AnchorDots
+        elementType="group"
+        elementId={group.id}
+        visible={connectMode}
+        connectFrom={connectFrom}
+        onAnchorClick={onAnchorClick}
+      />
+
       {/* Group header */}
       <div className={`flex items-center gap-1.5 px-3 py-2 border-b ${
         depth > 1 ? 'border-blue-200/80' : 'border-gray-200/80'
@@ -235,6 +260,10 @@ export default function GroupContainer({
               onConfirmAddSubgroup={onConfirmAddSubgroup}
               onCancelAddSubgroup={onCancelAddSubgroup}
               renderCard={renderCard}
+              connectMode={connectMode}
+              connectFrom={connectFrom}
+              onAnchorClick={onAnchorClick}
+              setGroupRef={setGroupRef}
               startDrag={startDrag}
               startGroupDrag={startGroupDrag}
             />

@@ -1,4 +1,6 @@
-import type { OKRLink, VirtualTicket } from '../../types/jira.types';
+import type { OKRLink, VirtualTicket, AnchorPosition, ConnectionEndpointType } from '../../types/jira.types';
+import type { ConnectFrom } from '../../hooks/okr/useCanvasRelations';
+import AnchorDots from './AnchorDots';
 
 const issueTypeLabels: Record<string, string> = {
   task: '작업',
@@ -18,10 +20,11 @@ interface VirtualCardProps {
   link: OKRLink;
   vt: VirtualTicket;
   isDragging: boolean;
-  isConnectSource: boolean;
   connectMode: boolean;
+  connectFrom: ConnectFrom | null;
   isEditing: boolean;
   editingTitle: string;
+  onAnchorClick: (type: ConnectionEndpointType, id: string, anchor: AnchorPosition) => void;
   onCardClick: () => void;
   onUnlink: () => void;
   onDelete: () => void;
@@ -36,10 +39,11 @@ export default function VirtualCard({
   link,
   vt,
   isDragging,
-  isConnectSource,
   connectMode,
+  connectFrom,
   isEditing,
   editingTitle,
+  onAnchorClick,
   onCardClick,
   onUnlink,
   onDelete,
@@ -49,27 +53,37 @@ export default function VirtualCard({
   onCancelEdit,
   setRef,
 }: VirtualCardProps) {
+  const isConnectSource = connectFrom?.type === 'link' && connectFrom?.id === link.id;
   const vtColor = issueTypeColors[vt.issueType] ?? 'bg-gray-100 text-gray-700';
 
   return (
     <div
       ref={setRef}
-      onClick={onCardClick}
+      onClick={connectMode ? undefined : onCardClick}
       className={`relative group/card border-2 border-dashed border-gray-300 rounded-lg p-3 bg-gray-50 ${
         connectMode
           ? isConnectSource
-            ? 'ring-2 ring-indigo-500 !bg-indigo-50 cursor-crosshair'
-            : 'ring-2 ring-indigo-300 cursor-crosshair'
+            ? 'ring-2 ring-indigo-500 !bg-indigo-50'
+            : ''
           : ''
       } ${isDragging ? 'shadow-lg ring-2 ring-blue-400 z-50' : ''}`}
     >
+      {/* Anchor dots */}
+      <AnchorDots
+        elementType="link"
+        elementId={link.id}
+        visible={connectMode}
+        connectFrom={connectFrom}
+        onAnchorClick={onAnchorClick}
+      />
+
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onUnlink();
         }}
-        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 opacity-0 group-hover/card:opacity-100 transition-opacity"
+        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 opacity-0 group-hover/card:opacity-100 transition-opacity z-30"
         title="연결 해제"
       >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

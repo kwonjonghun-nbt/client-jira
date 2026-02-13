@@ -38,7 +38,13 @@ export interface ArrowLine {
   y1: number;
   x2: number;
   y2: number;
+  /** SVG path d attribute for obstacle-avoiding route */
+  path: string;
   relationId: string;
+  /** All waypoints including start and end */
+  waypoints: { x: number; y: number }[];
+  /** Whether this arrow uses manually defined waypoints */
+  hasManualWaypoints: boolean;
 }
 
 // ─── UpdateOKR helper type ──────────────────────────────────────────────────

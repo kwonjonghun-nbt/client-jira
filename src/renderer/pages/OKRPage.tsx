@@ -15,6 +15,8 @@ import { useCanvasDrag } from '../hooks/okr/useCanvasDrag';
 import { useCanvasRelations } from '../hooks/okr/useCanvasRelations';
 import { useTicketActions } from '../hooks/okr/useTicketActions';
 import { useGroupActions } from '../hooks/okr/useGroupActions';
+import { useWaypointDrag } from '../hooks/okr/useWaypointDrag';
+import { findBestInsertIndex } from '../utils/anchor-points';
 import JiraCard from '../components/okr/JiraCard';
 import VirtualCard from '../components/okr/VirtualCard';
 import GroupContainer from '../components/okr/GroupContainer';
@@ -168,7 +170,7 @@ function ArrowRightIcon() {
 interface LinkModalProps {
   existingIssueKeys: Set<string>;
   allIssues: NormalizedIssue[];
-  onLinkJira: (issueKey: string) => void;
+  onLinkJira: (issueKeys: string[]) => void;
   onCreateVirtual: (title: string, issueType: string, assignee: string) => void;
   onClose: () => void;
 }
@@ -182,6 +184,7 @@ function LinkModal({
 }: LinkModalProps) {
   const [activeTab, setActiveTab] = useState<'jira' | 'virtual'>('jira');
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [vtTitle, setVtTitle] = useState('');
   const [vtType, setVtType] = useState('task');
   const [vtAssignee, setVtAssignee] = useState('');
@@ -260,27 +263,61 @@ function LinkModal({
                 {search.trim() && filteredIssues.length === 0 && (
                   <p className="text-sm text-gray-500 py-2">검색 결과가 없습니다</p>
                 )}
-                {filteredIssues.map((issue) => (
-                  <button
-                    key={issue.key}
-                    type="button"
-                    onClick={() => onLinkJira(issue.key)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-left transition-colors"
-                  >
-                    <span className="text-xs font-mono text-blue-600 shrink-0">
-                      {issue.key}
-                    </span>
-                    <span className="text-sm text-gray-800 truncate flex-1">
-                      {issue.summary}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded shrink-0 ${statusBadgeClass(issue.statusCategory)}`}
+                {filteredIssues.map((issue) => {
+                  const isSelected = selected.has(issue.key);
+                  return (
+                    <button
+                      key={issue.key}
+                      type="button"
+                      onClick={() =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(issue.key)) next.delete(issue.key);
+                          else next.add(issue.key);
+                          return next;
+                        })
+                      }
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                        isSelected ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-gray-50'
+                      }`}
                     >
-                      {issue.status}
-                    </span>
-                  </button>
-                ))}
+                      <span
+                        className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${
+                          isSelected
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        {isSelected && (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="text-xs font-mono text-blue-600 shrink-0">
+                        {issue.key}
+                      </span>
+                      <span className="text-sm text-gray-800 truncate flex-1">
+                        {issue.summary}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 text-xs rounded shrink-0 ${statusBadgeClass(issue.statusCategory)}`}
+                      >
+                        {issue.status}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+              {selected.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onLinkJira([...selected])}
+                  className="w-full mt-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  {selected.size}개 이슈 연결
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -377,6 +414,7 @@ function KRCanvasModal({
   const drag = useCanvasDrag(transform.zoom, updateOKR, relations.recalcArrows, relations.connectMode, groupsRef);
   const tickets = useTicketActions(kr.id, updateOKR);
   const groups = useGroupActions(kr.id, updateOKR);
+  const waypointDrag = useWaypointDrag(transform.zoom, canvasRef, relations.moveWaypoint);
 
   // Keep zoomRef in sync so recalcArrows always reads the latest zoom
   zoomRef.current = transform.zoom;
@@ -432,8 +470,8 @@ function KRCanvasModal({
   }, [editingVTId, editingVTTitle, updateOKR]);
 
   // ── Link modal handlers ───────────────────────────────────────────────
-  const handleLinkJira = useCallback((issueKey: string) => {
-    tickets.linkJiraIssue(issueKey);
+  const handleLinkJira = useCallback((issueKeys: string[]) => {
+    tickets.linkJiraIssues(issueKeys);
     setLinkModalOpen(false);
   }, [tickets]);
 
@@ -474,18 +512,17 @@ function KRCanvasModal({
           link={link}
           issue={issue}
           isDragging={drag.dragInfo?.id === link.id}
-          isConnectSource={relations.connectFromLinkId === link.id}
           connectMode={relations.connectMode}
+          connectFrom={relations.connectFrom}
+          onAnchorClick={relations.handleAnchorClick}
           onCardClick={() => {
             if (drag.wasDraggingRef.current) return;
-            if (relations.connectMode) {
-              relations.handleCardClick(link.id);
-            } else if (issue) {
+            if (!relations.connectMode && issue) {
               openIssueDetail(issue, baseUrl);
             }
           }}
           onUnlink={() => tickets.unlinkWork(link.id)}
-          setRef={(el) => relations.setCardRef(link.id, el)}
+          setRef={(el) => relations.setElementRef('link', link.id, el)}
         />
       );
     }
@@ -498,18 +535,19 @@ function KRCanvasModal({
           link={link}
           vt={vt}
           isDragging={drag.dragInfo?.id === link.id}
-          isConnectSource={relations.connectFromLinkId === link.id}
           connectMode={relations.connectMode}
+          connectFrom={relations.connectFrom}
           isEditing={editingVTId === vt.id}
           editingTitle={editingVTTitle}
-          onCardClick={() => relations.handleCardClick(link.id)}
+          onAnchorClick={relations.handleAnchorClick}
+          onCardClick={() => {}}
           onUnlink={() => tickets.unlinkWork(link.id)}
           onDelete={() => tickets.deleteVirtualTicket(vt.id)}
           onStartEdit={() => { setEditingVTId(vt.id); setEditingVTTitle(vt.title); }}
           onChangeTitle={setEditingVTTitle}
           onSaveEdit={saveVTEditing}
           onCancelEdit={() => setEditingVTId(null)}
-          setRef={(el) => relations.setCardRef(link.id, el)}
+          setRef={(el) => relations.setElementRef('link', link.id, el)}
         />
       );
     }
@@ -608,7 +646,7 @@ function KRCanvasModal({
         {/* Connect mode indicator */}
         {relations.connectMode && (
           <div className="px-5 py-1.5 bg-indigo-50 text-sm text-indigo-600 font-medium shrink-0">
-            {relations.connectFromLinkId ? '도착 카드를 클릭하세요' : '시작 카드를 클릭하세요'}
+            {relations.connectFrom ? '도착 요소의 앵커 포인트를 클릭하세요' : '시작 요소의 앵커 포인트를 클릭하세요'}
           </div>
         )}
 
@@ -698,6 +736,10 @@ function KRCanvasModal({
                   isDragging={drag.dragInfo?.id === group.id}
                   zoom={transform.zoom}
                   dragInfo={drag.dragInfo}
+                  connectMode={relations.connectMode}
+                  connectFrom={relations.connectFrom}
+                  onAnchorClick={relations.handleAnchorClick}
+                  setGroupRef={(groupId, el) => relations.setElementRef('group', groupId, el)}
                   editingGroupId={groups.editingGroupId}
                   editingGroupTitle={groups.editingGroupTitle}
                   addingSubgroupForId={groups.addingSubgroupForId}
@@ -738,14 +780,58 @@ function KRCanvasModal({
                   const my = (arrow.y1 + arrow.y2) / 2;
                   return (
                     <g key={arrow.id}>
+                      {/* Visible arrow path */}
                       <path
-                        d={`M ${arrow.x1} ${arrow.y1} C ${arrow.x1 + 40} ${arrow.y1}, ${arrow.x2 - 40} ${arrow.y2}, ${arrow.x2} ${arrow.y2}`}
+                        d={arrow.path}
                         fill="none"
                         stroke="#6366f1"
                         strokeWidth="2"
                         strokeDasharray="6 3"
                         markerEnd="url(#canvas-arrowhead)"
                       />
+
+                      {/* Invisible wider hit area for double-click to add waypoint */}
+                      <path
+                        d={arrow.path}
+                        fill="none"
+                        stroke="transparent"
+                        strokeWidth="16"
+                        className="pointer-events-auto cursor-pointer"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          const canvasEl = canvasRef.current;
+                          if (!canvasEl) return;
+                          const rect = canvasEl.getBoundingClientRect();
+                          const scaleInv = 1 / transform.zoom;
+                          const pos = {
+                            x: (e.clientX - rect.left) * scaleInv,
+                            y: (e.clientY - rect.top) * scaleInv,
+                          };
+                          const insertIdx = findBestInsertIndex(pos, arrow.waypoints);
+                          relations.addWaypoint(arrow.relationId, pos, insertIdx);
+                        }}
+                      />
+
+                      {/* Manual waypoint dots (draggable, double-click to remove) */}
+                      {arrow.hasManualWaypoints && arrow.waypoints.slice(1, -1).map((wp, i) => (
+                        <circle
+                          key={`wp-${arrow.id}-${i}`}
+                          cx={wp.x}
+                          cy={wp.y}
+                          r="5"
+                          fill="white"
+                          stroke="#6366f1"
+                          strokeWidth="2"
+                          className="pointer-events-auto cursor-move"
+                          onMouseDown={(e) => waypointDrag.startWaypointDrag(e, arrow.relationId, i)}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            relations.removeWaypoint(arrow.relationId, i);
+                          }}
+                        />
+                      ))}
+
+                      {/* Delete button at midpoint (shown in connect mode) */}
                       {relations.connectMode && (
                         <g
                           className="cursor-pointer pointer-events-auto"
@@ -875,7 +961,8 @@ export default function OKRPage() {
           (vt) => linkedVTIds.has(vt.id),
         ),
         relations: d.relations.filter(
-          (r) => !removedLinkIds.has(r.fromLinkId) && !removedLinkIds.has(r.toLinkId),
+          (r) => !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
+                 !(r.toType === 'link' && removedLinkIds.has(r.toId)),
         ),
       };
     });
@@ -921,7 +1008,8 @@ export default function OKRPage() {
           (vt) => linkedVTIds.has(vt.id),
         ),
         relations: d.relations.filter(
-          (r) => !removedLinkIds.has(r.fromLinkId) && !removedLinkIds.has(r.toLinkId),
+          (r) => !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
+                 !(r.toType === 'link' && removedLinkIds.has(r.toId)),
         ),
       };
     });
@@ -929,7 +1017,8 @@ export default function OKRPage() {
 
   // ── CRUD: Links (for main page link modal) ─────────────────────────────
 
-  const linkJiraIssue = (keyResultId: string, issueKey: string) => {
+  const linkJiraIssues = (keyResultId: string, issueKeys: string[]) => {
+    if (issueKeys.length === 0) return;
     updateOKR((d) => {
       const krLinks = d.links.filter((l) => l.keyResultId === keyResultId);
       const krGrps = d.groups.filter((g) => g.keyResultId === keyResultId);
@@ -937,22 +1026,20 @@ export default function OKRPage() {
         ...krLinks.map((l) => ({ x: l.x ?? 0, y: l.y ?? 0, w: CARD_W, h: CARD_H })),
         ...krGrps.map((g) => ({ x: g.x ?? 0, y: g.y ?? 0, w: g.w ?? 300, h: g.h ?? 200 })),
       ];
-      const pos = assignDefaultPosition(occupied, CARD_W, CARD_H, 800);
-      return {
-        ...d,
-        links: [
-          ...d.links,
-          {
-            id: crypto.randomUUID(),
-            keyResultId,
-            type: 'jira' as const,
-            issueKey,
-            order: krLinks.length,
-            x: pos.x,
-            y: pos.y,
-          },
-        ],
-      };
+      const newLinks = issueKeys.map((issueKey, i) => {
+        const pos = assignDefaultPosition(occupied, CARD_W, CARD_H, 800);
+        occupied.push({ x: pos.x, y: pos.y, w: CARD_W, h: CARD_H });
+        return {
+          id: crypto.randomUUID(),
+          keyResultId,
+          type: 'jira' as const,
+          issueKey,
+          order: krLinks.length + i,
+          x: pos.x,
+          y: pos.y,
+        };
+      });
+      return { ...d, links: [...d.links, ...newLinks] };
     });
     setLinkModalKRId(null);
   };
@@ -1433,7 +1520,7 @@ export default function OKRPage() {
         <LinkModal
           existingIssueKeys={getExistingIssueKeys(linkModalKRId)}
           allIssues={allIssues}
-          onLinkJira={(issueKey) => linkJiraIssue(linkModalKRId, issueKey)}
+          onLinkJira={(issueKeys) => linkJiraIssues(linkModalKRId, issueKeys)}
           onCreateVirtual={(title, issueType, assignee) =>
             createAndLinkVirtual(linkModalKRId, title, issueType, assignee)
           }

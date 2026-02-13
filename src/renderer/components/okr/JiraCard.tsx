@@ -1,12 +1,15 @@
-import type { OKRLink, NormalizedIssue } from '../../types/jira.types';
+import type { OKRLink, NormalizedIssue, AnchorPosition, ConnectionEndpointType } from '../../types/jira.types';
+import type { ConnectFrom } from '../../hooks/okr/useCanvasRelations';
 import { statusBadgeClass } from '../../utils/issue';
+import AnchorDots from './AnchorDots';
 
 interface JiraCardProps {
   link: OKRLink;
   issue: NormalizedIssue | undefined;
   isDragging: boolean;
-  isConnectSource: boolean;
   connectMode: boolean;
+  connectFrom: ConnectFrom | null;
+  onAnchorClick: (type: ConnectionEndpointType, id: string, anchor: AnchorPosition) => void;
   onCardClick: () => void;
   onUnlink: () => void;
   setRef: (el: HTMLDivElement | null) => void;
@@ -16,31 +19,43 @@ export default function JiraCard({
   link,
   issue,
   isDragging,
-  isConnectSource,
   connectMode,
+  connectFrom,
+  onAnchorClick,
   onCardClick,
   onUnlink,
   setRef,
 }: JiraCardProps) {
+  const isConnectSource = connectFrom?.type === 'link' && connectFrom?.id === link.id;
+
   return (
     <div
       ref={setRef}
       className={`relative group/card border border-gray-200 rounded-lg p-3 bg-white hover:shadow-sm transition-shadow ${
         connectMode
           ? isConnectSource
-            ? 'ring-2 ring-indigo-500 bg-indigo-50 cursor-crosshair'
-            : 'ring-2 ring-indigo-300 cursor-crosshair'
+            ? 'ring-2 ring-indigo-500 bg-indigo-50'
+            : ''
           : ''
       } ${isDragging ? 'shadow-lg ring-2 ring-blue-400 z-50' : ''}`}
-      onClick={onCardClick}
+      onClick={connectMode ? undefined : onCardClick}
     >
+      {/* Anchor dots */}
+      <AnchorDots
+        elementType="link"
+        elementId={link.id}
+        visible={connectMode}
+        connectFrom={connectFrom}
+        onAnchorClick={onAnchorClick}
+      />
+
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onUnlink();
         }}
-        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 opacity-0 group-hover/card:opacity-100 transition-opacity"
+        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 opacity-0 group-hover/card:opacity-100 transition-opacity z-30"
         title="연결 해제"
       >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

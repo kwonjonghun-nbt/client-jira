@@ -29,6 +29,32 @@ export function useTicketActions(krId: string, updateOKR: UpdateOKR) {
     });
   }, [krId, updateOKR]);
 
+  const linkJiraIssues = useCallback((issueKeys: string[]) => {
+    if (issueKeys.length === 0) return;
+    updateOKR((d) => {
+      const existingLinks = d.links.filter((l) => l.keyResultId === krId);
+      const grps = d.groups.filter((g) => g.keyResultId === krId);
+      const occupied: Rect[] = [
+        ...existingLinks.map((l) => ({ x: l.x ?? 0, y: l.y ?? 0, w: CARD_W, h: CARD_H })),
+        ...grps.map((g) => ({ x: g.x ?? 0, y: g.y ?? 0, w: g.w ?? 300, h: g.h ?? 200 })),
+      ];
+      const newLinks = issueKeys.map((issueKey, i) => {
+        const pos = assignDefaultPosition(occupied, CARD_W, CARD_H, 800);
+        occupied.push({ x: pos.x, y: pos.y, w: CARD_W, h: CARD_H });
+        return {
+          id: crypto.randomUUID(),
+          keyResultId: krId,
+          type: 'jira' as const,
+          issueKey,
+          order: existingLinks.length + i,
+          x: pos.x,
+          y: pos.y,
+        };
+      });
+      return { ...d, links: [...d.links, ...newLinks] };
+    });
+  }, [krId, updateOKR]);
+
   const createAndLinkVirtual = useCallback((title: string, issueType: string, assignee: string) => {
     const vtId = crypto.randomUUID();
     updateOKR((d) => {
@@ -85,7 +111,10 @@ export function useTicketActions(krId: string, updateOKR: UpdateOKR) {
         ...d,
         links: remainingLinks,
         virtualTickets,
-        relations: d.relations.filter((r) => r.fromLinkId !== linkId && r.toLinkId !== linkId),
+        relations: d.relations.filter((r) =>
+          !(r.fromType === 'link' && r.fromId === linkId) &&
+          !(r.toType === 'link' && r.toId === linkId)
+        ),
       };
     });
   }, [updateOKR]);
@@ -103,11 +132,12 @@ export function useTicketActions(krId: string, updateOKR: UpdateOKR) {
           (l) => !(l.type === 'virtual' && l.virtualTicketId === vtId),
         ),
         relations: d.relations.filter(
-          (r) => !removedLinkIds.has(r.fromLinkId) && !removedLinkIds.has(r.toLinkId),
+          (r) => !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
+                 !(r.toType === 'link' && removedLinkIds.has(r.toId)),
         ),
       };
     });
   }, [updateOKR]);
 
-  return { linkJiraIssue, createAndLinkVirtual, unlinkWork, deleteVirtualTicket };
+  return { linkJiraIssue, linkJiraIssues, createAndLinkVirtual, unlinkWork, deleteVirtualTicket };
 }
