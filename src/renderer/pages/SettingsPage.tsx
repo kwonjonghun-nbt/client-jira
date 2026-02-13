@@ -7,61 +7,36 @@ import StorageConfig from '../components/settings/StorageConfig';
 import Button from '../components/common/Button';
 import Spinner from '../components/common/Spinner';
 import { useSettings } from '../hooks/useSettings';
+import { useToken } from '../hooks/useToken';
+import { useTestConnection } from '../hooks/useSettings';
+import { DEFAULT_SETTINGS } from '../types/settings.types';
 import type { Settings } from '../types/settings.types';
-
-const DEFAULT_SETTINGS: Settings = {
-  jira: { baseUrl: '', email: '' },
-  collection: { projects: [], assignees: [], customJql: '' },
-  schedule: { enabled: true, times: ['09:00', '13:00', '18:00'] },
-  storage: { retentionDays: 90 },
-};
 
 export default function SettingsPage() {
   const { settings: saved, isLoading, saveSettings, isSaving } = useSettings();
+  const tokenManager = useToken();
+  const testConnection = useTestConnection();
   const [draft, setDraft] = useState<Settings>(DEFAULT_SETTINGS);
-  const [token, setToken] = useState('');
-  const [hasStoredToken, setHasStoredToken] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
   useEffect(() => {
-    console.log('[DEBUG] SettingsPage - saved from useSettings:', JSON.stringify(saved));
-    if (saved) {
-      console.log('[DEBUG] SettingsPage - setDraft with saved data');
-      setDraft(saved);
-    }
+    if (saved) setDraft(saved);
   }, [saved]);
-
-  useEffect(() => {
-    // 저장된 토큰 확인 (마스킹 표시용)
-    console.log('[DEBUG] SettingsPage - calling getToken...');
-    window.electronAPI.settings.getToken().then((t) => {
-      console.log('[DEBUG] SettingsPage - getToken result:', t ? `got token (${t.length} chars)` : 'null');
-      if (t) {
-        setToken('••••••••••••••••');
-        setHasStoredToken(true);
-      }
-    }).catch((err) => {
-      console.error('[DEBUG] SettingsPage - getToken error:', err);
-    });
-  }, []);
-
-  const isTokenChanged = token !== '' && !token.startsWith('••');
 
   const handleSave = async () => {
     try {
-      // 토큰이 새로 입력되었으면 저장
-      if (isTokenChanged) {
-        await window.electronAPI.settings.saveToken(token);
-        setHasStoredToken(true);
-        setToken('••••••••••••••••');
-      }
-      console.log('[DEBUG] SettingsPage - saving draft:', JSON.stringify(draft));
+      await tokenManager.saveToken();
       saveSettings(draft);
       setSaveMessage('설정이 저장되었습니다');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch {
       setSaveMessage('저장에 실패했습니다');
     }
+  };
+
+  const handleTest = async () => {
+    const actualToken = await tokenManager.getActualToken();
+    return { url: draft.jira.baseUrl, email: draft.jira.email, token: actualToken };
   };
 
   if (isLoading) {
@@ -81,11 +56,13 @@ export default function SettingsPage() {
         <JiraConnectionForm
           baseUrl={draft.jira.baseUrl}
           email={draft.jira.email}
-          token={token}
-          hasStoredToken={hasStoredToken}
+          token={tokenManager.token}
+          hasStoredToken={tokenManager.hasStoredToken}
           onChangeBaseUrl={(v) => setDraft({ ...draft, jira: { ...draft.jira, baseUrl: v } })}
           onChangeEmail={(v) => setDraft({ ...draft, jira: { ...draft.jira, email: v } })}
-          onChangeToken={setToken}
+          onChangeToken={tokenManager.setToken}
+          onTest={handleTest}
+          testConnection={testConnection}
         />
       </section>
 

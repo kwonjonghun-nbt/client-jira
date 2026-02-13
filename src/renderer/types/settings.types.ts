@@ -1,4 +1,5 @@
-// Renderer에서 사용하는 설정 타입
+// Renderer용 설정 타입 — Main의 settings.schema.ts와 동일 구조 유지
+// Source of truth: src/main/schemas/settings.schema.ts
 
 export interface JiraConnection {
   baseUrl: string;
@@ -26,3 +27,10 @@ export interface Settings {
   schedule: Schedule;
   storage: StorageSettings;
 }
+
+export const DEFAULT_SETTINGS: Settings = {
+  jira: { baseUrl: '', email: '' },
+  collection: { projects: [], assignees: [], customJql: '' },
+  schedule: { enabled: true, times: ['09:00', '13:00', '18:00'] },
+  storage: { retentionDays: 90 },
+};

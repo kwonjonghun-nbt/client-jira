@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { useTestConnection } from '../../hooks/useSettings';
 
 interface JiraConnectionFormProps {
   baseUrl: string;
@@ -11,6 +10,17 @@ interface JiraConnectionFormProps {
   onChangeBaseUrl: (v: string) => void;
   onChangeEmail: (v: string) => void;
   onChangeToken: (v: string) => void;
+  onTest: () => Promise<{ url: string; email: string; token: string }>;
+  testConnection: {
+    mutate: (
+      params: { url: string; email: string; token: string },
+      options: {
+        onSuccess: (result: { success: boolean; displayName?: string; error?: string }) => void;
+        onError: (error: Error) => void;
+      },
+    ) => void;
+    isPending: boolean;
+  };
 }
 
 export default function JiraConnectionForm({
@@ -21,8 +31,9 @@ export default function JiraConnectionForm({
   onChangeBaseUrl,
   onChangeEmail,
   onChangeToken,
+  onTest,
+  testConnection,
 }: JiraConnectionFormProps) {
-  const testConnection = useTestConnection();
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -30,27 +41,19 @@ export default function JiraConnectionForm({
 
   const handleTest = async () => {
     setTestResult(null);
-    // 마스킹 상태이면 저장된 토큰을 가져와서 테스트
-    let actualToken = token;
-    if ((!token || token.startsWith('••')) && hasStoredToken) {
-      const stored = await window.electronAPI.settings.getToken();
-      if (stored) actualToken = stored;
-    }
-    testConnection.mutate(
-      { url: baseUrl, email, token: actualToken },
-      {
-        onSuccess: (result) => {
-          if (result.success) {
-            setTestResult({ success: true, message: `연결 성공! (${result.displayName})` });
-          } else {
-            setTestResult({ success: false, message: result.error || '연결 실패' });
-          }
-        },
-        onError: (error) => {
-          setTestResult({ success: false, message: error.message });
-        },
+    const params = await onTest();
+    testConnection.mutate(params, {
+      onSuccess: (result) => {
+        if (result.success) {
+          setTestResult({ success: true, message: `연결 성공! (${result.displayName})` });
+        } else {
+          setTestResult({ success: false, message: result.error || '연결 실패' });
+        }
       },
-    );
+      onError: (error) => {
+        setTestResult({ success: false, message: error.message });
+      },
+    });
   };
 
   return (
@@ -77,9 +80,7 @@ export default function JiraConnectionForm({
           onChange={(e) => onChangeToken(e.target.value)}
         />
         <div className="flex items-center justify-between mt-1">
-          {hasStoredToken && !token.startsWith('••') && token === '' ? (
-            <span className="text-xs text-green-600">토큰 저장됨</span>
-          ) : hasStoredToken && token.startsWith('••') ? (
+          {hasStoredToken ? (
             <span className="text-xs text-green-600">토큰 저장됨</span>
           ) : (
             <span className="text-xs text-gray-400">토큰 미설정</span>
