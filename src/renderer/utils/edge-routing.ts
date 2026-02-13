@@ -532,89 +532,200 @@ function createOrthogonalPath(
 }
 
 /**
- * Reduce an orthogonal waypoint list to the minimum number of bends.
- *
- * Walks through the simplified (collinear-removed) path and greedily extends
- * each horizontal or vertical segment as far as possible before adding a bend.
- * The result is the fewest-bend orthogonal path that passes through the
- * same start/end while keeping the same general corridor.
+ * Check if an orthogonal segment (horizontal or vertical) is clear of all obstacles.
  */
-function reduceOrthogonalBends(points: { x: number; y: number }[]): { x: number; y: number }[] {
-  if (points.length <= 3) return points;
-
-  const result: { x: number; y: number }[] = [points[0]];
-
-  let i = 0;
-  while (i < points.length - 1) {
-    const cur = points[i];
-    const next = points[i + 1];
-
-    // Determine current segment direction
-    const isHoriz = Math.abs(next.y - cur.y) < 0.5;
-
-    // Extend as far as we can in this direction
-    let j = i + 1;
-    while (j < points.length - 1) {
-      const jNext = points[j + 1];
-      const segHoriz = Math.abs(jNext.y - points[j].y) < 0.5;
-      if (segHoriz !== isHoriz) break;
-      j++;
-    }
-
-    // j is last point still on this axis direction
-    const endOfRun = points[j];
-    if (isHoriz) {
-      // Keep the Y from the run start, but take the X from the run end
-      result.push({ x: endOfRun.x, y: cur.y });
-    } else {
-      // Keep the X from the run start, but take the Y from the run end
-      result.push({ x: cur.x, y: endOfRun.y });
-    }
-
-    i = j;
-  }
-
-  // Ensure the last point is exact
-  const last = points[points.length - 1];
-  const prev = result[result.length - 1];
-  if (Math.abs(prev.x - last.x) > 0.5 || Math.abs(prev.y - last.y) > 0.5) {
-    result.push(last);
-  }
-
-  return result;
+function segmentClear(
+  ax: number, ay: number, bx: number, by: number,
+  obstacles: ObstacleRect[], padding: number,
+): boolean {
+  // Build a thin rect for the segment
+  const minX = Math.min(ax, bx) - padding;
+  const maxX = Math.max(ax, bx) + padding;
+  const minY = Math.min(ay, by) - padding;
+  const maxY = Math.max(ay, by) + padding;
+  return !obstacles.some((o) =>
+    o.x < maxX && o.x + o.w > minX && o.y < maxY && o.y + o.h > minY,
+  );
 }
 
 /**
- * Calculate an obstacle-avoiding path between two points with orthogonal routing.
- *
- * Uses A* pathfinding on a grid to find a path that avoids obstacles,
- * then simplifies and smooths the result into an SVG path.
- *
- * @param x1 Source X coordinate
- * @param y1 Source Y coordinate
- * @param x2 Target X coordinate
- * @param y2 Target Y coordinate
- * @param obstacles Array of obstacle rectangles
- * @param config Optional configuration (grid size, padding, corner radius, anchors)
- * @returns Routed edge with SVG path, waypoints, and routing status
+ * Try to connect two points with an L-shape (2 segments, 1 corner).
+ * Returns the corner point if clear, or null if blocked.
  */
-/**
- * Check if a rectangle intersects the orthogonal corridor between two stub endpoints.
- * The corridor is the bounding box of the two points, expanded slightly.
- */
-function obstacleInCorridor(
-  stubStart: { x: number; y: number },
-  stubEnd: { x: number; y: number },
-  obs: ObstacleRect,
-  padding: number = 5,
-): boolean {
-  const minX = Math.min(stubStart.x, stubEnd.x) - padding;
-  const maxX = Math.max(stubStart.x, stubEnd.x) + padding;
-  const minY = Math.min(stubStart.y, stubEnd.y) - padding;
-  const maxY = Math.max(stubStart.y, stubEnd.y) + padding;
+function tryLShape(
+  cur: { x: number; y: number },
+  target: { x: number; y: number },
+  obstacles: ObstacleRect[],
+  padding: number,
+): { x: number; y: number } | null {
+  // Option A: horizontal first, then vertical
+  const cornerA = { x: target.x, y: cur.y };
+  if (
+    segmentClear(cur.x, cur.y, cornerA.x, cornerA.y, obstacles, padding) &&
+    segmentClear(cornerA.x, cornerA.y, target.x, target.y, obstacles, padding)
+  ) {
+    return cornerA;
+  }
 
-  // Standard AABB intersection test
-  return obs.x < maxX && obs.x + obs.w > minX && obs.y < maxY && obs.y + obs.h > minY;
+  // Option B: vertical first, then horizontal
+  const cornerB = { x: cur.x, y: target.y };
+  if (
+    segmentClear(cur.x, cur.y, cornerB.x, cornerB.y, obstacles, padding) &&
+    segmentClear(cornerB.x, cornerB.y, target.x, target.y, obstacles, padding)
+  ) {
+    return cornerB;
+  }
+
+  return null;
+}
+
+/**
+ * Try to connect two points with a U-shape (3 segments, 2 corners).
+ * Routes via an intermediate line derived from obstacle edges.
+ * Returns the two corner points if clear, or null if blocked.
+ */
+function tryUShape(
+  cur: { x: number; y: number },
+  target: { x: number; y: number },
+  obstacles: ObstacleRect[],
+  padding: number,
+): { x: number; y: number }[] | null {
+  const gap = padding + 4;
+
+  // Collect candidate detour coordinates from obstacle edges
+  const xCandidates = new Set<number>();
+  const yCandidates = new Set<number>();
+  for (const o of obstacles) {
+    xCandidates.add(o.x - gap);
+    xCandidates.add(o.x + o.w + gap);
+    yCandidates.add(o.y - gap);
+    yCandidates.add(o.y + o.h + gap);
+  }
+
+  // Pattern 1: horizontal → vertical → horizontal (detour via x coordinate)
+  for (const mx of xCandidates) {
+    const c1 = { x: mx, y: cur.y };
+    const c2 = { x: mx, y: target.y };
+    if (
+      segmentClear(cur.x, cur.y, c1.x, c1.y, obstacles, padding) &&
+      segmentClear(c1.x, c1.y, c2.x, c2.y, obstacles, padding) &&
+      segmentClear(c2.x, c2.y, target.x, target.y, obstacles, padding)
+    ) {
+      return [c1, c2];
+    }
+  }
+
+  // Pattern 2: vertical → horizontal → vertical (detour via y coordinate)
+  for (const my of yCandidates) {
+    const c1 = { x: cur.x, y: my };
+    const c2 = { x: target.x, y: my };
+    if (
+      segmentClear(cur.x, cur.y, c1.x, c1.y, obstacles, padding) &&
+      segmentClear(c1.x, c1.y, c2.x, c2.y, obstacles, padding) &&
+      segmentClear(c2.x, c2.y, target.x, target.y, obstacles, padding)
+    ) {
+      return [c1, c2];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Smooth an orthogonal A* path to the minimum number of bends.
+ *
+ * The input path has the structure:
+ *   [anchorStart, stubStart, ...A* middle..., stubEnd, anchorEnd]
+ *
+ * We preserve the first two (anchor + stub) and last two (stub + anchor)
+ * exactly, and only smooth the A* middle section between stubs.
+ *
+ * For each point, tries to reach the farthest point via:
+ *   1. Direct straight line (0 bends)
+ *   2. L-shape (1 bend)
+ *   3. U-shape (2 bends) — via obstacle edge detour
+ * Falls back to the next A* point if nothing works.
+ */
+function smoothOrthogonal(
+  points: { x: number; y: number }[],
+  obstacles: ObstacleRect[],
+  padding: number,
+): { x: number; y: number }[] {
+  // Need at least 5 points to have something to smooth
+  if (points.length <= 4) return points;
+
+  // Preserve anchor+stub at start (indices 0,1) and end (last two)
+  const head = points.slice(0, 2); // [anchorStart, stubStart]
+  const tail = points.slice(-2);   // [stubEnd, anchorEnd]
+  const middle = points.slice(1, -1); // [stubStart, ...A* path..., stubEnd]
+
+  // Smooth only the middle section
+  const smoothed: { x: number; y: number }[] = [middle[0]];
+  let i = 0;
+
+  while (i < middle.length - 1) {
+    const cur = smoothed[smoothed.length - 1];
+    let bestJ = i + 1;
+    let insertPoints: { x: number; y: number }[] = [];
+
+    // Try to reach the farthest point possible
+    for (let j = middle.length - 1; j > i; j--) {
+      const target = middle[j];
+
+      // 1. Direct straight line (same x or same y)
+      if (
+        (Math.abs(cur.x - target.x) < 0.5 || Math.abs(cur.y - target.y) < 0.5) &&
+        segmentClear(cur.x, cur.y, target.x, target.y, obstacles, padding)
+      ) {
+        bestJ = j;
+        insertPoints = [];
+        break;
+      }
+
+      // 2. L-shape (1 corner)
+      const lCorner = tryLShape(cur, target, obstacles, padding);
+      if (lCorner) {
+        bestJ = j;
+        insertPoints = [lCorner];
+        break;
+      }
+
+      // 3. U-shape (2 corners) — only for farther targets
+      if (j > i + 1) {
+        const uCorners = tryUShape(cur, target, obstacles, padding);
+        if (uCorners) {
+          bestJ = j;
+          insertPoints = uCorners;
+          break;
+        }
+      }
+    }
+
+    smoothed.push(...insertPoints);
+    smoothed.push(middle[bestJ]);
+    i = bestJ;
+  }
+
+  // Reassemble: head[0] (anchor) + smoothed middle + tail[1] (anchor)
+  const assembled = [head[0], ...smoothed, tail[1]];
+  return simplifyPath(assembled);
+}
+
+/**
+ * Check if an orthogonal path's actual segments are all clear of obstacles.
+ * Validates the REAL path shape (S/Z/U/L) instead of just a bounding box.
+ */
+function pathSegmentsClear(
+  waypoints: { x: number; y: number }[],
+  obstacles: ObstacleRect[],
+  padding: number,
+): boolean {
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    if (!segmentClear(waypoints[i].x, waypoints[i].y, waypoints[i + 1].x, waypoints[i + 1].y, obstacles, padding)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function routeEdge(
@@ -636,28 +747,21 @@ export function routeEdge(
   const fromRect = config?.fromRect;
   const toRect = config?.toRect;
 
-  // If no obstacles, return orthogonal path
-  if (obstacles.length === 0) {
-    return createOrthogonalPath(x1, y1, x2, y2, fromAnchor, toAnchor, stubLength, fromRect, toRect);
+  // Try clean orthogonal path first (S/Z/U/L-shape with minimum bends)
+  const orthoCandidate = createOrthogonalPath(x1, y1, x2, y2, fromAnchor, toAnchor, stubLength, fromRect, toRect);
+
+  // If no obstacles, or if the orthogonal path's actual segments are all clear, use it
+  if (obstacles.length === 0 || pathSegmentsClear(orthoCandidate.waypoints, obstacles, obstaclePadding)) {
+    return orthoCandidate;
   }
 
-  // Check if any obstacle actually blocks the corridor between stubs
+  // Calculate stub endpoints for A* pathfinding
   const fromDir = getStubDirection(fromAnchor);
   const toDir = getStubDirection(toAnchor);
-  const corridorStart = { x: x1 + fromDir.dx * stubLength, y: y1 + fromDir.dy * stubLength };
-  const corridorEnd = { x: x2 + toDir.dx * stubLength, y: y2 + toDir.dy * stubLength };
-  const hasBlockingObstacle = obstacles.some((o) => obstacleInCorridor(corridorStart, corridorEnd, o, obstaclePadding));
-
-  if (!hasBlockingObstacle) {
-    // No obstacle in the way — use clean orthogonal path
-    return createOrthogonalPath(x1, y1, x2, y2, fromAnchor, toAnchor, stubLength, fromRect, toRect);
-  }
-
-  // Reuse stub endpoints for A* pathfinding
-  const stubStartX = corridorStart.x;
-  const stubStartY = corridorStart.y;
-  const stubEndX = corridorEnd.x;
-  const stubEndY = corridorEnd.y;
+  const stubStartX = x1 + fromDir.dx * stubLength;
+  const stubStartY = y1 + fromDir.dy * stubLength;
+  const stubEndX = x2 + toDir.dx * stubLength;
+  const stubEndY = y2 + toDir.dy * stubLength;
 
   // Build grid with obstacles
   const { grid, offsetX, offsetY, cols, rows } = buildObstacleGrid(
@@ -715,8 +819,8 @@ export function routeEdge(
   canvasWaypoints[canvasWaypoints.length - 1] = { x: stubEndX, y: stubEndY };
   canvasWaypoints.push({ x: x2, y: y2 });
 
-  // Simplify: remove collinear, then reduce staircase bends to minimum
-  const simplified = reduceOrthogonalBends(simplifyPath(canvasWaypoints));
+  // Simplify: remove collinear, then smooth staircase to minimum bends
+  const simplified = smoothOrthogonal(simplifyPath(canvasWaypoints), obstacles, obstaclePadding);
 
   // Generate smooth SVG path
   const svgPath = waypointsToSVGPath(simplified, cornerRadius);

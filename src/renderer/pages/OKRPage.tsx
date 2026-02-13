@@ -683,10 +683,11 @@ function KRCanvasModal({
           </div>
         )}
 
-        {/* Canvas viewport */}
+        {/* Canvas viewport — darker bg distinguishes non-canvas area */}
         <div
           ref={viewportRef}
-          className="flex-1 overflow-hidden relative bg-gray-50 cursor-grab"
+          className="flex-1 overflow-hidden relative cursor-grab"
+          style={{ backgroundColor: '#e8e8ec' }}
           onMouseDown={transform.handlePanMouseDown}
         >
           <div
@@ -699,6 +700,10 @@ function KRCanvasModal({
               left: 0,
               width: '10000px',
               height: '10000px',
+              backgroundColor: '#ffffff',
+              backgroundImage:
+                'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
+              backgroundSize: '20px 20px',
             }}
           >
             {/* Ungrouped cards */}
