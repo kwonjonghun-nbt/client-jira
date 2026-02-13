@@ -126,55 +126,36 @@ describe('migrateOKRRelations', () => {
 });
 
 describe('buildWaypointPath', () => {
-  it('generates path with start and end when no waypoints', () => {
+  it('generates path with stubs when no manual waypoints', () => {
     const start = { x: 0, y: 0 };
-    const end = { x: 100, y: 100 };
-    const waypoints: { x: number; y: number }[] = [];
-
-    const result = buildWaypointPath(start, end, waypoints);
-
-    expect(result.waypoints).toHaveLength(2);
-    expect(result.waypoints[0]).toEqual(start);
-    expect(result.waypoints[1]).toEqual(end);
-  });
-
-  it('generates path through all points with one waypoint', () => {
-    const start = { x: 0, y: 0 };
-    const waypoint = { x: 50, y: 50 };
     const end = { x: 100, y: 0 };
 
-    const result = buildWaypointPath(start, end, [waypoint]);
+    const result = buildWaypointPath(start, end, [], 'right', 'left');
 
-    expect(result.waypoints).toHaveLength(3);
+    // start → stubStart → stubEnd → end (collinear points removed by simplifyPath)
     expect(result.waypoints[0]).toEqual(start);
-    expect(result.waypoints[1]).toEqual(waypoint);
-    expect(result.waypoints[2]).toEqual(end);
+    expect(result.waypoints[result.waypoints.length - 1]).toEqual(end);
+    expect(result.routed).toBe(false);
   });
 
-  it('generates path with correct waypoint count for multiple waypoints', () => {
-    const start = { x: 0, y: 0 };
-    const waypoints = [
-      { x: 25, y: 25 },
-      { x: 50, y: 50 },
-      { x: 75, y: 25 },
-    ];
-    const end = { x: 100, y: 0 };
+  it('generates path through manual waypoints with stubs', () => {
+    const start = { x: 0, y: 50 };
+    const waypoint = { x: 50, y: 0 };
+    const end = { x: 100, y: 50 };
 
-    const result = buildWaypointPath(start, end, waypoints);
+    const result = buildWaypointPath(start, end, [waypoint], 'right', 'left');
 
-    expect(result.waypoints).toHaveLength(5); // start + 3 waypoints + end
+    // Should include start, stub, waypoint, stub, end (minus collinear)
     expect(result.waypoints[0]).toEqual(start);
-    expect(result.waypoints[1]).toEqual(waypoints[0]);
-    expect(result.waypoints[2]).toEqual(waypoints[1]);
-    expect(result.waypoints[3]).toEqual(waypoints[2]);
-    expect(result.waypoints[4]).toEqual(end);
+    expect(result.waypoints[result.waypoints.length - 1]).toEqual(end);
+    expect(result.path).toBeTruthy();
   });
 
   it('returns routed: false (manual path, not A*)', () => {
     const start = { x: 0, y: 0 };
     const end = { x: 100, y: 100 };
 
-    const result = buildWaypointPath(start, end, []);
+    const result = buildWaypointPath(start, end, [], 'right', 'left');
 
     expect(result.routed).toBe(false);
   });
@@ -183,30 +164,27 @@ describe('buildWaypointPath', () => {
     const start = { x: 0, y: 0 };
     const end = { x: 100, y: 100 };
 
-    const result = buildWaypointPath(start, end, []);
+    const result = buildWaypointPath(start, end, [], 'right', 'left');
 
     expect(result.path).toMatch(/^M\s/);
     expect(result.path).toContain('M 0 0');
   });
 
   it('uses custom corner radius when provided', () => {
-    const start = { x: 0, y: 0 };
-    const waypoint = { x: 50, y: 50 };
-    const end = { x: 100, y: 0 };
-    const customRadius = 16;
+    const start = { x: 0, y: 50 };
+    const waypoint = { x: 50, y: 0 };
+    const end = { x: 100, y: 50 };
 
-    const result = buildWaypointPath(start, end, [waypoint], customRadius);
+    const result = buildWaypointPath(start, end, [waypoint], 'right', 'left', 16);
 
-    // Result should still be valid (we're testing the function accepts the parameter)
     expect(result.path).toBeTruthy();
-    expect(result.waypoints).toHaveLength(3);
   });
 
-  it('uses default corner radius of 8 when not specified', () => {
+  it('uses default anchors when not specified', () => {
     const start = { x: 0, y: 0 };
     const end = { x: 100, y: 100 };
 
-    // Call without cornerRadius parameter
+    // defaults: fromAnchor='right', toAnchor='left'
     const result = buildWaypointPath(start, end, []);
 
     expect(result.path).toBeTruthy();

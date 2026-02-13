@@ -198,14 +198,14 @@ describe('waypointsToSVGPath', () => {
     expect(result).toBe('');
   });
 
-  it('generates path with C for 2 waypoints', () => {
+  it('generates path with L for 2 waypoints', () => {
     const waypoints = [
       { x: 0, y: 0 },
       { x: 100, y: 100 },
     ];
     const result = waypointsToSVGPath(waypoints, 8);
     expect(result).toContain('M');
-    expect(result).toContain('C');
+    expect(result).toContain('L');
   });
 
   it('generates path with Q curves at corners for 3+ waypoints', () => {

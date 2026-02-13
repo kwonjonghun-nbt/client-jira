@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, type RefObject } from 'react';
 import type { OKRData, ConnectionEndpointType, AnchorPosition } from '../../types/jira.types';
 import type { ArrowLine, UpdateOKR } from './okr-canvas.types';
 import { routeEdge, buildWaypointPath, type ObstacleRect } from '../../utils/edge-routing';
-import { toAbsoluteCoords } from './okr-canvas.types';
 import {
   getAnchorPoint,
   isRelationInKR,
@@ -59,7 +58,7 @@ export function useCanvasRelations(
       };
     };
 
-    // Collect all obstacle rects from element refs
+    // Collect obstacle rects from element refs (cards + groups already registered via setElementRef)
     const obstacles: ObstacleRect[] = [];
     elementRefs.forEach((el) => {
       const rect = el.getBoundingClientRect();
@@ -70,18 +69,6 @@ export function useCanvasRelations(
         h: rect.height * scaleInv,
       });
     });
-
-    // Also collect group rects from OKR data
-    const krGroups = okr.groups.filter((g) => g.keyResultId === krId);
-    for (const group of krGroups) {
-      const abs = toAbsoluteCoords(group.x ?? 0, group.y ?? 0, group.parentGroupId, krGroups);
-      obstacles.push({
-        x: abs.x,
-        y: abs.y,
-        w: group.w ?? 320,
-        h: group.h ?? 200,
-      });
-    }
 
     const newArrows: ArrowLine[] = [];
     for (const rel of okr.relations) {
@@ -102,7 +89,13 @@ export function useCanvasRelations(
 
       if (rel.waypoints && rel.waypoints.length > 0) {
         // Manual waypoints — no A* pathfinding
-        const routed = buildWaypointPath(startPos, endPos, rel.waypoints);
+        const routed = buildWaypointPath(
+          startPos,
+          endPos,
+          rel.waypoints,
+          rel.fromAnchor,
+          rel.toAnchor,
+        );
         path = routed.path;
         waypoints = routed.waypoints;
         hasManualWaypoints = true;
@@ -112,7 +105,14 @@ export function useCanvasRelations(
           !(Math.abs(o.x - fromRect.x) < 1 && Math.abs(o.y - fromRect.y) < 1 && Math.abs(o.w - fromRect.w) < 1 && Math.abs(o.h - fromRect.h) < 1) &&
           !(Math.abs(o.x - toRect.x) < 1 && Math.abs(o.y - toRect.y) < 1 && Math.abs(o.w - toRect.w) < 1 && Math.abs(o.h - toRect.h) < 1)
         );
-        const routed = routeEdge(startPos.x, startPos.y, endPos.x, endPos.y, edgeObstacles);
+        const routed = routeEdge(
+          startPos.x,
+          startPos.y,
+          endPos.x,
+          endPos.y,
+          edgeObstacles,
+          { fromAnchor: rel.fromAnchor, toAnchor: rel.toAnchor, fromRect, toRect },
+        );
         path = routed.path;
         waypoints = routed.waypoints;
       }
