@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
-import { normalizeType, statusBadgeClass } from '../src/renderer/utils/issue';
-import { formatRelativeTime } from '../src/renderer/utils/formatters';
+import { normalizeType, statusBadgeClass, getPriorityColor, getIssueTypeLabel, buildIssueUrl } from '../src/renderer/utils/issue';
+import { formatRelativeTime, formatDateSafe, formatDateShort } from '../src/renderer/utils/formatters';
+import { applyFilters, extractFilterOptions } from '../src/renderer/utils/issue-filters';
+import { getDescriptionTemplate, buildPrompt } from '../src/renderer/utils/issue-prompts';
 
 // ─── Filter logic (pure function equivalent of useFilters) ──────────────────
 
@@ -30,47 +32,6 @@ function makeIssue(overrides: Partial<NormalizedIssue> & { key: string }): Norma
     issueLinks: [],
     ...overrides,
   };
-}
-
-interface Filters {
-  project: string;
-  statuses: string[];
-  assignee: string;
-  search: string;
-}
-
-function applyFilters(issues: NormalizedIssue[], filters: Filters): NormalizedIssue[] {
-  let result = issues;
-
-  if (filters.project) {
-    result = result.filter((issue) => issue.key.startsWith(filters.project + '-'));
-  }
-
-  if (filters.statuses.length > 0) {
-    result = result.filter((issue) => filters.statuses.includes(issue.status));
-  }
-
-  if (filters.assignee) {
-    result = result.filter((issue) => issue.assignee === filters.assignee);
-  }
-
-  if (filters.search) {
-    const search = filters.search.toLowerCase();
-    result = result.filter(
-      (issue) =>
-        issue.key.toLowerCase().includes(search) ||
-        issue.summary.toLowerCase().includes(search),
-    );
-  }
-
-  return result;
-}
-
-function extractFilterOptions(issues: NormalizedIssue[]) {
-  const projects = [...new Set(issues.map((i) => i.key.split('-')[0]))].sort();
-  const statuses = [...new Set(issues.map((i) => i.status))].sort();
-  const assignees = [...new Set(issues.map((i) => i.assignee).filter(Boolean) as string[])].sort();
-  return { projects, statuses, assignees };
 }
 
 describe('이슈 필터 로직', () => {
@@ -432,5 +393,166 @@ describe('상태 배지 스타일', () => {
 
   it('알 수 없는 상태는 회색 배지를 반환한다', () => {
     expect(statusBadgeClass('unknown')).toContain('gray');
+  });
+});
+
+// ─── Priority color ─────────────────────────────────────────────────────────
+
+describe('우선순위 색상', () => {
+  it('각 우선순위에 해당하는 색상을 반환한다', () => {
+    expect(getPriorityColor('Highest')).toContain('red');
+    expect(getPriorityColor('High')).toContain('orange');
+    expect(getPriorityColor('Medium')).toContain('yellow');
+    expect(getPriorityColor('Low')).toContain('blue');
+    expect(getPriorityColor('Lowest')).toContain('gray');
+  });
+
+  it('null이면 기본 회색을 반환한다', () => {
+    expect(getPriorityColor(null)).toContain('gray');
+  });
+
+  it('알 수 없는 우선순위는 기본 회색을 반환한다', () => {
+    expect(getPriorityColor('Unknown')).toContain('gray');
+  });
+});
+
+// ─── Issue type label ───────────────────────────────────────────────────────
+
+describe('이슈 타입 라벨', () => {
+  it('정규화된 타입의 한글 라벨을 반환한다', () => {
+    expect(getIssueTypeLabel('epic', 'Epic')).toBe('에픽');
+    expect(getIssueTypeLabel('story', 'Story')).toBe('스토리');
+    expect(getIssueTypeLabel('task', 'Task')).toBe('작업');
+    expect(getIssueTypeLabel('sub-task', 'Sub-task')).toBe('하위작업');
+    expect(getIssueTypeLabel('bug', 'Bug')).toBe('버그');
+  });
+
+  it('알 수 없는 타입은 fallback을 반환한다', () => {
+    expect(getIssueTypeLabel('unknown', 'Custom Type')).toBe('Custom Type');
+  });
+});
+
+// ─── Issue URL builder ──────────────────────────────────────────────────────
+
+describe('이슈 URL 생성', () => {
+  it('baseUrl과 이슈 키로 URL을 생성한다', () => {
+    expect(buildIssueUrl('https://jira.example.com', 'PROJ-1')).toBe('https://jira.example.com/browse/PROJ-1');
+  });
+
+  it('baseUrl 끝의 슬래시를 제거한다', () => {
+    expect(buildIssueUrl('https://jira.example.com/', 'PROJ-1')).toBe('https://jira.example.com/browse/PROJ-1');
+    expect(buildIssueUrl('https://jira.example.com///', 'PROJ-1')).toBe('https://jira.example.com/browse/PROJ-1');
+  });
+
+  it('baseUrl이 없으면 null을 반환한다', () => {
+    expect(buildIssueUrl(null, 'PROJ-1')).toBeNull();
+    expect(buildIssueUrl(undefined, 'PROJ-1')).toBeNull();
+  });
+});
+
+// ─── Date formatters ────────────────────────────────────────────────────────
+
+describe('날짜 포맷 유틸', () => {
+  it('formatDateSafe는 null이면 "-"를 반환한다', () => {
+    expect(formatDateSafe(null)).toBe('-');
+  });
+
+  it('formatDateSafe는 날짜 문자열을 포맷한다', () => {
+    const result = formatDateSafe('2025-01-15T00:00:00Z');
+    expect(result).toContain('2025');
+    expect(result).toContain('01');
+    expect(result).toContain('15');
+  });
+
+  it('formatDateShort는 null이면 "-"를 반환한다', () => {
+    expect(formatDateShort(null)).toBe('-');
+  });
+
+  it('formatDateShort는 월/일만 표시한다', () => {
+    const result = formatDateShort('2025-06-15T00:00:00Z');
+    // Should NOT contain year
+    expect(result).not.toContain('2025');
+  });
+});
+
+// ─── Prompt builder ─────────────────────────────────────────────────────────
+
+describe('프롬프트 생성', () => {
+  it('getDescriptionTemplate는 bug 타입에 맞는 템플릿을 반환한다', () => {
+    const template = getDescriptionTemplate('Bug');
+    expect(template).toContain('현상');
+    expect(template).toContain('재현 순서');
+    expect(template).toContain('완료 조건');
+  });
+
+  it('getDescriptionTemplate는 epic 타입에 맞는 템플릿을 반환한다', () => {
+    const template = getDescriptionTemplate('Epic');
+    expect(template).toContain('목표');
+    expect(template).toContain('범위');
+    expect(template).toContain('성공 기준');
+  });
+
+  it('getDescriptionTemplate는 task 타입에 맞는 템플릿을 반환한다', () => {
+    const template = getDescriptionTemplate('Task');
+    expect(template).toContain('목적');
+    expect(template).toContain('작업 내용');
+  });
+
+  it('getDescriptionTemplate는 sub-task 타입에 맞는 템플릿을 반환한다', () => {
+    const template = getDescriptionTemplate('Sub-Task');
+    expect(template).toContain('작업 내용');
+    expect(template).toContain('완료 조건');
+  });
+
+  it('getDescriptionTemplate는 story를 기본 템플릿으로 반환한다', () => {
+    const template = getDescriptionTemplate('Story');
+    expect(template).toContain('배경');
+    expect(template).toContain('요구사항');
+  });
+
+  it('buildPrompt는 이슈 정보가 포함된 프롬프트를 생성한다', () => {
+    const issue = makeIssue({
+      key: 'PROJ-1',
+      summary: '테스트 이슈',
+      issueType: 'Task',
+      status: 'In Progress',
+      statusCategory: 'indeterminate',
+      priority: 'High',
+      assignee: 'Alice',
+    });
+    const prompt = buildPrompt(issue);
+    expect(prompt).toContain('PROJ-1');
+    expect(prompt).toContain('테스트 이슈');
+    expect(prompt).toContain('Task');
+    expect(prompt).toContain('In Progress');
+    expect(prompt).toContain('High');
+    expect(prompt).toContain('Alice');
+    expect(prompt).toContain('라벨 정의');
+    expect(prompt).toContain('요청사항');
+  });
+
+  it('buildPrompt는 description이 없으면 "(설명 없음)"을 포함한다', () => {
+    const issue = makeIssue({ key: 'PROJ-2', description: null });
+    const prompt = buildPrompt(issue);
+    expect(prompt).toContain('(설명 없음)');
+  });
+
+  it('buildPrompt는 선택적 필드가 있을 때 포함한다', () => {
+    const issue = makeIssue({
+      key: 'PROJ-3',
+      sprint: 'Sprint 5',
+      labels: ['FE-Feature', 'FE-Stability'],
+      components: ['web-app'],
+      parent: 'PROJ-1',
+      subtasks: ['PROJ-4', 'PROJ-5'],
+      dueDate: '2025-03-01',
+    });
+    const prompt = buildPrompt(issue);
+    expect(prompt).toContain('Sprint 5');
+    expect(prompt).toContain('FE-Feature, FE-Stability');
+    expect(prompt).toContain('web-app');
+    expect(prompt).toContain('PROJ-1');
+    expect(prompt).toContain('PROJ-4, PROJ-5');
+    expect(prompt).toContain('2025-03-01');
   });
 });

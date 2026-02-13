@@ -1,42 +1,21 @@
 import type { NormalizedIssue } from '../../types/jira.types';
 import { useUIStore } from '../../store/uiStore';
-import { normalizeType, issueTypeColors, statusBadgeClass } from '../../utils/issue';
+import { normalizeType, issueTypeColors, statusBadgeClass, getPriorityColor, getIssueTypeLabel, buildIssueUrl } from '../../utils/issue';
+import { formatDateShort } from '../../utils/formatters';
 
 interface IssueRowProps {
   issue: NormalizedIssue;
   baseUrl?: string;
 }
 
-const priorityColors: Record<string, string> = {
-  Highest: 'text-red-600',
-  High: 'text-orange-500',
-  Medium: 'text-yellow-500',
-  Low: 'text-blue-500',
-  Lowest: 'text-gray-400',
-};
-
-const issueTypeLabels: Record<string, string> = {
-  epic: '에픽',
-  story: '스토리',
-  task: '작업',
-  'sub-task': '하위작업',
-  bug: '버그',
-};
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
-}
-
 export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
   const statusColor = statusBadgeClass(issue.statusCategory);
-  const priorityColor = priorityColors[issue.priority || ''] || 'text-gray-400';
+  const priorityColor = getPriorityColor(issue.priority);
   const normalizedType = normalizeType(issue.issueType);
   const typeColor = issueTypeColors[normalizedType] ?? 'bg-gray-100 text-gray-700';
-  const typeLabel = issueTypeLabels[normalizedType] ?? issue.issueType;
-  const issueUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/browse/${issue.key}` : null;
+  const typeLabel = getIssueTypeLabel(normalizedType, issue.issueType);
+  const issueUrl = buildIssueUrl(baseUrl, issue.key);
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
@@ -87,7 +66,7 @@ export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
         {issue.storyPoints ?? '-'}
       </td>
       <td className="px-4 py-2.5 text-gray-500 text-xs">
-        {formatDate(issue.dueDate)}
+        {formatDateShort(issue.dueDate)}
       </td>
     </tr>
   );

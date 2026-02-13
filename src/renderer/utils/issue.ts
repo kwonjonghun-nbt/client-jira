@@ -40,3 +40,35 @@ export function statusBadgeClass(category: string): string {
       return 'bg-gray-100 text-gray-700';
   }
 }
+
+// 우선순위별 색상 클래스
+export const priorityColors: Record<string, string> = {
+  Highest: 'text-red-600',
+  High: 'text-orange-500',
+  Medium: 'text-yellow-500',
+  Low: 'text-blue-500',
+  Lowest: 'text-gray-400',
+};
+
+export function getPriorityColor(priority: string | null): string {
+  return priorityColors[priority || ''] || 'text-gray-400';
+}
+
+// 이슈 타입 한글 라벨
+export const issueTypeLabels: Record<string, string> = {
+  epic: '에픽',
+  story: '스토리',
+  task: '작업',
+  'sub-task': '하위작업',
+  bug: '버그',
+};
+
+export function getIssueTypeLabel(normalizedType: string, fallback: string): string {
+  return issueTypeLabels[normalizedType] ?? fallback;
+}
+
+// Jira 이슈 URL 생성
+export function buildIssueUrl(baseUrl: string | undefined | null, issueKey: string): string | null {
+  if (!baseUrl) return null;
+  return `${baseUrl.replace(/\/+$/, '')}/browse/${issueKey}`;
+}

@@ -36,3 +36,19 @@ export function formatDuration(ms: number): string {
   const remainingSeconds = seconds % 60;
   return `${minutes}분 ${remainingSeconds}초`;
 }
+
+// null-safe 날짜 포맷 (YYYY. MM. DD. format)
+export function formatDateSafe(dateStr: string | null): string {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+
+// 짧은 날짜 포맷 (MM/DD format)
+export function formatDateShort(dateStr: string | null): string {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
+}
