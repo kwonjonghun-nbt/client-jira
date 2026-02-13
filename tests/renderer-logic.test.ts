@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
+import { normalizeType, statusBadgeClass } from '../src/renderer/utils/issue';
+import { formatRelativeTime } from '../src/renderer/utils/formatters';
 
 // ─── Filter logic (pure function equivalent of useFilters) ──────────────────
 
@@ -308,18 +310,6 @@ describe('Objective 진행률 계산', () => {
 // ─── Dashboard helpers ──────────────────────────────────────────────────────
 
 describe('이슈타입 정규화', () => {
-  const issueTypeAliases: Record<string, string> = {
-    epic: 'epic', '에픽': 'epic',
-    story: 'story', '스토리': 'story', '새기능': 'story', '새 기능': 'story',
-    task: 'task', '작업': 'task',
-    'sub-task': 'sub-task', subtask: 'sub-task', '하위작업': 'sub-task', '하위 작업': 'sub-task',
-    bug: 'bug', '버그': 'bug',
-  };
-
-  function normalizeType(t: string): string {
-    return issueTypeAliases[t.toLowerCase()] ?? 'task';
-  }
-
   it('영문 타입을 정규화한다', () => {
     expect(normalizeType('Epic')).toBe('epic');
     expect(normalizeType('Story')).toBe('story');
@@ -346,41 +336,29 @@ describe('이슈타입 정규화', () => {
 });
 
 describe('상대 시간 표시', () => {
-  function relativeTime(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return '방금 전';
-    if (minutes < 60) return `${minutes}분 전`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}시간 전`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}일 전`;
-    return `${Math.floor(days / 30)}개월 전`;
-  }
-
   it('방금 전을 표시한다', () => {
     const now = new Date().toISOString();
-    expect(relativeTime(now)).toBe('방금 전');
+    expect(formatRelativeTime(now)).toBe('방금 전');
   });
 
   it('N분 전을 표시한다', () => {
     const tenMinAgo = new Date(Date.now() - 10 * 60000).toISOString();
-    expect(relativeTime(tenMinAgo)).toBe('10분 전');
+    expect(formatRelativeTime(tenMinAgo)).toBe('10분 전');
   });
 
   it('N시간 전을 표시한다', () => {
     const threeHoursAgo = new Date(Date.now() - 3 * 3600000).toISOString();
-    expect(relativeTime(threeHoursAgo)).toBe('3시간 전');
+    expect(formatRelativeTime(threeHoursAgo)).toBe('3시간 전');
   });
 
   it('N일 전을 표시한다', () => {
     const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString();
-    expect(relativeTime(fiveDaysAgo)).toBe('5일 전');
+    expect(formatRelativeTime(fiveDaysAgo)).toBe('5일 전');
   });
 
   it('N개월 전을 표시한다', () => {
     const twoMonthsAgo = new Date(Date.now() - 65 * 86400000).toISOString();
-    expect(relativeTime(twoMonthsAgo)).toBe('2개월 전');
+    expect(formatRelativeTime(twoMonthsAgo)).toBe('2개월 전');
   });
 });
 
@@ -440,12 +418,6 @@ describe('기간 필터 로직', () => {
 // ─── Status badge class ─────────────────────────────────────────────────────
 
 describe('상태 배지 스타일', () => {
-  function statusBadgeClass(category: string): string {
-    if (category === 'done') return 'bg-green-100 text-green-700';
-    if (category === 'indeterminate') return 'bg-blue-100 text-blue-700';
-    return 'bg-gray-100 text-gray-700';
-  }
-
   it('done 상태는 녹색 배지를 반환한다', () => {
     expect(statusBadgeClass('done')).toContain('green');
   });

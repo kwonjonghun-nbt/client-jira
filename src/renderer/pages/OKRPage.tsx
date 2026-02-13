@@ -3,6 +3,7 @@ import Spinner from '../components/common/Spinner';
 import { useOKR } from '../hooks/useOKR';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useUIStore } from '../store/uiStore';
+import { statusBadgeClass } from '../utils/issue';
 import type {
   OKRData,
   OKRKeyResult,
@@ -67,14 +68,6 @@ function calcObjectiveProgress(
     0,
   );
   return Math.round(total / krs.length);
-}
-
-// ─── Status badge helper ──────────────────────────────────────────────────────
-
-function statusBadgeClass(category: string): string {
-  if (category === 'done') return 'bg-green-100 text-green-700';
-  if (category === 'indeterminate') return 'bg-blue-100 text-blue-700';
-  return 'bg-gray-100 text-gray-700';
 }
 
 // ─── SVG Icon components ──────────────────────────────────────────────────────

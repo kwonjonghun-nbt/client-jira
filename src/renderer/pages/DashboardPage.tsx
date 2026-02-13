@@ -1,206 +1,37 @@
-import { useMemo, useState } from 'react';
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useChangelog } from '../hooks/useChangelog';
+import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useUIStore } from '../store/uiStore';
-import type { NormalizedIssue, ChangelogEntry } from '../types/jira.types';
+import { normalizeType, issueTypeColors, statusBadgeClass } from '../utils/issue';
+import { formatRelativeTime } from '../utils/formatters';
+import { DATE_PRESETS, changeTypeConfig, formatChangeValue } from '../utils/dashboard';
 
-const issueTypeAliases: Record<string, string> = {
-  epic: 'epic',
-  '에픽': 'epic',
-  story: 'story',
-  '스토리': 'story',
-  '새기능': 'story',
-  '새 기능': 'story',
-  task: 'task',
-  '작업': 'task',
-  'sub-task': 'sub-task',
-  subtask: 'sub-task',
-  '하위작업': 'sub-task',
-  '하위 작업': 'sub-task',
-  bug: 'bug',
-  '버그': 'bug',
+const typeLabel: Record<string, string> = {
+  epic: '에픽',
+  story: '스토리',
+  task: '작업',
+  'sub-task': '하위작업',
+  bug: '버그',
 };
-
-function normalizeType(t: string): string {
-  return issueTypeAliases[t.toLowerCase()] ?? 'task';
-}
-
-function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}일 전`;
-  return `${Math.floor(days / 30)}개월 전`;
-}
-
-function getWeekRange(): [Date, Date] {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // Monday as week start
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-
-  return [monday, sunday];
-}
-
-function formatDateISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-const DATE_PRESETS = [
-  { label: '7일', days: 7 },
-  { label: '30일', days: 30 },
-  { label: '90일', days: 90 },
-  { label: '전체', days: 0 },
-];
-
-const issueTypeColors: Record<string, string> = {
-  epic: 'bg-purple-100 text-purple-700',
-  story: 'bg-blue-100 text-blue-700',
-  task: 'bg-emerald-100 text-emerald-700',
-  'sub-task': 'bg-cyan-100 text-cyan-700',
-  bug: 'bg-red-100 text-red-700',
-};
-
-const changeTypeConfig: Record<ChangelogEntry['changeType'], { label: string; color: string }> = {
-  created: { label: '신규 생성', color: 'bg-green-100 text-green-700' },
-  status: { label: '상태 변경', color: 'bg-blue-100 text-blue-700' },
-  assignee: { label: '담당자 변경', color: 'bg-purple-100 text-purple-700' },
-  priority: { label: '우선순위 변경', color: 'bg-orange-100 text-orange-700' },
-  storyPoints: { label: 'SP 변경', color: 'bg-yellow-100 text-yellow-700' },
-  resolved: { label: '해결됨', color: 'bg-emerald-100 text-emerald-700' },
-};
-
-function formatChangeValue(entry: ChangelogEntry): string {
-  if (entry.changeType === 'created') return '신규 생성';
-  if (entry.changeType === 'resolved') return `해결: ${entry.newValue}`;
-  const old = entry.oldValue ?? '(없음)';
-  const next = entry.newValue ?? '(없음)';
-  return `${old} → ${next}`;
-}
 
 export default function DashboardPage() {
   const { data, isLoading } = useJiraIssues();
   const { data: changelog } = useChangelog();
   const setPage = useUIStore((s) => s.setPage);
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
-
-  const [activePreset, setActivePreset] = useState(30);
-  const [dateStart, setDateStart] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return formatDateISO(d);
-  });
-  const [dateEnd, setDateEnd] = useState(() => formatDateISO(new Date()));
-
-  const applyDatePreset = (days: number) => {
-    setActivePreset(days);
-    if (days === 0) {
-      setDateStart('');
-      setDateEnd('');
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - days);
-      setDateStart(formatDateISO(start));
-      setDateEnd(formatDateISO(end));
-    }
-  };
-
-  const filteredIssues = useMemo(() => {
-    if (!data) return [];
-    if (!dateStart && !dateEnd) return data.issues;
-    const startMs = dateStart ? new Date(dateStart).getTime() : 0;
-    const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
-
-    return data.issues.filter((issue) => {
-      const createdMs = new Date(issue.created).getTime();
-      const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
-      const createdInRange = createdMs >= startMs && createdMs <= endMs;
-      const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;
-      const spansRange = dueMs !== null && createdMs <= startMs && dueMs >= endMs;
-      return createdInRange || dueInRange || spansRange;
-    });
-  }, [data, dateStart, dateEnd]);
-
-  const stats = useMemo(() => {
-    if (!data) return null;
-    const issues = filteredIssues;
-
-    const totalCount = issues.length;
-    const inProgressCount = issues.filter(
-      (i) => i.statusCategory === 'indeterminate'
-    ).length;
-    const doneCount = issues.filter((i) => i.statusCategory === 'done').length;
-    const newCount = issues.filter((i) => i.statusCategory === 'new').length;
-
-    // Due this week
-    const [weekStart, weekEnd] = getWeekRange();
-    const dueThisWeek = issues
-      .filter((i) => {
-        if (!i.dueDate) return false;
-        const due = new Date(i.dueDate);
-        return due >= weekStart && due <= weekEnd;
-      })
-      .sort(
-        (a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
-      )
-      .slice(0, 10);
-
-    // Workload by assignee (non-done issues only)
-    const workloadMap = new Map<string, number>();
-    issues
-      .filter((i) => i.statusCategory !== 'done')
-      .forEach((i) => {
-        const assignee = i.assignee || '(미할당)';
-        workloadMap.set(assignee, (workloadMap.get(assignee) || 0) + 1);
-      });
-    const workload = Array.from(workloadMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
-    const maxWorkload = Math.max(...workload.map((w) => w.count), 1);
-
-    // Recently updated
-    const recentlyUpdated = [...issues]
-      .sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime())
-      .slice(0, 8);
-
-    // Issue type distribution
-    const typeMap = new Map<string, number>();
-    issues.forEach((i) => {
-      const normalized = normalizeType(i.issueType);
-      typeMap.set(normalized, (typeMap.get(normalized) || 0) + 1);
-    });
-    const typeDistribution = Array.from(typeMap.entries()).map(([type, count]) => ({
-      type,
-      count,
-    }));
-
-    return {
-      totalCount,
-      inProgressCount,
-      doneCount,
-      newCount,
-      dueThisWeek,
-      workload,
-      maxWorkload,
-      recentlyUpdated,
-      typeDistribution,
-    };
-  }, [data, filteredIssues]);
+  const {
+    filteredIssues,
+    stats,
+    dateStart,
+    dateEnd,
+    activePreset,
+    applyDatePreset,
+    setDateStart,
+    setDateEnd,
+  } = useDashboardStats(data?.issues);
 
   if (isLoading) {
     return (
@@ -262,14 +93,14 @@ export default function DashboardPage() {
           <input
             type="date"
             value={dateStart}
-            onChange={(e) => { setDateStart(e.target.value); setActivePreset(-1); }}
+            onChange={(e) => { setDateStart(e.target.value); }}
             className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
           />
           <span className="text-xs text-gray-400">~</span>
           <input
             type="date"
             value={dateEnd}
-            onChange={(e) => { setDateEnd(e.target.value); setActivePreset(-1); }}
+            onChange={(e) => { setDateEnd(e.target.value); }}
             className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
           />
           <span className="text-xs text-gray-400 ml-2">
@@ -405,15 +236,7 @@ export default function DashboardPage() {
                       <span className="text-xs font-mono text-blue-600">
                         {issue.key}
                       </span>
-                      <span
-                        className={`px-2 py-0.5 text-xs rounded ${
-                          issue.statusCategory === 'done'
-                            ? 'bg-green-100 text-green-700'
-                            : issue.statusCategory === 'indeterminate'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
+                      <span className={`px-2 py-0.5 text-xs rounded ${statusBadgeClass(issue.statusCategory)}`}>
                         {issue.status}
                       </span>
                     </div>
@@ -488,17 +311,9 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-800 truncate">{issue.summary}</p>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      <span>{relativeTime(issue.updated)}</span>
+                      <span>{formatRelativeTime(issue.updated)}</span>
                       <span>·</span>
-                      <span
-                        className={`px-1.5 py-0.5 rounded ${
-                          issue.statusCategory === 'done'
-                            ? 'bg-green-100 text-green-700'
-                            : issue.statusCategory === 'indeterminate'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
+                      <span className={`px-1.5 py-0.5 rounded ${statusBadgeClass(issue.statusCategory)}`}>
                         {issue.status}
                       </span>
                     </div>
@@ -518,13 +333,6 @@ export default function DashboardPage() {
             {stats.typeDistribution.map((item) => {
               const colorClass =
                 issueTypeColors[item.type] || 'bg-gray-100 text-gray-700';
-              const typeLabel: Record<string, string> = {
-                epic: '에픽',
-                story: '스토리',
-                task: '작업',
-                'sub-task': '하위작업',
-                bug: '버그',
-              };
 
               return (
                 <div
@@ -574,7 +382,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-500">
                         <span>{formatChangeValue(entry)}</span>
-                        <span>· {relativeTime(entry.detectedAt)}</span>
+                        <span>· {formatRelativeTime(entry.detectedAt)}</span>
                       </div>
                     </div>
                   </div>

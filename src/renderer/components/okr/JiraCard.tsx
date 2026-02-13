@@ -1,10 +1,5 @@
 import type { OKRLink, NormalizedIssue } from '../../types/jira.types';
-
-function statusBadgeClass(category: string): string {
-  if (category === 'done') return 'bg-green-100 text-green-700';
-  if (category === 'indeterminate') return 'bg-blue-100 text-blue-700';
-  return 'bg-gray-100 text-gray-700';
-}
+import { statusBadgeClass } from '../../utils/issue';
 
 interface JiraCardProps {
   link: OKRLink;

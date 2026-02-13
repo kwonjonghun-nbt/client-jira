@@ -129,18 +129,7 @@ function computeRange(issues: NormalizedIssue[]): { rangeStart: Date; rangeEnd: 
   return { rangeStart: start, rangeEnd: futureEnd };
 }
 
-// 한글/영문 이슈타입을 정규화된 키로 변환
-const issueTypeAliases: Record<string, string> = {
-  epic: 'epic', '에픽': 'epic',
-  story: 'story', '스토리': 'story', '새기능': 'story', '새 기능': 'story',
-  task: 'task', '작업': 'task',
-  'sub-task': 'sub-task', subtask: 'sub-task', '하위작업': 'sub-task', '하위 작업': 'sub-task',
-  bug: 'bug', '버그': 'bug',
-};
-
-function normalizeType(issueType: string): string {
-  return issueTypeAliases[issueType.toLowerCase()] ?? 'task';
-}
+import { normalizeType } from '../../utils/issue';
 
 const issueTypeIcons: Record<string, string> = {
   epic: '⚡',
