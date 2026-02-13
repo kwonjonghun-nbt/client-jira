@@ -1,60 +1,24 @@
-import { useRef, useCallback, useEffect, useState } from 'react';
 import { useTerminalStore, type AIType } from '../../store/terminalStore';
 import TerminalPanel from './TerminalPanel';
+import { useResizablePanel } from '../../hooks/useResizablePanel';
 
 const AI_LABELS: Record<AIType, { name: string; color: string; activeColor: string }> = {
   claude: { name: 'Claude', color: 'bg-purple-100 text-purple-700', activeColor: 'bg-purple-500' },
   gemini: { name: 'Gemini', color: 'bg-blue-100 text-blue-700', activeColor: 'bg-blue-500' },
 };
 
-const MIN_WIDTH = 320;
-const MAX_WIDTH = 900;
-const DEFAULT_WIDTH = 480;
-
 export default function ClaudeTerminalPanel() {
   const isOpen = useTerminalStore((s) => s.isOpen);
   const close = useTerminalStore((s) => s.closeTerminal);
   const aiType = useTerminalStore((s) => s.aiType);
   const setAIType = useTerminalStore((s) => s.setAIType);
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const dragging = useRef(false);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
 
-  const onMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      dragging.current = true;
-      startX.current = e.clientX;
-      startWidth.current = width;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    },
-    [width],
-  );
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragging.current) return;
-      const delta = startX.current - e.clientX;
-      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + delta));
-      setWidth(newWidth);
-    };
-
-    const onMouseUp = () => {
-      if (!dragging.current) return;
-      dragging.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-  }, []);
+  const { width, onMouseDown } = useResizablePanel({
+    defaultWidth: 480,
+    minWidth: 320,
+    maxWidth: 900,
+    side: 'left',
+  });
 
   if (!isOpen) return null;
 

@@ -1,39 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Spinner from '../components/common/Spinner';
-import { useLabelNotes } from '../hooks/useLabelNotes';
 import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useLabelNotesPage } from '../hooks/useLabelNotesPage';
 
 export default function LabelNotesPage() {
-  const { notes, isLoading, saveNote, deleteNote } = useLabelNotes();
   const { data } = useJiraIssues();
-  const [newLabel, setNewLabel] = useState('');
-
-  // Jira에 실제 존재하는 라벨 Set
-  const jiraLabels = useMemo(() => {
-    if (!data?.issues) return new Set<string>();
-    const labels = new Set<string>();
-    for (const issue of data.issues) {
-      for (const label of issue.labels) {
-        labels.add(label);
-      }
-    }
-    return labels;
-  }, [data]);
-
-  const handleAdd = () => {
-    const trimmed = newLabel.trim();
-    if (!trimmed) return;
-    if (notes.some((n) => n.label === trimmed)) return;
-    saveNote(trimmed, '');
-    setNewLabel('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAdd();
-    }
-  };
+  const {
+    notes,
+    isLoading,
+    saveNote,
+    deleteNote,
+    newLabel,
+    setNewLabel,
+    jiraLabels,
+    handleAdd,
+    handleKeyDown,
+  } = useLabelNotesPage(data?.issues);
 
   if (isLoading) {
     return (

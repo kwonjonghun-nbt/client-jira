@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react';
 import IssueFilters from '../components/issue/IssueFilters';
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
@@ -6,28 +5,9 @@ import Spinner from '../components/common/Spinner';
 import DonutChart, { getSegmentColor } from '../components/stats/DonutChart';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useFilters } from '../hooks/useFilters';
+import { useStatsPage } from '../hooks/useStatsPage';
 import { useUIStore } from '../store/uiStore';
-
-type ViewMode = 'table' | 'chart';
-
-interface LabelStat {
-  label: string;
-  total: number;
-  completed: number;
-  incomplete: number;
-  rate: number;
-}
-
-const PRESETS = [
-  { label: '7일', days: 7 },
-  { label: '30일', days: 30 },
-  { label: '90일', days: 90 },
-  { label: '전체', days: 0 },
-];
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+import { DATE_PRESETS } from '../utils/dashboard';
 
 export default function StatsPage() {
   const { data, isLoading, error } = useJiraIssues();
@@ -35,76 +15,17 @@ export default function StatsPage() {
   const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
   const setPage = useUIStore((s) => s.setPage);
 
-  const now = new Date();
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 30);
-    return formatDate(d);
-  });
-  const [endDate, setEndDate] = useState(() => formatDate(now));
-
-  const applyPreset = (days: number) => {
-    if (days === 0) {
-      setStartDate('');
-      setEndDate('');
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - days);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(end));
-    }
-  };
-
-  const labelStats = useMemo(() => {
-    const startMs = startDate ? new Date(startDate).getTime() : 0;
-    const endMs = endDate ? new Date(endDate + 'T23:59:59').getTime() : Infinity;
-
-    const statsMap = new Map<string, { total: number; completed: number }>();
-
-    for (const issue of filteredIssues) {
-      const createdMs = new Date(issue.created).getTime();
-      if (createdMs < startMs || createdMs > endMs) continue;
-
-      const labels = issue.labels.length > 0 ? issue.labels : ['(없음)'];
-      const isDone = issue.statusCategory === 'done';
-      const updatedMs = new Date(issue.updated).getTime();
-      const isCompletedInRange = isDone && updatedMs >= startMs && updatedMs <= endMs;
-
-      for (const label of labels) {
-        const existing = statsMap.get(label) ?? { total: 0, completed: 0 };
-        existing.total += 1;
-        if (isCompletedInRange) existing.completed += 1;
-        statsMap.set(label, existing);
-      }
-    }
-
-    const result: LabelStat[] = [];
-    for (const [label, stat] of statsMap) {
-      result.push({
-        label,
-        total: stat.total,
-        completed: stat.completed,
-        incomplete: stat.total - stat.completed,
-        rate: stat.total > 0 ? (stat.completed / stat.total) * 100 : 0,
-      });
-    }
-
-    result.sort((a, b) => b.total - a.total);
-    return result;
-  }, [filteredIssues, startDate, endDate]);
-
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-
-  const summary = useMemo(() => {
-    let totalIssues = 0;
-    let totalCompleted = 0;
-    for (const s of labelStats) {
-      totalIssues += s.total;
-      totalCompleted += s.completed;
-    }
-    return { labelCount: labelStats.length, totalIssues, totalCompleted };
-  }, [labelStats]);
+  const {
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    viewMode,
+    setViewMode,
+    applyPreset,
+    labelStats,
+    summary,
+  } = useStatsPage(filteredIssues);
 
   if (isLoading && !data) {
     return (
@@ -161,7 +82,7 @@ export default function StatsPage() {
             onToggleStatus={toggleStatus}
           />
           <div className="flex items-center gap-2 shrink-0">
-            {PRESETS.map((p) => (
+            {DATE_PRESETS.map((p) => (
               <button
                 key={p.label}
                 type="button"

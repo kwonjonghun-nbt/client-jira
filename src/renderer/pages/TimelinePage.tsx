@@ -1,128 +1,47 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
 import TimelineChart from '../components/timeline/TimelineChart';
-import type { ViewMode } from '../components/timeline/TimelineHeader';
 import IssueFilters from '../components/issue/IssueFilters';
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useFilters } from '../hooks/useFilters';
+import { useTimelineControls } from '../hooks/useTimelineControls';
 import { useUIStore } from '../store/uiStore';
-
-const VIEW_MODE_OPTIONS: { value: ViewMode; label: string }[] = [
-  { value: 'month', label: '월' },
-  { value: 'week', label: '주' },
-];
-
-const ZOOM_MIN = 0.25;
-const ZOOM_MAX = 4;
-const ZOOM_STEP = 0.25;
-
-const DATE_PRESETS = [
-  { label: '1개월', days: 30 },
-  { label: '3개월', days: 90 },
-  { label: '6개월', days: 180 },
-  { label: '전체', days: 0 },
-];
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+import { VIEW_MODE_OPTIONS, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from '../utils/timeline';
+import { DATE_PRESETS } from '../utils/dashboard';
 
 export default function TimelinePage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [zoom, setZoom] = useState(1);
-  const [scrollToTodayTrigger, setScrollToTodayTrigger] = useState(1);
-  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
-  const [hiddenRowTypes, setHiddenRowTypes] = useState<Set<string>>(new Set());
-  const [activePreset, setActivePreset] = useState(30);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [controlsCollapsed, setControlsCollapsed] = useState(false);
-  const settingsRef = useRef<HTMLDivElement>(null);
-  const [dateStart, setDateStart] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return formatDate(d);
-  });
-  const [dateEnd, setDateEnd] = useState(() => formatDate(new Date()));
   const { data, isLoading, error } = useJiraIssues();
   const issues = data?.issues ?? [];
   const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
+  const {
+    viewMode,
+    setViewMode,
+    zoom,
+    setZoom,
+    scrollToTodayTrigger,
+    setScrollToTodayTrigger,
+    hiddenTypes,
+    hiddenRowTypes,
+    activePreset,
+    setActivePreset,
+    settingsOpen,
+    setSettingsOpen,
+    controlsCollapsed,
+    setControlsCollapsed,
+    dateStart,
+    setDateStart,
+    dateEnd,
+    setDateEnd,
+    applyDatePreset,
+    toggleType,
+    toggleRowType,
+    settingsRef,
+    dateFilteredIssues,
+    displayedIssues,
+    issueTypeOptions,
+  } = useTimelineControls(filteredIssues);
   const setPage = useUIStore((s) => s.setPage);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const applyDatePreset = (days: number) => {
-    setActivePreset(days);
-    if (days === 0) {
-      setDateStart('');
-      setDateEnd('');
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - days);
-      setDateStart(formatDate(start));
-      setDateEnd(formatDate(end));
-    }
-  };
-
-  // 기간 필터: created 또는 dueDate가 선택 기간과 겹치면 표시
-  const dateFilteredIssues = useMemo(() => {
-    if (!dateStart && !dateEnd) return filteredIssues;
-    const startMs = dateStart ? new Date(dateStart).getTime() : 0;
-    const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
-
-    return filteredIssues.filter((issue) => {
-      const createdMs = new Date(issue.created).getTime();
-      const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
-      // created가 기간 안에 있거나, dueDate가 기간 안에 있거나, 이슈 기간이 선택 기간을 감싸는 경우
-      const createdInRange = createdMs >= startMs && createdMs <= endMs;
-      const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;
-      const spansRange = dueMs !== null && createdMs <= startMs && dueMs >= endMs;
-      return createdInRange || dueInRange || spansRange;
-    });
-  }, [filteredIssues, dateStart, dateEnd]);
-
-  const displayedIssues = useMemo(() => {
-    if (hiddenRowTypes.size === 0) return dateFilteredIssues;
-    return dateFilteredIssues.filter((issue) => !hiddenRowTypes.has(issue.issueType.toLowerCase()));
-  }, [dateFilteredIssues, hiddenRowTypes]);
-
-  // 실제 데이터에 존재하는 이슈타입 옵션 (중복 제거)
-  const issueTypeOptions = useMemo(() => {
-    const types = new Map<string, string>();
-    for (const issue of dateFilteredIssues) {
-      const key = issue.issueType.toLowerCase();
-      if (!types.has(key)) types.set(key, issue.issueType);
-    }
-    return Array.from(types.entries()).map(([key, name]) => ({ value: key, label: name }));
-  }, [dateFilteredIssues]);
-
-  const toggleType = (typeKey: string) => {
-    setHiddenTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(typeKey)) next.delete(typeKey);
-      else next.add(typeKey);
-      return next;
-    });
-  };
-
-  const toggleRowType = (typeKey: string) => {
-    setHiddenRowTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(typeKey)) next.delete(typeKey);
-      else next.add(typeKey);
-      return next;
-    });
-  };
 
   if (isLoading && !data) {
     return (
