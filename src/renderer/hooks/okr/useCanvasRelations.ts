@@ -190,7 +190,7 @@ export function useCanvasRelations(
         }));
       }
       setConnectFrom(null);
-      setConnectMode(false);
+      // 연결 모드 유지 — 연속으로 여러 관계를 추가할 수 있음
     }
   }, [connectMode, connectFrom, okr.relations, updateOKR]);
 
