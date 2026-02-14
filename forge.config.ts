@@ -44,6 +44,18 @@ const config: ForgeConfig = {
       } else {
         console.warn('[forge hook] node-pty not found at', src);
       }
+
+      // Generate app-update.yml for electron-updater (Forge doesn't create it automatically)
+      const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
+      const updateYml = [
+        'provider: github',
+        'owner: kwonjonghun-nbt',
+        'repo: client-jira',
+        `updaterCacheDirName: ${pkg.name}`,
+      ].join('\n');
+      const resourcesDir = path.resolve(buildPath, '..');
+      fs.writeFileSync(path.join(resourcesDir, 'app-update.yml'), updateYml);
+      console.log('[forge hook] Generated app-update.yml in', resourcesDir);
     },
   },
   makers: [
