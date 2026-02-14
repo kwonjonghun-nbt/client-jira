@@ -10,11 +10,7 @@ export function registerUpdaterHandlers(services: AppServices): void {
       }
       return;
     }
-    await services.updater.checkForUpdates();
-  });
-
-  ipcMain.handle('updater:download', async () => {
-    await services.updater?.downloadUpdate();
+    services.updater.checkForUpdates();
   });
 
   ipcMain.handle('updater:install', () => {

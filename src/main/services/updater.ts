@@ -1,6 +1,8 @@
-import { autoUpdater } from 'electron-updater';
+import { autoUpdater } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { logger } from '../utils/logger';
+
+const FEED_URL = 'https://github.com/kwonjonghun-nbt/client-jira/releases/latest/download';
 
 export class UpdaterService {
   private win: BrowserWindow;
@@ -8,12 +10,11 @@ export class UpdaterService {
   constructor(win: BrowserWindow) {
     this.win = win;
 
-    autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.setFeedURL({ url: FEED_URL, serverType: 'json' });
 
-    autoUpdater.on('update-available', (info) => {
-      logger.info(`Update available: v${info.version}`);
-      this.send('updater:update-available', { version: info.version });
+    autoUpdater.on('update-available', () => {
+      logger.info('Update available, downloading...');
+      this.send('updater:update-available', {});
     });
 
     autoUpdater.on('update-not-available', () => {
@@ -21,17 +22,9 @@ export class UpdaterService {
       this.send('updater:update-not-available', {});
     });
 
-    autoUpdater.on('download-progress', (progress) => {
-      this.send('updater:download-progress', {
-        percent: Math.round(progress.percent),
-        transferred: progress.transferred,
-        total: progress.total,
-      });
-    });
-
-    autoUpdater.on('update-downloaded', (info) => {
-      logger.info(`Update downloaded: v${info.version}`);
-      this.send('updater:update-downloaded', { version: info.version });
+    autoUpdater.on('update-downloaded', (_event, releaseNotes, releaseName) => {
+      logger.info(`Update downloaded: ${releaseName}`);
+      this.send('updater:update-downloaded', { version: releaseName });
     });
 
     autoUpdater.on('error', (error) => {
@@ -40,12 +33,8 @@ export class UpdaterService {
     });
   }
 
-  async checkForUpdates(): Promise<void> {
-    await autoUpdater.checkForUpdates();
-  }
-
-  async downloadUpdate(): Promise<void> {
-    await autoUpdater.downloadUpdate();
+  checkForUpdates(): void {
+    autoUpdater.checkForUpdates();
   }
 
   quitAndInstall(): void {

@@ -125,25 +125,16 @@ export default function SettingsPage() {
           )}
 
           {updater.status === 'available' && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-blue-600">
-                새 버전 v{updater.version} 사용 가능
-              </span>
-              <Button variant="primary" onClick={updater.downloadUpdate}>
-                다운로드
-              </Button>
-            </div>
-          )}
-
-          {updater.status === 'downloading' && (
             <span className="text-sm text-blue-600">
-              다운로드 중... {updater.progress}%
+              새 버전 발견, 다운로드 중...
             </span>
           )}
 
           {updater.status === 'downloaded' && (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-green-600">업데이트 준비 완료</span>
+              <span className="text-sm text-green-600">
+                {updater.version ? `v${updater.version} ` : ''}업데이트 준비 완료
+              </span>
               <Button variant="primary" onClick={updater.installAndRestart}>
                 재시작
               </Button>

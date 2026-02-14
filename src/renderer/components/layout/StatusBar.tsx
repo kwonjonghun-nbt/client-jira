@@ -27,18 +27,8 @@ export default function StatusBar() {
       </div>
 
       {updater.status === 'available' && (
-        <button
-          onClick={updater.downloadUpdate}
-          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 cursor-pointer"
-        >
-          새 버전 v{updater.version} 사용 가능 — 다운로드
-        </button>
-      )}
-
-      {updater.status === 'downloading' && (
-        <span className="flex items-center gap-1 text-blue-600">
-          <div className="w-3 h-3 border-[1.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
-          업데이트 다운로드 중... {updater.progress}%
+        <span className="text-blue-600">
+          새 버전 다운로드 중...
         </span>
       )}
 
