@@ -18,6 +18,7 @@ export class UpdaterService {
 
     autoUpdater.on('update-not-available', () => {
       logger.info('No updates available');
+      this.send('updater:update-not-available', {});
     });
 
     autoUpdater.on('download-progress', (progress) => {

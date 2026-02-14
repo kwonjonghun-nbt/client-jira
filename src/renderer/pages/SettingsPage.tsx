@@ -9,6 +9,7 @@ import Spinner from '../components/common/Spinner';
 import { useSettings } from '../hooks/useSettings';
 import { useToken } from '../hooks/useToken';
 import { useTestConnection } from '../hooks/useSettings';
+import { useUpdater } from '../hooks/useUpdater';
 import { DEFAULT_SETTINGS } from '../types/settings.types';
 import type { Settings } from '../types/settings.types';
 
@@ -16,6 +17,7 @@ export default function SettingsPage() {
   const { settings: saved, isLoading, saveSettings, isSaving } = useSettings();
   const tokenManager = useToken();
   const testConnection = useTestConnection();
+  const updater = useUpdater();
   const [draft, setDraft] = useState<Settings>(DEFAULT_SETTINGS);
   const [saveMessage, setSaveMessage] = useState('');
 
@@ -105,6 +107,53 @@ export default function SettingsPage() {
             setDraft({ ...draft, storage: { ...draft.storage, retentionDays } })
           }
         />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold text-gray-800 border-b pb-2">앱 업데이트</h2>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="secondary"
+            onClick={updater.checkForUpdates}
+            isLoading={updater.status === 'checking'}
+          >
+            업데이트 확인
+          </Button>
+
+          {updater.status === 'not-available' && (
+            <span className="text-sm text-gray-500">현재 최신 버전입니다.</span>
+          )}
+
+          {updater.status === 'available' && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-blue-600">
+                새 버전 v{updater.version} 사용 가능
+              </span>
+              <Button variant="primary" onClick={updater.downloadUpdate}>
+                다운로드
+              </Button>
+            </div>
+          )}
+
+          {updater.status === 'downloading' && (
+            <span className="text-sm text-blue-600">
+              다운로드 중... {updater.progress}%
+            </span>
+          )}
+
+          {updater.status === 'downloaded' && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-green-600">업데이트 준비 완료</span>
+              <Button variant="primary" onClick={updater.installAndRestart}>
+                재시작
+              </Button>
+            </div>
+          )}
+
+          {updater.status === 'error' && (
+            <span className="text-sm text-red-500">업데이트 확인에 실패했습니다.</span>
+          )}
+        </div>
       </section>
 
       <div className="flex items-center gap-4 pt-4 border-t">

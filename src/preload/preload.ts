@@ -74,6 +74,13 @@ const api = {
         ipcRenderer.removeListener('updater:update-downloaded', handler);
       };
     },
+    onUpdateNotAvailable: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('updater:update-not-available', handler);
+      return () => {
+        ipcRenderer.removeListener('updater:update-not-available', handler);
+      };
+    },
     onError: (callback: (error: { message: string }) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, error: { message: string }) =>
         callback(error);

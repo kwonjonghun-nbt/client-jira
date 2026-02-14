@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error';
+type UpdateStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
 
 interface UpdaterState {
   status: UpdateStatus;
@@ -25,6 +25,9 @@ export function useUpdater() {
       }),
       window.electronAPI.updater.onUpdateDownloaded((info) => {
         setState({ status: 'downloaded', version: info.version, progress: 100 });
+      }),
+      window.electronAPI.updater.onUpdateNotAvailable(() => {
+        setState((prev) => ({ ...prev, status: 'not-available' }));
       }),
       window.electronAPI.updater.onError(() => {
         setState((prev) => ({ ...prev, status: 'error' }));
