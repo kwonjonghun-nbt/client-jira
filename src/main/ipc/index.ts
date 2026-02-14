@@ -4,6 +4,7 @@ import { registerSettingsHandlers } from './settings.handlers';
 import { registerStorageHandlers } from './storage.handlers';
 import { registerSyncHandlers } from './sync.handlers';
 import { registerTerminalHandlers } from './terminal.handlers';
+import { registerUpdaterHandlers } from './updater.handlers';
 import type { AppServices } from '../services/types';
 
 export function registerAllHandlers(services: AppServices): void {
@@ -12,6 +13,7 @@ export function registerAllHandlers(services: AppServices): void {
   registerStorageHandlers(services);
   registerSyncHandlers(services);
   registerTerminalHandlers(services);
+  registerUpdaterHandlers(services);
 
   ipcMain.handle('shell:open-external', (_event, url: string) => {
     return shell.openExternal(url);

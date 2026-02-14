@@ -20,6 +20,7 @@ const services: AppServices = {
   sync: null,
   scheduler: null,
   terminal: null,
+  updater: null,
 };
 
 const createWindow = (): BrowserWindow => {
@@ -146,6 +147,13 @@ app.whenReady().then(async () => {
   // Create window (renderer can now safely load settings)
   const mainWindow = createWindow();
   services.mainWindow = mainWindow;
+
+  // Initialize auto-updater (production only)
+  if (!MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    const { UpdaterService } = await import('./services/updater');
+    services.updater = new UpdaterService(mainWindow);
+    services.updater.checkForUpdates();
+  }
 
   // Initialize network-dependent services (Jira, sync, scheduler)
   await initializeNetworkServices();

@@ -46,6 +46,43 @@ const api = {
       };
     },
   },
+  updater: {
+    checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+    downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+    installAndRestart: () => ipcRenderer.invoke('updater:install'),
+    onUpdateAvailable: (callback: (info: { version: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, info: { version: string }) =>
+        callback(info);
+      ipcRenderer.on('updater:update-available', handler);
+      return () => {
+        ipcRenderer.removeListener('updater:update-available', handler);
+      };
+    },
+    onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: { percent: number; transferred: number; total: number }) =>
+        callback(progress);
+      ipcRenderer.on('updater:download-progress', handler);
+      return () => {
+        ipcRenderer.removeListener('updater:download-progress', handler);
+      };
+    },
+    onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, info: { version: string }) =>
+        callback(info);
+      ipcRenderer.on('updater:update-downloaded', handler);
+      return () => {
+        ipcRenderer.removeListener('updater:update-downloaded', handler);
+      };
+    },
+    onError: (callback: (error: { message: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, error: { message: string }) =>
+        callback(error);
+      ipcRenderer.on('updater:error', handler);
+      return () => {
+        ipcRenderer.removeListener('updater:error', handler);
+      };
+    },
+  },
   terminal: {
     create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) =>
       ipcRenderer.invoke('terminal:create', aiType, initialPrompt, cols, rows),

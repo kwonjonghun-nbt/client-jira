@@ -37,6 +37,15 @@ export interface ElectronAPI {
   shell: {
     openExternal: (url: string) => Promise<void>;
   };
+  updater: {
+    checkForUpdates: () => Promise<void>;
+    downloadUpdate: () => Promise<void>;
+    installAndRestart: () => Promise<void>;
+    onUpdateAvailable: (callback: (info: { version: string }) => void) => () => void;
+    onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => () => void;
+    onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
+    onError: (callback: (error: { message: string }) => void) => () => void;
+  };
   terminal: {
     create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) => Promise<string>;
     write: (id: string, data: string) => Promise<void>;

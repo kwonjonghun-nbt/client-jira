@@ -12,4 +12,5 @@ export interface AppServices {
   sync: any;
   scheduler: any;
   terminal: any;
+  updater: any;
 }
