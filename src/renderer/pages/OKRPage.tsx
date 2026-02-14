@@ -944,7 +944,71 @@ export default function OKRPage() {
 
   // ── Export OKR as JSON ───────────────────────────────────────────────────
   const handleExportOKR = useCallback(() => {
-    const json = JSON.stringify(okr, null, 2);
+    const vtMap = new Map(okr.virtualTickets.map((vt) => [vt.id, vt]));
+
+    const enrichLink = (link: OKRLink) => {
+      const base: Record<string, unknown> = {
+        id: link.id,
+        type: link.type,
+        order: link.order,
+      };
+      if (link.groupId) {
+        const group = okr.groups.find((g) => g.id === link.groupId);
+        base.group = group ? { id: group.id, title: group.title } : link.groupId;
+      }
+      if (link.type === 'jira' && link.issueKey) {
+        const issue = issueMap.get(link.issueKey);
+        base.issueKey = link.issueKey;
+        if (issue) {
+          base.summary = issue.summary;
+          base.status = issue.status;
+          base.statusCategory = issue.statusCategory;
+          base.assignee = issue.assignee;
+          base.priority = issue.priority;
+          base.issueType = issue.issueType;
+        }
+      } else if (link.type === 'virtual' && link.virtualTicketId) {
+        const vt = vtMap.get(link.virtualTicketId);
+        if (vt) {
+          base.virtualTicket = {
+            id: vt.id,
+            title: vt.title,
+            description: vt.description ?? null,
+            issueType: vt.issueType,
+            assignee: vt.assignee ?? null,
+          };
+        }
+      }
+      return base;
+    };
+
+    const enrichGroup = (group: typeof okr.groups[number]) => ({
+      id: group.id,
+      title: group.title,
+      order: group.order,
+      parentGroupId: group.parentGroupId ?? null,
+    });
+
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      objectives: okr.objectives.map((obj) => ({
+        id: obj.id,
+        title: obj.title,
+        description: obj.description ?? null,
+        keyResults: okr.keyResults
+          .filter((kr) => kr.objectiveId === obj.id)
+          .map((kr) => ({
+            id: kr.id,
+            title: kr.title,
+            description: kr.description ?? null,
+            links: okr.links.filter((l) => l.keyResultId === kr.id).map(enrichLink),
+            groups: okr.groups.filter((g) => g.keyResultId === kr.id).map(enrichGroup),
+          })),
+      })),
+      relations: okr.relations,
+    };
+
+    const json = JSON.stringify(exportData, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -952,7 +1016,7 @@ export default function OKRPage() {
     a.download = `okr-export_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [okr]);
+  }, [okr, issueMap]);
 
   // ── CRUD: Objectives ──────────────────────────────────────────────────────
 
