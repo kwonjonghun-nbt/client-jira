@@ -151,7 +151,9 @@ export default function SettingsPage() {
           )}
 
           {updater.status === 'error' && (
-            <span className="text-sm text-red-500">업데이트 확인에 실패했습니다.</span>
+            <span className="text-sm text-red-500">
+              업데이트 확인 실패: {updater.error || '알 수 없는 오류'}
+            </span>
           )}
         </div>
       </section>

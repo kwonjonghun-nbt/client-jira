@@ -6,6 +6,7 @@ interface UpdaterState {
   status: UpdateStatus;
   version: string | null;
   progress: number;
+  error: string | null;
 }
 
 export function useUpdater() {
@@ -13,6 +14,7 @@ export function useUpdater() {
     status: 'idle',
     version: null,
     progress: 0,
+    error: null,
   });
 
   useEffect(() => {
@@ -29,8 +31,8 @@ export function useUpdater() {
       window.electronAPI.updater.onUpdateNotAvailable(() => {
         setState((prev) => ({ ...prev, status: 'not-available' }));
       }),
-      window.electronAPI.updater.onError(() => {
-        setState((prev) => ({ ...prev, status: 'error' }));
+      window.electronAPI.updater.onError((err) => {
+        setState((prev) => ({ ...prev, status: 'error', error: err.message }));
       }),
     ];
 
