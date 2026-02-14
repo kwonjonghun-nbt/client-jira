@@ -12,9 +12,11 @@ type Page = 'dashboard' | 'main' | 'settings' | 'timeline' | 'stats' | 'label-no
 
 interface UIState {
   currentPage: Page;
+  sidebarExpanded: boolean;
   filters: Filters;
   selectedIssue: NormalizedIssue | null;
   issueBaseUrl: string | null;
+  toggleSidebar: () => void;
   setPage: (page: Page) => void;
   setFilter: (key: 'project' | 'assignee' | 'search', value: string) => void;
   toggleStatus: (status: string) => void;
@@ -32,9 +34,11 @@ const DEFAULT_FILTERS: Filters = {
 
 export const useUIStore = create<UIState>((set) => ({
   currentPage: 'dashboard',
+  sidebarExpanded: false,
   filters: DEFAULT_FILTERS,
   selectedIssue: null,
   issueBaseUrl: null,
+  toggleSidebar: () => set((state) => ({ sidebarExpanded: !state.sidebarExpanded })),
   setPage: (page) => set({ currentPage: page }),
   setFilter: (key, value) =>
     set((state) => ({ filters: { ...state.filters, [key]: value } })),
