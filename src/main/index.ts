@@ -20,6 +20,7 @@ const services: AppServices = {
   sync: null,
   scheduler: null,
   terminal: null,
+  aiRunner: null,
   updater: null,
 };
 
@@ -147,6 +148,10 @@ app.whenReady().then(async () => {
   // Create window (renderer can now safely load settings)
   const mainWindow = createWindow();
   services.mainWindow = mainWindow;
+
+  // Initialize AI Runner
+  const { AIRunnerService } = await import('./services/ai-runner');
+  services.aiRunner = new AIRunnerService(mainWindow);
 
   // Initialize auto-updater (production only)
   if (!MAIN_WINDOW_VITE_DEV_SERVER_URL) {

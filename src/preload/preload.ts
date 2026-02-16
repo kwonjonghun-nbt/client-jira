@@ -80,6 +80,34 @@ const api = {
       };
     },
   },
+  ai: {
+    run: (prompt: string, aiType?: string) => ipcRenderer.invoke('ai:run', prompt, aiType),
+    abort: (id: string) => ipcRenderer.invoke('ai:abort', id),
+    onChunk: (callback: (id: string, text: string) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { id: string; text: string }) =>
+        callback(data.id, data.text);
+      ipcRenderer.on('ai:chunk', handler);
+      return () => {
+        ipcRenderer.removeListener('ai:chunk', handler);
+      };
+    },
+    onDone: (callback: (id: string, exitCode: number) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { id: string; exitCode: number }) =>
+        callback(data.id, data.exitCode);
+      ipcRenderer.on('ai:done', handler);
+      return () => {
+        ipcRenderer.removeListener('ai:done', handler);
+      };
+    },
+    onError: (callback: (id: string, message: string) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { id: string; message: string }) =>
+        callback(data.id, data.message);
+      ipcRenderer.on('ai:error', handler);
+      return () => {
+        ipcRenderer.removeListener('ai:error', handler);
+      };
+    },
+  },
   terminal: {
     create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) =>
       ipcRenderer.invoke('terminal:create', aiType, initialPrompt, cols, rows),

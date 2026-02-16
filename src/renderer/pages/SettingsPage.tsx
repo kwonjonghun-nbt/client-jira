@@ -12,6 +12,7 @@ import { useTestConnection } from '../hooks/useSettings';
 import { useUpdater } from '../hooks/useUpdater';
 import { DEFAULT_SETTINGS } from '../types/settings.types';
 import type { Settings } from '../types/settings.types';
+import { useTerminalStore, type AIType } from '../store/terminalStore';
 
 export default function SettingsPage() {
   const { settings: saved, isLoading, saveSettings, isSaving } = useSettings();
@@ -20,6 +21,7 @@ export default function SettingsPage() {
   const updater = useUpdater();
   const [draft, setDraft] = useState<Settings>(DEFAULT_SETTINGS);
   const [saveMessage, setSaveMessage] = useState('');
+  const { aiType, setAIType } = useTerminalStore();
 
   useEffect(() => {
     if (saved) setDraft(saved);
@@ -107,6 +109,29 @@ export default function SettingsPage() {
             setDraft({ ...draft, storage: { ...draft.storage, retentionDays } })
           }
         />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold text-gray-800 border-b pb-2">AI 에이전트</h2>
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">AI 기능에 사용할 CLI 에이전트를 선택합니다.</p>
+          <div className="flex gap-2">
+            {(['claude', 'gemini'] as AIType[]).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setAIType(type)}
+                className={`px-4 py-2 text-sm rounded-lg border cursor-pointer transition-colors ${
+                  aiType === type
+                    ? 'bg-purple-600 text-white border-purple-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {type === 'claude' ? 'Claude' : 'Gemini'}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="space-y-4">

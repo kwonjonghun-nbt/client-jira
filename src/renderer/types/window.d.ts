@@ -45,6 +45,13 @@ export interface ElectronAPI {
     onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
     onError: (callback: (error: { message: string }) => void) => () => void;
   };
+  ai: {
+    run: (prompt: string, aiType?: string) => Promise<string>;
+    abort: (id: string) => Promise<void>;
+    onChunk: (callback: (id: string, text: string) => void) => () => void;
+    onDone: (callback: (id: string, exitCode: number) => void) => () => void;
+    onError: (callback: (id: string, message: string) => void) => () => void;
+  };
   terminal: {
     create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) => Promise<string>;
     write: (id: string, data: string) => Promise<void>;

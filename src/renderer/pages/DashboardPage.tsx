@@ -32,7 +32,6 @@ export default function DashboardPage() {
     setDateStart,
     setDateEnd,
   } = useDashboardStats(data?.issues);
-
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
