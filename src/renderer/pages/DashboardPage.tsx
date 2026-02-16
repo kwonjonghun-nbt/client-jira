@@ -1,9 +1,11 @@
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
+import DailyShareModal from '../components/dashboard/DailyShareModal';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useChangelog } from '../hooks/useChangelog';
 import { useDashboardStats } from '../hooks/useDashboardStats';
+import { useDailyShare } from '../hooks/useDailyShare';
 import { useUIStore } from '../store/uiStore';
 import { normalizeType, issueTypeColors, statusBadgeClass } from '../utils/issue';
 import { formatRelativeTime } from '../utils/formatters';
@@ -32,6 +34,7 @@ export default function DashboardPage() {
     setDateStart,
     setDateEnd,
   } = useDashboardStats(data?.issues);
+  const dailyShare = useDailyShare(data?.issues);
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -106,6 +109,36 @@ export default function DashboardPage() {
             {filteredIssues.length}건 표시
             {filteredIssues.length !== data.issues.length && ` (전체 ${data.issues.length}건)`}
           </span>
+        </div>
+      </div>
+
+      {/* Daily Share */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-3">오늘의 이슈공유</h2>
+        <div className="flex items-center gap-3">
+          <select
+            value={dailyShare.assignee}
+            onChange={(e) => dailyShare.setAssignee(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white min-w-[140px]"
+          >
+            <option value="전체">전체</option>
+            {dailyShare.assignees.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={dailyShare.handleGenerate}
+            disabled={!dailyShare.assignee || dailyShare.totalCount === 0 || dailyShare.ai.status === 'running'}
+            className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            AI 이슈공유 생성
+          </button>
+          {dailyShare.assignee && dailyShare.categories && (
+            <span className="text-xs text-gray-500">
+              진행 {dailyShare.categories.inProgress.length} · 오늘마감 {dailyShare.categories.dueToday.length} · 지연 {dailyShare.categories.overdue.length} · 리스크 {dailyShare.categories.atRisk.length}
+            </span>
+          )}
         </div>
       </div>
 
@@ -391,6 +424,15 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {dailyShare.showModal && (
+        <DailyShareModal
+          ai={dailyShare.ai}
+          saving={dailyShare.saving}
+          onSave={dailyShare.handleSave}
+          onClose={dailyShare.handleClose}
+        />
+      )}
     </div>
   );
 }
