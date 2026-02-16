@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import Spinner from '../components/common/Spinner';
+import AIReportModal from '../components/report/AIReportModal';
+import SectionPresenter from '../components/report/SectionPresenter';
 import { useReports, useReport } from '../hooks/useReports';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useReportActions } from '../hooks/useReportActions';
@@ -10,6 +12,7 @@ export default function ReportsPage() {
   const { data: storedData } = useJiraIssues();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const { content, isLoading: isLoadingContent } = useReport(selectedFile);
+  const [focusMode, setFocusMode] = useState(false);
 
   const {
     showPrompt,
@@ -34,6 +37,11 @@ export default function ReportsPage() {
     handleCopyPrompt,
     handleSaveReport,
     handleDownloadJson,
+    ai,
+    showAIModal,
+    setShowAIModal,
+    handleGenerateAI,
+    handleSaveAIReport,
   } = useReportActions(storedData?.issues);
 
   if (isLoading) {
@@ -56,9 +64,18 @@ export default function ReportsPage() {
           >
             ← 목록
           </button>
-          <h1 className="text-lg font-bold text-gray-900">
+          <h1 className="text-lg font-bold text-gray-900 flex-1">
             {selectedFile.replace(/\.md$/, '')}
           </h1>
+          {!isLoadingContent && content && (
+            <button
+              type="button"
+              onClick={() => setFocusMode(true)}
+              className="px-3 py-1 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors cursor-pointer"
+            >
+              집중해서 보기
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-auto px-6 py-4">
           {isLoadingContent ? (
@@ -72,6 +89,12 @@ export default function ReportsPage() {
             />
           )}
         </div>
+        {focusMode && content && (
+          <SectionPresenter
+            markdown={content}
+            onClose={() => setFocusMode(false)}
+          />
+        )}
       </div>
     );
   }
@@ -138,6 +161,14 @@ export default function ReportsPage() {
                 className="px-3 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 이슈 데이터 다운로드 (.json)
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerateAI}
+                disabled={filteredIssues.length === 0 || ai.status === 'running'}
+                className="px-3 py-1 text-xs bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                AI 리포트 생성
               </button>
             </div>
             <div className="flex items-center justify-between mb-2">
@@ -230,6 +261,15 @@ export default function ReportsPage() {
           </div>
         )}
       </div>
+
+      {showAIModal && (
+        <AIReportModal
+          ai={ai}
+          saving={saving}
+          onSave={handleSaveAIReport}
+          onClose={() => { setShowAIModal(false); ai.reset(); }}
+        />
+      )}
     </div>
   );
 }

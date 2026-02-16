@@ -8,15 +8,20 @@ import {
   buildReportPrompt,
   buildIssueExportData,
 } from '../utils/reports';
+import { useAIRunner } from './useAIRunner';
+import { useTerminalStore } from '../store/terminalStore';
 
 export function useReportActions(issues: NormalizedIssue[] | undefined) {
   const queryClient = useQueryClient();
+  const ai = useAIRunner();
+  const aiType = useTerminalStore((s) => s.aiType);
   const [showPrompt, setShowPrompt] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [saveTitle, setSaveTitle] = useState('');
   const [saveContent, setSaveContent] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   const defaultPeriod = useMemo(() => getDefaultPeriod(), []);
   const [assignee, setAssignee] = useState('전체');
@@ -70,6 +75,28 @@ export function useReportActions(issues: NormalizedIssue[] | undefined) {
     URL.revokeObjectURL(url);
   }, [filteredIssues, assignee, startDate, endDate]);
 
+  const handleGenerateAI = useCallback(() => {
+    if (filteredIssues.length === 0) return;
+    const issueData = JSON.stringify(buildIssueExportData(filteredIssues), null, 2);
+    const fullPrompt = `${promptText}\n\n## 이슈 데이터 (JSON)\n\n${issueData}`;
+    ai.run(fullPrompt, aiType);
+    setShowAIModal(true);
+  }, [filteredIssues, promptText, ai, aiType]);
+
+  const handleSaveAIReport = useCallback(async () => {
+    if (!ai.result.trim()) return;
+    const title = `${assignee}_${startDate}_${endDate}`;
+    setSaving(true);
+    try {
+      await window.electronAPI.storage.saveReport(title, ai.result);
+      await queryClient.invalidateQueries({ queryKey: ['reports'] });
+      setShowAIModal(false);
+      ai.reset();
+    } finally {
+      setSaving(false);
+    }
+  }, [ai, assignee, startDate, endDate, queryClient]);
+
   return {
     showPrompt,
     setShowPrompt,
@@ -93,5 +120,11 @@ export function useReportActions(issues: NormalizedIssue[] | undefined) {
     handleCopyPrompt,
     handleSaveReport,
     handleDownloadJson,
+    // AI generation
+    ai,
+    showAIModal,
+    setShowAIModal,
+    handleGenerateAI,
+    handleSaveAIReport,
   };
 }
