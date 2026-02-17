@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { NormalizedIssue } from '../../types/jira.types';
 import { normalizeType } from '../../utils/issue';
+import { formatDate } from '../../utils/formatters';
 
 interface TimelineBarProps {
   issue: NormalizedIssue;
@@ -23,13 +24,6 @@ const statusOverlay: Record<string, string> = {
 };
 
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-}
 
 const issueTypeLabels: Record<string, string> = {
   epic: 'Epic',

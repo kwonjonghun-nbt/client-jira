@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, type RefObject } from 'react';
+import { clamp } from 'es-toolkit';
 import { MIN_ZOOM, MAX_ZOOM, type Rect } from './okr-canvas.types';
 
 export function useCanvasTransform(
@@ -16,7 +17,7 @@ export function useCanvasTransform(
     const mouseY = e.clientY - rect.top;
 
     setZoom((prevZoom) => {
-      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevZoom * (1 - e.deltaY * 0.001)));
+      const newZoom = clamp(prevZoom * (1 - e.deltaY * 0.001), MIN_ZOOM, MAX_ZOOM);
       setPan((prevPan) => ({
         x: mouseX / newZoom - (mouseX / prevZoom - prevPan.x),
         y: mouseY / newZoom - (mouseY / prevZoom - prevPan.y),

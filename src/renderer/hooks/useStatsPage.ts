@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { format, subDays } from 'date-fns';
 import type { NormalizedIssue } from '../types/jira.types';
 import { DATE_PRESETS, formatDateISO } from '../utils/dashboard';
 import { computeLabelStats, computeLabelStatsSummary } from '../utils/stats';
@@ -6,13 +7,8 @@ import { computeLabelStats, computeLabelStatsSummary } from '../utils/stats';
 export type StatsViewMode = 'table' | 'chart';
 
 export function useStatsPage(filteredIssues: NormalizedIssue[]) {
-  const now = new Date();
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 30);
-    return formatDateISO(d);
-  });
-  const [endDate, setEndDate] = useState(() => formatDateISO(now));
+  const [startDate, setStartDate] = useState(() => format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [viewMode, setViewMode] = useState<StatsViewMode>('table');
 
   const applyPreset = (days: number) => {
@@ -20,11 +16,8 @@ export function useStatsPage(filteredIssues: NormalizedIssue[]) {
       setStartDate('');
       setEndDate('');
     } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - days);
-      setStartDate(formatDateISO(start));
-      setEndDate(formatDateISO(end));
+      setStartDate(format(subDays(new Date(), days), 'yyyy-MM-dd'));
+      setEndDate(format(new Date(), 'yyyy-MM-dd'));
     }
   };
 

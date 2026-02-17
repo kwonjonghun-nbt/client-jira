@@ -1,3 +1,4 @@
+import { format, addDays, parseISO, differenceInCalendarDays } from 'date-fns';
 import { NormalizedIssue } from '../types/jira.types';
 
 export interface DailyShareCategories {
@@ -38,10 +39,8 @@ export function categorizeDailyIssues(
   issues: NormalizedIssue[],
   assignee: string
 ): DailyShareCategories {
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
 
   const assignedIssues = assignee === '전체'
     ? issues
@@ -95,7 +94,7 @@ export function buildDailySharePrompt(
   assignee: string,
   categories: DailyShareCategories
 ): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = format(new Date(), 'yyyy-MM-dd');
 
   const formatIssues = (issues: NormalizedIssue[]) =>
     issues.map((issue) => ({
@@ -145,7 +144,7 @@ export function buildDailyShareMarkdown(
   assignee: string,
   categories: DailyShareCategories
 ): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = format(new Date(), 'yyyy-MM-dd');
   const target = assignee === '전체' ? '전체 팀원' : assignee;
   const lines: string[] = [];
 
@@ -193,12 +192,10 @@ export function buildDailyShareMarkdown(
   if (categories.overdue.length === 0) {
     lines.push('지연된 작업은 없습니다.');
   } else {
-    const todayMs = new Date(today).getTime();
     lines.push(`마감일이 지난 작업이 **${categories.overdue.length}건** 있어 확인이 필요합니다.`);
     lines.push('');
     for (const i of categories.overdue) {
-      const dueMs = new Date(i.dueDate!).getTime();
-      const delayDays = Math.ceil((todayMs - dueMs) / (1000 * 60 * 60 * 24));
+      const delayDays = differenceInCalendarDays(parseISO(today), parseISO(i.dueDate!));
       const pri = i.priority ? ` — 우선순위 ${i.priority}` : '';
       lines.push(`- **${i.key}** ${i.summary}${pri}`);
       lines.push(`  - 마감일 ${i.dueDate!.slice(0, 10)}로부터 **${delayDays}일 지연**, 현재 상태: ${i.status}`);

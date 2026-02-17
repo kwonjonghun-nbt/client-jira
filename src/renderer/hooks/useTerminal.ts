@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { debounce } from 'es-toolkit';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { useTerminalStore } from '../store/terminalStore';
@@ -72,21 +73,18 @@ export function useTerminal(containerRef: React.RefObject<HTMLDivElement | null>
     });
 
     // 리사이즈 감시
-    let resizeTimer: ReturnType<typeof setTimeout>;
-    const resizeObserver = new ResizeObserver(() => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        fitAddon.fit();
-        const termId = useTerminalStore.getState().terminalId;
-        if (termId) {
-          window.electronAPI.terminal.resize(termId, terminal.cols, terminal.rows);
-        }
-      }, 100);
-    });
+    const handleResize = debounce(() => {
+      fitAddon.fit();
+      const termId = useTerminalStore.getState().terminalId;
+      if (termId) {
+        window.electronAPI.terminal.resize(termId, terminal.cols, terminal.rows);
+      }
+    }, 100);
+    const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(containerRef.current);
 
     return () => {
-      clearTimeout(resizeTimer);
+      handleResize.cancel();
       resizeObserver.disconnect();
       cleanupRef.current?.();
       cleanupRef.current = null;

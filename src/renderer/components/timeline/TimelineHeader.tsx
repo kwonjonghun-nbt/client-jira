@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { eachMonthOfInterval, eachWeekOfInterval, eachDayOfInterval, format, getMonth } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 export type ViewMode = 'month' | 'week';
 
@@ -10,50 +12,25 @@ interface TimelineHeaderProps {
 }
 
 function getMonthTicks(start: Date, end: Date): Date[] {
-  const ticks: Date[] = [];
-  const current = new Date(start.getFullYear(), start.getMonth(), 1);
-  while (current <= end) {
-    ticks.push(new Date(current));
-    current.setMonth(current.getMonth() + 1);
-  }
-  return ticks;
+  return eachMonthOfInterval({ start, end });
 }
 
 function getWeekTicks(start: Date, end: Date): Date[] {
-  const ticks: Date[] = [];
-  const current = new Date(start);
-  current.setHours(0, 0, 0, 0);
-  const day = current.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  current.setDate(current.getDate() + diff);
-  while (current <= end) {
-    ticks.push(new Date(current));
-    current.setDate(current.getDate() + 7);
-  }
-  return ticks;
+  return eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
 }
 
 function getDayTicks(start: Date, end: Date): Date[] {
-  const ticks: Date[] = [];
-  const current = new Date(start);
-  current.setHours(0, 0, 0, 0);
-  while (current <= end) {
-    ticks.push(new Date(current));
-    current.setDate(current.getDate() + 1);
-  }
-  return ticks;
+  return eachDayOfInterval({ start, end });
 }
 
 function formatMonthLabel(date: Date): string {
-  const month = date.getMonth() + 1;
-  return month === 1 ? `${date.getFullYear()}년 ${month}월` : `${month}월`;
+  return getMonth(date) === 0
+    ? format(date, 'yyyy년 M월', { locale: ko })
+    : format(date, 'M월', { locale: ko });
 }
 
 function formatDayLabel(date: Date): string {
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-  const d = date.getDate();
-  const dayName = dayNames[date.getDay()];
-  return `${d}(${dayName})`;
+  return format(date, 'd(EEE)', { locale: ko });
 }
 
 export default function TimelineHeader({ rangeStart, rangeEnd, totalWidth, viewMode }: TimelineHeaderProps) {

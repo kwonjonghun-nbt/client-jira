@@ -1,31 +1,23 @@
+import { format, parseISO, differenceInMinutes, differenceInHours, differenceInDays, differenceInMonths } from 'date-fns';
+
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  return format(parseISO(dateStr), 'yyyy. MM. dd.');
 }
 
 export function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return format(parseISO(dateStr), 'yyyy. MM. dd. HH:mm');
 }
 
 export function formatRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60_000);
+  const date = parseISO(dateStr);
+  const minutes = differenceInMinutes(new Date(), date);
   if (minutes < 1) return '방금 전';
   if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
+  const hours = differenceInHours(new Date(), date);
   if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
+  const days = differenceInDays(new Date(), date);
   if (days < 30) return `${days}일 전`;
-  return `${Math.floor(days / 30)}개월 전`;
+  return `${differenceInMonths(new Date(), date)}개월 전`;
 }
 
 export function formatDuration(ms: number): string {
@@ -40,15 +32,11 @@ export function formatDuration(ms: number): string {
 // null-safe 날짜 포맷 (YYYY. MM. DD. format)
 export function formatDateSafe(dateStr: string | null): string {
   if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  return format(parseISO(dateStr), 'yyyy. MM. dd.');
 }
 
 // 짧은 날짜 포맷 (MM/DD format)
 export function formatDateShort(dateStr: string | null): string {
   if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
+  return format(parseISO(dateStr), 'MM/dd');
 }

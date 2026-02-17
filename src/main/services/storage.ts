@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { subDays, compareDesc, parseISO } from 'date-fns';
 import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir, getChangelogPath, getOKRPath } from '../utils/paths';
 import { StoredDataSchema, MetaDataSchema, LabelNotesDataSchema, ChangelogDataSchema, OKRDataSchema } from '../schemas/storage.schema';
 import { SettingsSchema, DEFAULT_SETTINGS } from '../schemas/settings.schema';
@@ -177,7 +178,7 @@ export class StorageService {
           modifiedAt: stat.mtime.toISOString(),
         });
       }
-      results.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+      results.sort((a, b) => compareDesc(parseISO(a.modifiedAt), parseISO(b.modifiedAt)));
       return results;
     } catch {
       return [];
@@ -213,8 +214,7 @@ export class StorageService {
 
   async cleanupOldData(retentionDays: number): Promise<void> {
     const rawDir = getRawDir();
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - retentionDays);
+    const cutoff = subDays(new Date(), retentionDays);
 
     try {
       const entries = await fs.readdir(rawDir);

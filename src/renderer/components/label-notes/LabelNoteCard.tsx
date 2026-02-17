@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { debounce } from 'es-toolkit';
 
 interface LabelNoteCardProps {
   label: string;
@@ -16,29 +17,15 @@ export default function LabelNoteCard({
   onDelete,
 }: LabelNoteCardProps) {
   const [value, setValue] = useState(description);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 외부에서 description이 바뀌면 동기화
   useEffect(() => {
     setValue(description);
   }, [description]);
 
-  const debouncedSave = useCallback(
-    (text: string) => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        onSave(text);
-      }, 500);
-    },
-    [onSave],
-  );
+  const debouncedSave = useMemo(() => debounce((text: string) => onSave(text), 500), [onSave]);
 
-  // 컴포넌트 언마운트 시 타이머 정리
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  useEffect(() => () => debouncedSave.cancel(), [debouncedSave]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;

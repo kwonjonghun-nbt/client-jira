@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
+import { format } from 'date-fns';
+import { uniq } from 'es-toolkit';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NormalizedIssue } from '../types/jira.types';
 import {
@@ -24,7 +26,7 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
 
   const assignees = useMemo(() => {
     if (!issues) return [];
-    return [...new Set(issues.map((i) => i.assignee).filter(Boolean) as string[])].sort();
+    return uniq(issues.map((i) => i.assignee).filter((a): a is string => a != null)).sort();
   }, [issues]);
 
   const categories = useMemo(() => {

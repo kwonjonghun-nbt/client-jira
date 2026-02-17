@@ -1,20 +1,18 @@
 import { useMemo, useState } from 'react';
+import { format, subDays } from 'date-fns';
+import { uniq } from 'es-toolkit';
 import type { NormalizedIssue } from '../types/jira.types';
 import { formatDateISO, filterDashboardIssues, computeDashboardStats } from '../utils/dashboard';
 
 export function useDashboardStats(issues: NormalizedIssue[] | undefined) {
   const [activePreset, setActivePreset] = useState(30);
-  const [dateStart, setDateStart] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return formatDateISO(d);
-  });
-  const [dateEnd, setDateEnd] = useState(() => formatDateISO(new Date()));
+  const [dateStart, setDateStart] = useState(() => format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [dateEnd, setDateEnd] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [assigneeFilter, setAssigneeFilter] = useState<string>('전체');
 
   const assignees = useMemo(() => {
     if (!issues) return [];
-    return [...new Set(issues.map((i) => i.assignee).filter(Boolean) as string[])].sort();
+    return uniq(issues.map((i) => i.assignee).filter((a): a is string => a != null)).sort();
   }, [issues]);
 
   const applyDatePreset = (days: number) => {

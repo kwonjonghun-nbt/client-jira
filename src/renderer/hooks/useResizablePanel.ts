@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { clamp } from 'es-toolkit';
 
 interface ResizablePanelOptions {
   defaultWidth: number;
@@ -32,7 +33,7 @@ export function useResizablePanel({ defaultWidth, minWidth, maxWidth, side }: Re
       const delta = side === 'left'
         ? startX.current - e.clientX
         : e.clientX - startX.current;
-      const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth.current + delta));
+      const newWidth = clamp(startWidth.current + delta, minWidth, maxWidth);
       setWidth(newWidth);
     };
 

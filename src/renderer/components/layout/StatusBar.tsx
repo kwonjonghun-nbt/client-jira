@@ -1,3 +1,4 @@
+import { format, parseISO } from 'date-fns';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useUpdater } from '../../hooks/useUpdater';
 
@@ -6,12 +7,7 @@ export default function StatusBar() {
   const updater = useUpdater();
 
   const lastSyncText = status?.lastSync
-    ? `마지막 싱크: ${new Date(status.lastSync).toLocaleString('ko-KR', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`
+    ? `마지막 싱크: ${format(parseISO(status.lastSync), 'MM/dd HH:mm')}`
     : '아직 싱크한 적 없음';
 
   return (

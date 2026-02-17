@@ -1,5 +1,6 @@
 import { Tray, Menu, nativeImage, BrowserWindow } from 'electron';
 import path from 'node:path';
+import { format, parseISO } from 'date-fns';
 import type { SyncService } from './services/sync';
 import type { SchedulerService } from './services/scheduler';
 import type { Schedule } from './schemas/settings.schema';
@@ -45,7 +46,7 @@ export class TrayService {
       : null;
 
     const lastSyncLabel = status?.lastSync
-      ? `마지막: ${new Date(status.lastSync).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+      ? `마지막: ${format(parseISO(status.lastSync), 'HH:mm')}`
       : '마지막: 없음';
 
     const contextMenu = Menu.buildFromTemplate([

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import { useOnClickOutside } from 'usehooks-ts';
 
 interface MultiSelectProps {
   placeholder: string;
@@ -9,17 +10,9 @@ interface MultiSelectProps {
 
 export default function MultiSelect({ placeholder, options, selected, onToggle }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  useOnClickOutside(ref, () => setOpen(false));
 
   const label = selected.length === 0
     ? placeholder

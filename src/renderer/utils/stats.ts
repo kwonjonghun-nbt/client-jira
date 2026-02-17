@@ -1,3 +1,4 @@
+import { parseISO } from 'date-fns';
 import type { NormalizedIssue } from '../types/jira.types';
 
 export interface LabelStat {
@@ -20,18 +21,18 @@ export function computeLabelStats(
   startDate: string,
   endDate: string,
 ): LabelStat[] {
-  const startMs = startDate ? new Date(startDate).getTime() : 0;
-  const endMs = endDate ? new Date(endDate + 'T23:59:59').getTime() : Infinity;
+  const startMs = startDate ? parseISO(startDate).getTime() : 0;
+  const endMs = endDate ? parseISO(endDate + 'T23:59:59').getTime() : Infinity;
 
   const statsMap = new Map<string, { total: number; completed: number }>();
 
   for (const issue of filteredIssues) {
-    const createdMs = new Date(issue.created).getTime();
+    const createdMs = parseISO(issue.created).getTime();
     if (createdMs < startMs || createdMs > endMs) continue;
 
     const labels = issue.labels.length > 0 ? issue.labels : ['(없음)'];
     const isDone = issue.statusCategory === 'done';
-    const updatedMs = new Date(issue.updated).getTime();
+    const updatedMs = parseISO(issue.updated).getTime();
     const isCompletedInRange = isDone && updatedMs >= startMs && updatedMs <= endMs;
 
     for (const label of labels) {

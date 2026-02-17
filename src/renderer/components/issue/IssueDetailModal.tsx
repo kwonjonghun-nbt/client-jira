@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useCopyToClipboard } from 'usehooks-ts';
 import { useUIStore } from '../../store/uiStore';
 import { statusBadgeClass, getPriorityColor, buildIssueUrl } from '../../utils/issue';
 import { formatDateSafe } from '../../utils/formatters';
@@ -8,6 +9,7 @@ export default function IssueDetailModal() {
   const issue = useUIStore((s) => s.selectedIssue);
   const baseUrl = useUIStore((s) => s.issueBaseUrl);
   const close = useUIStore((s) => s.closeIssueDetail);
+  const [, copy] = useCopyToClipboard();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -173,9 +175,11 @@ export default function IssueDetailModal() {
           <button
             type="button"
             onClick={() => {
-              navigator.clipboard.writeText(buildPrompt(issue)).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
+              copy(buildPrompt(issue)).then((ok) => {
+                if (ok) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }
               });
             }}
             className="px-4 py-1.5 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors cursor-pointer"

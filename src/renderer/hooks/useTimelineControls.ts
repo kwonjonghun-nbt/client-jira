@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { format, subDays } from 'date-fns';
+import { useOnClickOutside } from 'usehooks-ts';
 import type { ViewMode } from '../components/timeline/TimelineHeader';
 import type { NormalizedIssue } from '../types/jira.types';
 import { DATE_PRESETS, formatDateISO } from '../utils/dashboard';
@@ -13,25 +15,13 @@ export function useTimelineControls(filteredIssues: NormalizedIssue[]) {
   const [activePreset, setActivePreset] = useState(30);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
-  const settingsRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
 
-  const [dateStart, setDateStart] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return formatDateISO(d);
-  });
-  const [dateEnd, setDateEnd] = useState(() => formatDateISO(new Date()));
+  const [dateStart, setDateStart] = useState(() => format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [dateEnd, setDateEnd] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
   // Close settings dropdown when clicking outside
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  useOnClickOutside(settingsRef, () => setSettingsOpen(false));
 
   const applyDatePreset = (days: number) => {
     setActivePreset(days);
@@ -39,11 +29,8 @@ export function useTimelineControls(filteredIssues: NormalizedIssue[]) {
       setDateStart('');
       setDateEnd('');
     } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - days);
-      setDateStart(formatDateISO(start));
-      setDateEnd(formatDateISO(end));
+      setDateStart(format(subDays(new Date(), days), 'yyyy-MM-dd'));
+      setDateEnd(format(new Date(), 'yyyy-MM-dd'));
     }
   };
 

@@ -1,7 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useCopyToClipboard } from 'usehooks-ts';
 import { buildReportPrompt } from '../utils/reports';
 
 export function useReportPrompt(assignee: string, startDate: string, endDate: string) {
+  const [, copy] = useCopyToClipboard();
   const [copied, setCopied] = useState(false);
 
   const promptText = useMemo(
@@ -10,10 +12,12 @@ export function useReportPrompt(assignee: string, startDate: string, endDate: st
   );
 
   const handleCopyPrompt = useCallback(async () => {
-    await navigator.clipboard.writeText(promptText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [promptText]);
+    const ok = await copy(promptText);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [promptText, copy]);
 
   return {
     promptText,

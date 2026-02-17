@@ -103,20 +103,21 @@ describe('getWeekRange', () => {
 });
 
 describe('formatDateISO', () => {
-  it('Date 객체를 YYYY-MM-DD 문자열로 변환한다', () => {
-    const date = new Date('2025-06-11T15:30:45Z');
+  it('Date 객체를 로컬 시간 기준 YYYY-MM-DD 문자열로 변환한다', () => {
+    // format(d, 'yyyy-MM-dd')는 로컬 시간 기준 (UTC 타임존 버그 수정)
+    const date = new Date(2025, 5, 11, 15, 30, 45); // 2025-06-11 15:30:45 로컬
     const result = formatDateISO(date);
     expect(result).toBe('2025-06-11');
   });
 
   it('월과 일이 한 자리일 때 0을 패딩한다', () => {
-    const date = new Date('2025-01-05T00:00:00Z');
+    const date = new Date(2025, 0, 5, 0, 0, 0); // 2025-01-05 로컬
     const result = formatDateISO(date);
     expect(result).toBe('2025-01-05');
   });
 
   it('12월 31일을 올바르게 포맷한다', () => {
-    const date = new Date('2025-12-31T23:59:59Z');
+    const date = new Date(2025, 11, 31, 23, 59, 59); // 2025-12-31 로컬
     const result = formatDateISO(date);
     expect(result).toBe('2025-12-31');
   });

@@ -1,10 +1,11 @@
+import { uniq } from 'es-toolkit';
 import type { NormalizedIssue } from '../types/jira.types';
+import { format, parseISO, subDays } from 'date-fns';
 import { formatDateISO } from './dashboard';
 
 /** Format ISO date string to display format (YYYY-MM-DD HH:MM) */
 export function formatReportDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return format(parseISO(iso), 'yyyy-MM-dd HH:mm');
 }
 
 /** Inline markdown formatting (bold, code) */
@@ -254,15 +255,13 @@ export function buildReportPrompt(assignee: string, startDate: string, endDate: 
 export function getDefaultPeriod(): { start: string; end: string } {
   const now = new Date();
   const end = formatDateISO(now);
-  const weekAgo = new Date(now);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const start = formatDateISO(weekAgo);
+  const start = format(subDays(now, 7), 'yyyy-MM-dd');
   return { start, end };
 }
 
 /** Extract unique assignees from issues */
 export function extractAssignees(issues: NormalizedIssue[]): string[] {
-  return [...new Set(issues.map((i) => i.assignee).filter(Boolean) as string[])].sort();
+  return uniq(issues.map((i) => i.assignee).filter((a): a is string => a != null)).sort();
 }
 
 /** Filter issues by period and assignee */

@@ -1,3 +1,4 @@
+import { format, parseISO } from 'date-fns';
 import type { NormalizedIssue } from '../../types/jira.types';
 import { statusBadgeClass } from '../../utils/issue';
 
@@ -27,7 +28,7 @@ export default function DueThisWeek({ issues }: DueThisWeekProps) {
                 </div>
                 <p className="text-sm text-gray-800 truncate">{issue.summary}</p>
                 <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                  <span>{new Date(issue.dueDate!).toLocaleDateString('ko-KR')}</span>
+                  <span>{format(parseISO(issue.dueDate!), 'yyyy. MM. dd.')}</span>
                   {issue.assignee && <span>· {issue.assignee}</span>}
                 </div>
               </div>

@@ -1,4 +1,6 @@
 import type { ChangelogEntry, NormalizedIssue } from '../types/jira.types';
+import { format, parseISO, startOfWeek, endOfWeek, compareAsc, compareDesc } from 'date-fns';
+import { groupBy } from 'es-toolkit';
 import { normalizeType } from './issue';
 
 export const DATE_PRESETS = [
@@ -19,21 +21,11 @@ export const changeTypeConfig: Record<ChangelogEntry['changeType'], { label: str
 
 export function getWeekRange(): [Date, Date] {
   const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-
-  return [monday, sunday];
+  return [startOfWeek(now, { weekStartsOn: 1 }), endOfWeek(now, { weekStartsOn: 1 })];
 }
 
 export function formatDateISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return format(d, 'yyyy-MM-dd');
 }
 
 export function formatChangeValue(entry: ChangelogEntry): string {
@@ -70,35 +62,22 @@ export function computeDashboardStats(filteredIssues: NormalizedIssue[]): Dashbo
       const due = new Date(i.dueDate);
       return due >= weekStart && due <= weekEnd;
     })
-    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+    .sort((a, b) => compareAsc(parseISO(a.dueDate!), parseISO(b.dueDate!)))
     .slice(0, 10);
 
-  const workloadMap = new Map<string, number>();
-  filteredIssues
-    .filter((i) => i.statusCategory !== 'done')
-    .forEach((i) => {
-      const assignee = i.assignee || '(미할당)';
-      workloadMap.set(assignee, (workloadMap.get(assignee) || 0) + 1);
-    });
-  const workload = Array.from(workloadMap.entries())
-    .map(([name, count]) => ({ name, count }))
+  const grouped = groupBy(filteredIssues.filter((i) => i.statusCategory !== 'done'), (i) => i.assignee || '(미할당)');
+  const workload = Object.entries(grouped)
+    .map(([name, items]) => ({ name, count: items.length }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
   const maxWorkload = Math.max(...workload.map((w) => w.count), 1);
 
   const recentlyUpdated = [...filteredIssues]
-    .sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime())
+    .sort((a, b) => compareDesc(parseISO(a.updated), parseISO(b.updated)))
     .slice(0, 8);
 
-  const typeMap = new Map<string, number>();
-  filteredIssues.forEach((i) => {
-    const normalized = normalizeType(i.issueType);
-    typeMap.set(normalized, (typeMap.get(normalized) || 0) + 1);
-  });
-  const typeDistribution = Array.from(typeMap.entries()).map(([type, count]) => ({
-    type,
-    count,
-  }));
+  const typeGrouped = groupBy(filteredIssues, (i) => normalizeType(i.issueType));
+  const typeDistribution = Object.entries(typeGrouped).map(([type, items]) => ({ type, count: items.length }));
 
   return {
     totalCount,

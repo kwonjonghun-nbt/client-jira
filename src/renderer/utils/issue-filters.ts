@@ -1,3 +1,4 @@
+import { uniq } from 'es-toolkit';
 import type { NormalizedIssue } from '../types/jira.types';
 
 export interface Filters {
@@ -49,8 +50,8 @@ export function applyFilters(issues: NormalizedIssue[], filters: Filters): Norma
  * Pure function - no side effects.
  */
 export function extractFilterOptions(issues: NormalizedIssue[]): FilterOptions {
-  const projects = [...new Set(issues.map((i) => i.key.split('-')[0]))].sort();
-  const statuses = [...new Set(issues.map((i) => i.status))].sort();
-  const assignees = [...new Set(issues.map((i) => i.assignee).filter(Boolean) as string[])].sort();
+  const projects = uniq(issues.map((i) => i.key.split('-')[0])).sort();
+  const statuses = uniq(issues.map((i) => i.status)).sort();
+  const assignees = uniq(issues.map((i) => i.assignee).filter((a): a is string => a != null)).sort();
   return { projects, statuses, assignees };
 }

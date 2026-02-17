@@ -1,3 +1,4 @@
+import { parseISO } from 'date-fns';
 import type { ViewMode } from '../components/timeline/TimelineHeader';
 import type { NormalizedIssue } from '../types/jira.types';
 
@@ -21,12 +22,12 @@ export function filterByDateRange(
   dateEnd: string
 ): NormalizedIssue[] {
   if (!dateStart && !dateEnd) return issues;
-  const startMs = dateStart ? new Date(dateStart).getTime() : 0;
-  const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
+  const startMs = dateStart ? parseISO(dateStart).getTime() : 0;
+  const endMs = dateEnd ? parseISO(dateEnd + 'T23:59:59').getTime() : Infinity;
 
   return issues.filter((issue) => {
-    const createdMs = new Date(issue.created).getTime();
-    const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
+    const createdMs = parseISO(issue.created).getTime();
+    const dueMs = issue.dueDate ? parseISO(issue.dueDate).getTime() : null;
     // created가 기간 안에 있거나, dueDate가 기간 안에 있거나, 이슈 기간이 선택 기간을 감싸는 경우
     const createdInRange = createdMs >= startMs && createdMs <= endMs;
     const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;

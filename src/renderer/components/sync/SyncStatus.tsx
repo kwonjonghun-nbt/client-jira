@@ -1,3 +1,5 @@
+import { format, parseISO } from 'date-fns';
+
 interface SyncStatusProps {
   syncedAt: string | undefined;
   totalCount: number | undefined;
@@ -11,12 +13,7 @@ export default function SyncStatusDisplay({ syncedAt, totalCount, projects }: Sy
     );
   }
 
-  const time = new Date(syncedAt).toLocaleString('ko-KR', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const time = format(parseISO(syncedAt), 'MM/dd HH:mm');
 
   return (
     <p className="text-sm text-gray-500">

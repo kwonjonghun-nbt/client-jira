@@ -1,3 +1,4 @@
+import { mean } from 'es-toolkit/math';
 import type {
   OKRData,
   OKRKeyResult,
@@ -29,11 +30,7 @@ export function calcObjectiveProgress(
 ): number {
   const krs = keyResults.filter((kr) => kr.objectiveId === objectiveId);
   if (krs.length === 0) return 0;
-  const total = krs.reduce(
-    (sum, kr) => sum + calcKRProgress(kr.id, links, issueMap),
-    0,
-  );
-  return Math.round(total / krs.length);
+  return Math.round(mean(krs.map((kr) => calcKRProgress(kr.id, links, issueMap))));
 }
 
 // ─── Export helpers ───────────────────────────────────────────────────────────

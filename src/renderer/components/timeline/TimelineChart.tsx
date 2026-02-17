@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { subDays, addMonths, addDays, max, startOfMonth, startOfWeek, eachWeekOfInterval, parseISO, compareAsc } from 'date-fns';
+import { clamp } from 'es-toolkit';
 import type { NormalizedIssue } from '../../types/jira.types';
 import { useUIStore } from '../../store/uiStore';
 import TimelineHeader from './TimelineHeader';
@@ -63,7 +65,7 @@ function buildTree(issues: NormalizedIssue[], orderOverrides: OrderOverrides): T
     const aIsEpic = a.issueType.toLowerCase() === 'epic' ? 0 : 1;
     const bIsEpic = b.issueType.toLowerCase() === 'epic' ? 0 : 1;
     if (aIsEpic !== bIsEpic) return aIsEpic - bIsEpic;
-    return new Date(a.created).getTime() - new Date(b.created).getTime();
+    return compareAsc(parseISO(a.created), parseISO(b.created));
   };
 
   // 커스텀 순서가 있으면 적용, 없으면 기본 정렬
@@ -116,15 +118,10 @@ function computeRange(issues: NormalizedIssue[]): { rangeStart: Date; rangeEnd: 
     if (end > maxDate) maxDate = end;
   }
 
-  const start = new Date(minDate);
-  start.setDate(start.getDate() - 14);
+  const start = subDays(new Date(minDate), 14);
 
   // 미래 날짜를 넉넉히 보여줌: 마지막 이슈 이후 최소 3개월, 또는 오늘로부터 최소 6개월
-  const threeMonthsAfterMax = new Date(maxDate);
-  threeMonthsAfterMax.setMonth(threeMonthsAfterMax.getMonth() + 3);
-  const sixMonthsFromNow = new Date(now);
-  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
-  const futureEnd = new Date(Math.max(threeMonthsAfterMax.getTime(), sixMonthsFromNow.getTime()));
+  const futureEnd = max([addMonths(new Date(maxDate), 3), addMonths(now, 6)]);
 
   return { rangeStart: start, rangeEnd: futureEnd };
 }
@@ -202,7 +199,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = -e.deltaY * 0.01;
-        onZoomChange(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom + delta)));
+        onZoomChange(clamp(zoom + delta, ZOOM_MIN, ZOOM_MAX));
       }
     },
     [zoom, onZoomChange],
@@ -256,19 +253,15 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
 
     if (viewMode === 'month') {
       // Highlight the entire month containing today
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const monthStart = startOfMonth(today);
+      const monthEnd = addMonths(monthStart, 1);
       const left = ((monthStart.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
       const right = ((monthEnd.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
       columns.push({ left, width: right - left });
     } else {
       // week view: highlight the entire week containing today (Monday-aligned)
-      const dow = today.getDay();
-      const mondayDiff = dow === 0 ? -6 : 1 - dow;
-      const weekStart = new Date(today);
-      weekStart.setDate(weekStart.getDate() + mondayDiff);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 7);
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+      const weekEnd = addDays(weekStart, 7);
       const left = ((weekStart.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
       const right = ((weekEnd.getTime() - rangeStart.getTime()) / totalMs) * totalWidth;
       columns.push({ left, width: right - left });
@@ -281,18 +274,9 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
   // 주 뷰: 주 경계선 위치 (월요일)
   const weekBorderOffsets = useMemo(() => {
     if (viewMode !== 'week') return [];
-    const MS_PER_DAY = 1000 * 60 * 60 * 24;
-    const ticks: number[] = [];
-    const current = new Date(rangeStart);
-    const day = current.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    current.setDate(current.getDate() + diff);
-    current.setHours(0, 0, 0, 0);
-    while (current.getTime() <= rangeEnd.getTime() + MS_PER_DAY) {
-      ticks.push(((current.getTime() - rangeStart.getTime()) / totalMs) * totalWidth);
-      current.setDate(current.getDate() + 7);
-    }
-    return ticks;
+    return eachWeekOfInterval({ start: rangeStart, end: rangeEnd }, { weekStartsOn: 1 }).map(
+      (weekStart) => ((weekStart.getTime() - rangeStart.getTime()) / totalMs) * totalWidth,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, rangeStart.getTime(), rangeEnd.getTime(), totalMs, totalWidth]);
 
@@ -332,7 +316,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     const startWidth = labelWidth;
 
     const onMouseMove = (ev: MouseEvent) => {
-      const newWidth = Math.min(MAX_LABEL_WIDTH, Math.max(MIN_LABEL_WIDTH, startWidth + (ev.clientX - startX)));
+      const newWidth = clamp(startWidth + (ev.clientX - startX), MIN_LABEL_WIDTH, MAX_LABEL_WIDTH);
       setLabelWidth(newWidth);
     };
 
