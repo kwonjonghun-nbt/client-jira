@@ -2,22 +2,18 @@ import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
 import DailyShareModal from '../components/dashboard/DailyShareModal';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import DueThisWeek from '../components/dashboard/DueThisWeek';
+import WorkloadChart from '../components/dashboard/WorkloadChart';
+import RecentUpdates from '../components/dashboard/RecentUpdates';
+import TypeDistribution from '../components/dashboard/TypeDistribution';
+import ChangeTracking from '../components/dashboard/ChangeTracking';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useChangelog } from '../hooks/useChangelog';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useDailyShare } from '../hooks/useDailyShare';
 import { useUIStore } from '../store/uiStore';
-import { normalizeType, issueTypeColors, statusBadgeClass } from '../utils/issue';
-import { formatRelativeTime } from '../utils/formatters';
-import { DATE_PRESETS, changeTypeConfig, formatChangeValue } from '../utils/dashboard';
-
-const typeLabel: Record<string, string> = {
-  epic: '에픽',
-  story: '스토리',
-  task: '작업',
-  'sub-task': '하위작업',
-  bug: '버그',
-};
+import { DATE_PRESETS } from '../utils/dashboard';
 
 export default function DashboardPage() {
   const { data, isLoading } = useJiraIssues();
@@ -38,6 +34,7 @@ export default function DashboardPage() {
     assignees,
   } = useDashboardStats(data?.issues);
   const dailyShare = useDailyShare(data?.issues);
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -164,288 +161,27 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">전체 이슈</p>
-              <p className="text-3xl font-bold text-gray-800 mt-1">
-                {stats.totalCount}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
+      <SummaryCards
+        totalCount={stats.totalCount}
+        inProgressCount={stats.inProgressCount}
+        doneCount={stats.doneCount}
+        newCount={stats.newCount}
+      />
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">진행중</p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">
-                {stats.inProgressCount}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">완료</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">
-                {stats.doneCount}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">미착수</p>
-              <p className="text-3xl font-bold text-gray-800 mt-1">{stats.newCount}</p>
-            </div>
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Two Column Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        {/* Due This Week */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            이번 주 마감 이슈
-          </h2>
-          {stats.dueThisWeek.length === 0 ? (
-            <p className="text-gray-500 text-sm">이번 주 마감 이슈가 없습니다</p>
-          ) : (
-            <div className="space-y-3">
-              {stats.dueThisWeek.map((issue) => (
-                <div
-                  key={issue.key}
-                  className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono text-blue-600">
-                        {issue.key}
-                      </span>
-                      <span className={`px-2 py-0.5 text-xs rounded ${statusBadgeClass(issue.statusCategory)}`}>
-                        {issue.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-800 truncate">{issue.summary}</p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      <span>
-                        {new Date(issue.dueDate!).toLocaleDateString('ko-KR')}
-                      </span>
-                      {issue.assignee && <span>· {issue.assignee}</span>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Workload by Assignee */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            담당자별 워크로드
-          </h2>
-          {stats.workload.length === 0 ? (
-            <p className="text-gray-500 text-sm">진행중인 이슈가 없습니다</p>
-          ) : (
-            <div className="space-y-3">
-              {stats.workload.map((w) => (
-                <div key={w.name}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-700">{w.name}</span>
-                    <span className="text-sm font-semibold text-gray-800">
-                      {w.count}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{ width: `${(w.count / stats.maxWorkload) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <DueThisWeek issues={stats.dueThisWeek} />
+        <WorkloadChart workload={stats.workload} maxWorkload={stats.maxWorkload} />
       </div>
 
-      {/* Second Two Column Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        {/* Recently Updated */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            최근 업데이트 이슈
-          </h2>
-          <div className="space-y-3">
-            {stats.recentlyUpdated.map((issue) => {
-              const normalized = normalizeType(issue.issueType);
-              const colorClass =
-                issueTypeColors[normalized] || 'bg-gray-100 text-gray-700';
-
-              return (
-                <div
-                  key={issue.key}
-                  onClick={() => openIssueDetail(issue, baseUrl)}
-                  className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 -mx-2 px-2 rounded transition-colors"
-                >
-                  <span
-                    className={`px-2 py-1 text-xs rounded font-medium ${colorClass}`}
-                  >
-                    {issue.key}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 truncate">{issue.summary}</p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      <span>{formatRelativeTime(issue.updated)}</span>
-                      <span>·</span>
-                      <span className={`px-1.5 py-0.5 rounded ${statusBadgeClass(issue.statusCategory)}`}>
-                        {issue.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Issue Type Distribution */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            이슈 타입별 분포
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {stats.typeDistribution.map((item) => {
-              const colorClass =
-                issueTypeColors[item.type] || 'bg-gray-100 text-gray-700';
-
-              return (
-                <div
-                  key={item.type}
-                  className={`px-4 py-2 rounded-lg ${colorClass} flex items-center gap-2`}
-                >
-                  <span className="font-medium">
-                    {typeLabel[item.type] || item.type}
-                  </span>
-                  <span className="font-bold">{item.count}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <RecentUpdates
+          issues={stats.recentlyUpdated}
+          onIssueClick={(issue) => openIssueDetail(issue, baseUrl)}
+        />
+        <TypeDistribution distribution={stats.typeDistribution} />
       </div>
 
-      {/* Change Tracking */}
-      <div className="mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">최근 변경 추적</h2>
-            {changelog && changelog.entries.length > 0 && (
-              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                {changelog.entries.length}
-              </span>
-            )}
-          </div>
-          {!changelog || changelog.entries.length === 0 ? (
-            <p className="text-gray-500 text-sm">변경사항이 없습니다</p>
-          ) : (
-            <div className="space-y-3">
-              {changelog.entries.slice(0, 15).map((entry, idx) => {
-                const config = changeTypeConfig[entry.changeType];
-                return (
-                  <div
-                    key={`${entry.issueKey}-${entry.changeType}-${idx}`}
-                    className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-b-0"
-                  >
-                    <span className={`px-2 py-0.5 text-xs rounded font-medium shrink-0 ${config.color}`}>
-                      {config.label}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs font-mono text-blue-600">{entry.issueKey}</span>
-                        <span className="text-sm text-gray-800 truncate">{entry.summary}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        <span>{formatChangeValue(entry)}</span>
-                        <span>· {formatRelativeTime(entry.detectedAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+      <ChangeTracking changelog={changelog} />
 
       {dailyShare.showModal && (
         <DailyShareModal
