@@ -8,6 +8,8 @@ const api = {
     testConnection: (params: { url: string; email: string; token: string }) =>
       ipcRenderer.invoke('jira:test-connection', params),
     getProjects: () => ipcRenderer.invoke('jira:get-projects'),
+    getIssueChangelog: (issueKey: string) =>
+      ipcRenderer.invoke('jira:get-issue-changelog', issueKey),
   },
   settings: {
     load: () => ipcRenderer.invoke('settings:load'),

@@ -113,4 +113,36 @@ export class JiraClient {
     const jql = parts.length > 0 ? parts.join(' AND ') : 'ORDER BY updated DESC';
     return jql.includes('ORDER BY') ? jql : `${jql} ORDER BY updated DESC`;
   }
+
+  async fetchIssueChangelog(issueKey: string): Promise<{ created: string; items: { field: string; fromString: string | null; toString: string | null }[] }[]> {
+    const allHistories: { created: string; items: { field: string; fromString: string | null; toString: string | null }[] }[] = [];
+    let startAt = 0;
+    const maxResults = 100;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const response = await retry(() =>
+        this.client.get(`/rest/api/3/issue/${issueKey}/changelog`, {
+          params: { startAt, maxResults },
+        }),
+      );
+
+      const { values, total } = response.data;
+      for (const entry of values) {
+        allHistories.push({
+          created: entry.created,
+          items: (entry.items ?? []).map((item: any) => ({
+            field: item.field,
+            fromString: item.fromString ?? null,
+            toString: item.toString ?? null,
+          })),
+        });
+      }
+
+      startAt += values.length;
+      if (startAt >= total) break;
+    }
+
+    return allHistories;
+  }
 }

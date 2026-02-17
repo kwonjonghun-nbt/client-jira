@@ -4,6 +4,8 @@ import { useUIStore } from '../../store/uiStore';
 import { statusBadgeClass, getPriorityColor, buildIssueUrl } from '../../utils/issue';
 import { formatDateSafe } from '../../utils/formatters';
 import { buildPrompt } from '../../utils/issue-prompts';
+import { useStatusTransitions } from '../../hooks/useStatusTransitions';
+import StatusTransitionTimeline from './StatusTransitionTimeline';
 
 export default function IssueDetailModal() {
   const issue = useUIStore((s) => s.selectedIssue);
@@ -11,6 +13,7 @@ export default function IssueDetailModal() {
   const close = useUIStore((s) => s.closeIssueDetail);
   const [, copy] = useCopyToClipboard();
   const [copied, setCopied] = useState(false);
+  const { data: transitionAnalysis, isLoading: transitionsLoading } = useStatusTransitions(issue?.key ?? null, issue?.status ?? '');
 
   useEffect(() => {
     if (!issue) return;
@@ -168,6 +171,9 @@ export default function IssueDetailModal() {
               </div>
             </div>
           )}
+
+          {/* Status Transitions */}
+          <StatusTransitionTimeline analysis={transitionAnalysis} isLoading={transitionsLoading} />
         </div>
 
         {/* Footer */}

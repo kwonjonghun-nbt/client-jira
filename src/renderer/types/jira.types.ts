@@ -179,3 +179,30 @@ export interface OKRData {
   relations: OKRRelation[];
   updatedAt: string;
 }
+
+// ─── Status Transition Analysis ──────────────────────────────────────────────
+
+export interface JiraChangelogItem {
+  field: string;
+  fromString: string | null;
+  toString: string | null;
+}
+
+export interface JiraChangelogHistory {
+  created: string;
+  items: JiraChangelogItem[];
+}
+
+export interface StatusTransition {
+  fromStatus: string | null;
+  toStatus: string;
+  transitionedAt: string;
+  durationMs: number | null;
+}
+
+export interface StatusTransitionAnalysis {
+  transitions: StatusTransition[];
+  currentStatus: string;
+  bottleneck: { fromStatus: string | null; toStatus: string; durationMs: number } | null;
+  totalDurationMs: number;
+}

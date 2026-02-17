@@ -23,4 +23,16 @@ export function registerJiraHandlers(services: AppServices): void {
       return [];
     }
   });
+
+  ipcMain.handle('jira:get-issue-changelog', async (_event, issueKey: string) => {
+    try {
+      if (!services.jiraClient) {
+        return [];
+      }
+      return await services.jiraClient.fetchIssueChangelog(issueKey);
+    } catch (error: any) {
+      console.error('Failed to get issue changelog:', error.message);
+      return [];
+    }
+  });
 }

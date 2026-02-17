@@ -1,4 +1,4 @@
-import type { NormalizedIssue, StoredData, MetaData, SyncStatus, SyncProgress, SyncResult, JiraProject, LabelNote, ReportMeta, ChangelogData, OKRData } from './jira.types';
+import type { NormalizedIssue, StoredData, MetaData, SyncStatus, SyncProgress, SyncResult, JiraProject, LabelNote, ReportMeta, ChangelogData, OKRData, JiraChangelogHistory } from './jira.types';
 import type { Settings } from './settings.types';
 
 export interface ElectronAPI {
@@ -9,6 +9,7 @@ export interface ElectronAPI {
       token: string;
     }) => Promise<{ success: boolean; displayName?: string; error?: string }>;
     getProjects: () => Promise<JiraProject[]>;
+    getIssueChangelog: (issueKey: string) => Promise<JiraChangelogHistory[]>;
   };
   settings: {
     load: () => Promise<Settings | null>;
