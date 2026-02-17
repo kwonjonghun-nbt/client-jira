@@ -1,11 +1,12 @@
-import cron from 'node-cron';
+import { schedule as cronSchedule } from 'node-cron';
+import type { ScheduledTask } from 'node-cron';
 import type { BrowserWindow } from 'electron';
 import type { SyncService } from './sync';
 import type { Schedule } from '../schemas/settings.schema';
 import { logger } from '../utils/logger';
 
 export class SchedulerService {
-  private tasks: cron.ScheduledTask[] = [];
+  private tasks: ScheduledTask[] = [];
   private syncService: SyncService;
   private mainWindow: BrowserWindow | null;
 
@@ -26,7 +27,7 @@ export class SchedulerService {
       const [hour, minute] = time.split(':');
       const cronExpression = `${minute} ${hour} * * *`;
 
-      const task = cron.schedule(cronExpression, async () => {
+      const task = cronSchedule(cronExpression, async () => {
         logger.info(`Scheduled sync triggered at ${time}`);
         await this.syncService.performSync('scheduled', this.mainWindow);
       });
