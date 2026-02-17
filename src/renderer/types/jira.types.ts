@@ -206,3 +206,17 @@ export interface StatusTransitionAnalysis {
   bottleneck: { fromStatus: string | null; toStatus: string; durationMs: number } | null;
   totalDurationMs: number;
 }
+
+export interface IssueTransitionSummary {
+  issueKey: string;
+  currentStatus: string;
+  transitions: {
+    from: string | null;
+    to: string;
+    at: string;
+    durationMs: number | null;
+  }[];
+  bottleneck: { fromStatus: string | null; toStatus: string; durationMs: number } | null;
+  totalDurationMs: number;
+  flags: string[];
+}

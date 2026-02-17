@@ -2,8 +2,10 @@ import {
   extractStatusTransitions,
   analyzeStatusTransitions,
   formatTransitionDuration,
+  buildTransitionSummary,
+  detectTransitionFlags,
 } from '@renderer/utils/status-transitions';
-import type { JiraChangelogHistory } from '@renderer/types/jira.types';
+import type { JiraChangelogHistory, StatusTransition } from '@renderer/types/jira.types';
 
 describe('extractStatusTransitions', () => {
   it('빈 배열이면 빈 배열을 반환한다', () => {
@@ -157,5 +159,86 @@ describe('formatTransitionDuration', () => {
 
   it('음수는 "0분"을 반환한다', () => {
     expect(formatTransitionDuration(-1000)).toBe('0분');
+  });
+});
+
+describe('detectTransitionFlags', () => {
+  it('전환이 없으면 no_transitions를 반환한다', () => {
+    expect(detectTransitionFlags([])).toEqual(['no_transitions']);
+  });
+
+  it('단일 전환이면 single_jump를 반환한다', () => {
+    const transitions: StatusTransition[] = [
+      { fromStatus: 'To Do', toStatus: 'Done', transitionedAt: '2026-02-01T09:00:00.000+0900', durationMs: null },
+    ];
+    expect(detectTransitionFlags(transitions)).toContain('single_jump');
+  });
+
+  it('역방향 전환을 감지한다', () => {
+    const transitions: StatusTransition[] = [
+      { fromStatus: 'To Do', toStatus: 'In Progress', transitionedAt: '2026-02-01T09:00:00.000+0900', durationMs: null },
+      { fromStatus: 'In Progress', toStatus: 'Done', transitionedAt: '2026-02-03T09:00:00.000+0900', durationMs: 2 * 24 * 3600_000 },
+      { fromStatus: 'Done', toStatus: 'In Progress', transitionedAt: '2026-02-04T09:00:00.000+0900', durationMs: 24 * 3600_000 },
+    ];
+    expect(detectTransitionFlags(transitions)).toContain('reverse_transition');
+  });
+
+  it('작업 단계에서 5분 이내 전환을 rapid_transition으로 감지한다', () => {
+    const transitions: StatusTransition[] = [
+      { fromStatus: 'To Do', toStatus: 'In Progress', transitionedAt: '2026-02-01T09:00:00.000+0900', durationMs: null },
+      { fromStatus: 'In Progress', toStatus: 'In Review', transitionedAt: '2026-02-01T09:03:00.000+0900', durationMs: 3 * 60_000 },
+      { fromStatus: 'In Review', toStatus: 'Done', transitionedAt: '2026-02-01T09:04:00.000+0900', durationMs: 60_000 },
+    ];
+    expect(detectTransitionFlags(transitions)).toContain('rapid_transition');
+  });
+
+  it('초기 단계(backlog, to do)의 빠른 전환은 rapid_transition으로 감지하지 않는다', () => {
+    const transitions: StatusTransition[] = [
+      { fromStatus: 'Backlog', toStatus: 'To Do', transitionedAt: '2026-02-01T09:00:00.000+0900', durationMs: null },
+      { fromStatus: 'To Do', toStatus: 'In Progress', transitionedAt: '2026-02-01T09:01:00.000+0900', durationMs: 60_000 },
+      { fromStatus: 'In Progress', toStatus: 'Done', transitionedAt: '2026-02-05T09:00:00.000+0900', durationMs: 4 * 24 * 3600_000 },
+    ];
+    expect(detectTransitionFlags(transitions)).not.toContain('rapid_transition');
+  });
+
+  it('플래그를 중복 없이 반환한다', () => {
+    const transitions: StatusTransition[] = [
+      { fromStatus: 'To Do', toStatus: 'In Progress', transitionedAt: '2026-02-01T09:00:00.000+0900', durationMs: null },
+      { fromStatus: 'In Progress', toStatus: 'In Review', transitionedAt: '2026-02-01T09:02:00.000+0900', durationMs: 2 * 60_000 },
+      { fromStatus: 'In Review', toStatus: 'Testing', transitionedAt: '2026-02-01T09:03:00.000+0900', durationMs: 60_000 },
+      { fromStatus: 'Testing', toStatus: 'Done', transitionedAt: '2026-02-01T09:04:00.000+0900', durationMs: 60_000 },
+    ];
+    const flags = detectTransitionFlags(transitions);
+    expect(flags.filter((f) => f === 'rapid_transition')).toHaveLength(1);
+  });
+});
+
+describe('buildTransitionSummary', () => {
+  it('changelog에서 요약 데이터를 생성한다', () => {
+    const histories: JiraChangelogHistory[] = [
+      {
+        created: '2026-02-01T09:00:00.000+0900',
+        items: [{ field: 'status', fromString: 'To Do', toString: 'In Progress' }],
+      },
+      {
+        created: '2026-02-03T09:00:00.000+0900',
+        items: [{ field: 'status', fromString: 'In Progress', toString: 'Done' }],
+      },
+    ];
+    const result = buildTransitionSummary('TEST-1', histories, 'Done');
+    expect(result.issueKey).toBe('TEST-1');
+    expect(result.currentStatus).toBe('Done');
+    expect(result.transitions).toHaveLength(2);
+    expect(result.bottleneck).not.toBeNull();
+    expect(result.totalDurationMs).toBe(2 * 24 * 3600_000);
+    expect(result.flags).toEqual([]);
+  });
+
+  it('빈 changelog이면 no_transitions 플래그를 반환한다', () => {
+    const result = buildTransitionSummary('TEST-2', [], 'To Do');
+    expect(result.transitions).toHaveLength(0);
+    expect(result.bottleneck).toBeNull();
+    expect(result.totalDurationMs).toBe(0);
+    expect(result.flags).toContain('no_transitions');
   });
 });

@@ -1,5 +1,5 @@
 import { parseISO, differenceInMilliseconds } from 'date-fns';
-import type { JiraChangelogHistory, StatusTransition, StatusTransitionAnalysis } from '../types/jira.types';
+import type { JiraChangelogHistory, StatusTransition, StatusTransitionAnalysis, IssueTransitionSummary } from '../types/jira.types';
 
 /**
  * Jira changelog histories에서 status 전환만 추출하고 소요시간을 계산한다.
@@ -85,4 +85,88 @@ export function formatTransitionDuration(ms: number): string {
   const days = Math.floor(hours / 24);
   const remainingHours = hours % 24;
   return remainingHours > 0 ? `${days}일 ${remainingHours}시간` : `${days}일`;
+}
+
+/**
+ * 여러 이슈의 상태 전환을 요약 데이터로 변환한다 (AI 프롬프트용).
+ */
+export function buildTransitionSummary(
+  issueKey: string,
+  histories: JiraChangelogHistory[],
+  currentStatus: string,
+): IssueTransitionSummary {
+  const transitions = extractStatusTransitions(histories);
+  const analysis = analyzeStatusTransitions(transitions, currentStatus);
+
+  return {
+    issueKey,
+    currentStatus,
+    transitions: transitions.map((t) => ({
+      from: t.fromStatus,
+      to: t.toStatus,
+      at: t.transitionedAt,
+      durationMs: t.durationMs,
+    })),
+    bottleneck: analysis.bottleneck,
+    totalDurationMs: analysis.totalDurationMs,
+    flags: detectTransitionFlags(transitions),
+  };
+}
+
+/**
+ * 비정상 전환 패턴을 감지한다.
+ * - no_transitions: 상태 변경 이력 없음
+ * - single_jump: 중간 단계 없이 한 번에 완료
+ * - reverse_transition: 역방향 전환 (완료→진행중 등)
+ * - rapid_transition: 작업 단계에서 5분 이내 전환 (형식적 상태 변경 의심)
+ */
+export function detectTransitionFlags(transitions: StatusTransition[]): string[] {
+  const flags: string[] = [];
+
+  if (transitions.length === 0) {
+    flags.push('no_transitions');
+    return flags;
+  }
+
+  if (transitions.length === 1) {
+    flags.push('single_jump');
+  }
+
+  const RAPID_THRESHOLD_MS = 5 * 60 * 1000; // 5분
+  const SKIP_STATUSES = new Set(['backlog', 'open', 'to do', 'todo', '백로그', '열기']);
+
+  for (const t of transitions) {
+    if (t.fromStatus && isReverseTransition(t.fromStatus, t.toStatus)) {
+      flags.push('reverse_transition');
+    }
+    if (
+      t.durationMs !== null &&
+      t.durationMs < RAPID_THRESHOLD_MS &&
+      t.fromStatus &&
+      !SKIP_STATUSES.has(t.fromStatus.toLowerCase())
+    ) {
+      flags.push('rapid_transition');
+    }
+  }
+
+  return [...new Set(flags)];
+}
+
+/**
+ * 역방향 전환인지 판별한다.
+ * 일반적인 Jira 워크플로우 순서: To Do → In Progress → Testing/Review → Done
+ */
+function isReverseTransition(fromStatus: string, toStatus: string): boolean {
+  const ORDER: Record<string, number> = {
+    'backlog': 0, '백로그': 0,
+    'open': 1, '열기': 1, 'to do': 1, 'todo': 1,
+    'in progress': 2, '진행 중': 2, '진행중': 2,
+    'in review': 3, '리뷰': 3, '리뷰 중': 3, 'review': 3,
+    'in testing': 3, '테스트': 3, '테스트 중': 3, 'testing': 3,
+    'done': 4, '완료': 4, 'closed': 4,
+  };
+  const fromOrder = ORDER[fromStatus.toLowerCase()];
+  const toOrder = ORDER[toStatus.toLowerCase()];
+  if (fromOrder === undefined || toOrder === undefined) return false;
+  return fromOrder > toOrder;
 }
