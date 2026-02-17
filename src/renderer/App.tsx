@@ -9,7 +9,6 @@ import OKRPage from './pages/OKRPage';
 import DashboardPage from './pages/DashboardPage';
 import SyncProgress from './components/sync/SyncProgress';
 import IssueDetailModal from './components/issue/IssueDetailModal';
-import FloatingAIButton from './components/ai-tasks/FloatingAIButton';
 import AITaskPanel from './components/ai-tasks/AITaskPanel';
 import AITaskDetailModal from './components/ai-tasks/AITaskDetailModal';
 import { useUIStore } from './store/uiStore';
@@ -31,7 +30,6 @@ export default function App() {
       {currentPage === 'settings' && <SettingsPage />}
       <SyncProgress />
       <IssueDetailModal />
-      <FloatingAIButton />
       <AITaskPanel />
       <AITaskDetailModal />
     </Layout>

@@ -122,7 +122,7 @@ export default function AITaskPanel() {
   return (
     <div
       ref={panelRef}
-      className="fixed top-16 right-4 z-50 w-80 bg-white rounded-xl shadow-xl border border-gray-200 flex flex-col max-h-[28rem]"
+      className="fixed bottom-[4.5rem] left-3 z-50 w-80 bg-white rounded-xl shadow-xl border border-gray-200 flex flex-col max-h-[28rem]"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">

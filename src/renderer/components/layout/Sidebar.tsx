@@ -1,13 +1,16 @@
 import { useUIStore } from '../../store/uiStore';
-import { useTerminalStore } from '../../store/terminalStore';
+import { useAITaskStore } from '../../store/aiTaskStore';
+import { countRunningTasks } from '../../utils/ai-tasks';
 
 export default function Sidebar() {
   const currentPage = useUIStore((s) => s.currentPage);
   const setPage = useUIStore((s) => s.setPage);
   const expanded = useUIStore((s) => s.sidebarExpanded);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
-  const isTerminalOpen = useTerminalStore((s) => s.isOpen);
-  const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
+  const tasks = useAITaskStore((s) => s.tasks);
+  const panelOpen = useAITaskStore((s) => s.panelOpen);
+  const togglePanel = useAITaskStore((s) => s.togglePanel);
+  const runningCount = countRunningTasks(tasks);
 
   const navItems = [
     { page: 'dashboard' as const, label: '대시보드', icon: '🏠' },
@@ -59,20 +62,26 @@ export default function Sidebar() {
       <div className="flex-1" />
 
       <button
-        onClick={toggleTerminal}
-        title={expanded ? undefined : 'Claude 터미널'}
+        onClick={togglePanel}
+        title={expanded ? undefined : 'AI 작업'}
         className={`
           mx-3 h-10 rounded-lg flex items-center gap-3 text-lg
-          transition-colors cursor-pointer
+          transition-colors cursor-pointer relative
           ${expanded ? 'px-3' : 'justify-center'}
-          ${isTerminalOpen
+          ${panelOpen
             ? 'bg-purple-600 text-white'
             : 'text-gray-400 hover:bg-gray-800 hover:text-white'}
+          ${runningCount > 0 ? 'animate-pulse' : ''}
         `}
       >
         <span className="shrink-0">🤖</span>
         {expanded && (
-          <span className="text-sm truncate">Claude 터미널</span>
+          <span className="text-sm truncate">AI 작업</span>
+        )}
+        {runningCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            {runningCount}
+          </span>
         )}
       </button>
     </aside>
