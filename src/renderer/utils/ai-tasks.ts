@@ -1,4 +1,4 @@
-export type AITaskType = 'report' | 'daily-share' | 'daily-share-multi';
+export type AITaskType = 'report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis';
 export type AITaskStatus = 'running' | 'done' | 'error';
 
 export interface AITask {
@@ -19,8 +19,11 @@ export function createTaskId(): string {
 
 export function generateTaskTitle(
   type: AITaskType,
-  meta: { assignee?: string; startDate?: string; endDate?: string },
+  meta: { assignee?: string; startDate?: string; endDate?: string; issueKey?: string },
 ): string {
+  if (type === 'issue-analysis') {
+    return meta.issueKey ? `티켓 분석 (${meta.issueKey})` : '티켓 분석';
+  }
   if (type === 'report') {
     const parts = [
       meta.assignee,

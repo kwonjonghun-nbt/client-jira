@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useCopyToClipboard } from 'usehooks-ts';
 import { useUIStore } from '../../store/uiStore';
+import { useAITaskStore } from '../../store/aiTaskStore';
 import { statusBadgeClass, getPriorityColor, buildIssueUrl } from '../../utils/issue';
 import { formatDateSafe } from '../../utils/formatters';
-import { buildPrompt } from '../../utils/issue-prompts';
+import { buildPrompt, downloadIssueJson } from '../../utils/issue-prompts';
+import { createTaskId, generateTaskTitle } from '../../utils/ai-tasks';
 import { useStatusTransitions } from '../../hooks/useStatusTransitions';
 import StatusTransitionTimeline from './StatusTransitionTimeline';
 
@@ -13,6 +15,10 @@ export default function IssueDetailModal() {
   const close = useUIStore((s) => s.closeIssueDetail);
   const [, copy] = useCopyToClipboard();
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const addTask = useAITaskStore((s) => s.addTask);
+  const tasks = useAITaskStore((s) => s.tasks);
   const { data: transitionAnalysis, isLoading: transitionsLoading } = useStatusTransitions(issue?.key ?? null, issue?.status ?? '');
 
   useEffect(() => {
@@ -23,6 +29,17 @@ export default function IssueDetailModal() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [issue, close]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
 
   if (!issue) return null;
 
@@ -178,20 +195,72 @@ export default function IssueDetailModal() {
 
         {/* Footer */}
         <div className="border-t border-gray-200 px-6 py-3 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              copy(buildPrompt(issue)).then((ok) => {
-                if (ok) {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
+          {/* Split button: 티켓 분석하기 + 더보기 */}
+          <div className="relative flex" ref={menuRef}>
+            <button
+              type="button"
+              onClick={async () => {
+                const prompt = buildPrompt(issue);
+                try {
+                  const jobId = await window.electronAPI.ai.run(prompt, 'issue-analysis');
+                  if (jobId) {
+                    addTask({
+                      id: createTaskId(),
+                      jobIds: [jobId],
+                      type: 'issue-analysis',
+                      title: generateTaskTitle('issue-analysis', { issueKey: issue.key }),
+                      status: 'running',
+                      result: '',
+                      error: null,
+                      createdAt: Date.now(),
+                    });
+                  }
+                } catch {
+                  // AI runner error handled by task listener
                 }
-              });
-            }}
-            className="px-4 py-1.5 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors cursor-pointer"
-          >
-            {copied ? '복사됨!' : '프롬프트 복사'}
-          </button>
+              }}
+              disabled={tasks.some((t) => t.type === 'issue-analysis' && t.status === 'running' && t.title.includes(issue.key))}
+              className="px-4 py-1.5 text-sm bg-purple-500 text-white rounded-l-lg hover:bg-purple-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              티켓 분석하기
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="px-2 py-1.5 text-sm bg-purple-500 text-white rounded-r-lg hover:bg-purple-600 transition-colors cursor-pointer border-l border-purple-400"
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 bottom-full mb-1 z-10 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    copy(buildPrompt(issue)).then((ok) => {
+                      if (ok) {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }
+                    });
+                    setMenuOpen(false);
+                  }}
+                  className="px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 cursor-pointer w-full text-left rounded-t-lg"
+                >
+                  {copied ? '✓ 복사됨' : '프롬프트 복사'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadIssueJson(issue);
+                    setMenuOpen(false);
+                  }}
+                  className="px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 cursor-pointer w-full text-left rounded-b-lg"
+                >
+                  티켓 정보 다운로드 (.json)
+                </button>
+              </div>
+            )}
+          </div>
           {issueUrl && (
             <button
               type="button"

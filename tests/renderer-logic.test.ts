@@ -3,7 +3,7 @@ import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
 import { normalizeType, getIssueTypeLabel, buildIssueUrl } from '../src/renderer/utils/issue';
 import { formatRelativeTime, formatDateSafe, formatDateShort, formatDate, formatDateTime, formatDuration } from '../src/renderer/utils/formatters';
 import { applyFilters, extractFilterOptions } from '../src/renderer/utils/issue-filters';
-import { getDescriptionTemplate, buildPrompt } from '../src/renderer/utils/issue-prompts';
+import { getDescriptionTemplate, buildPrompt, downloadIssueJson } from '../src/renderer/utils/issue-prompts';
 import { calcKRProgress, calcObjectiveProgress, buildOKRExportData } from '../src/renderer/utils/okr';
 import { filterByDateRange, filterByRowTypes, extractIssueTypeOptions } from '../src/renderer/utils/timeline';
 
@@ -469,6 +469,10 @@ describe('프롬프트 생성', () => {
     expect(prompt).toContain('PROJ-1');
     expect(prompt).toContain('PROJ-4, PROJ-5');
     expect(prompt).toContain('2025-03-01');
+  });
+
+  it('downloadIssueJson은 export 가능한 함수이다', () => {
+    expect(typeof downloadIssueJson).toBe('function');
   });
 });
 

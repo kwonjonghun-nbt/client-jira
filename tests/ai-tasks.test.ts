@@ -44,6 +44,14 @@ describe('ai-tasks utils', () => {
     it('should generate daily-share-multi title', () => {
       expect(generateTaskTitle('daily-share-multi', {})).toBe('일일공유 (전체)');
     });
+
+    it('should generate issue-analysis title with issueKey', () => {
+      expect(generateTaskTitle('issue-analysis', { issueKey: 'PROJ-123' })).toBe('티켓 분석 (PROJ-123)');
+    });
+
+    it('should generate issue-analysis title without issueKey', () => {
+      expect(generateTaskTitle('issue-analysis', {})).toBe('티켓 분석');
+    });
   });
 
   describe('countRunningTasks', () => {
