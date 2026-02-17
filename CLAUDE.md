@@ -151,6 +151,33 @@ function KRCanvasModal({ kr, okr, ... }) {
 
 하나의 파일이 여러 레이어를 담당하게 되면 분리 시점이다.
 
+### 검증된 라이브러리 우선 (Proven Solution First)
+
+문제를 해결할 때 직접 구현하지 않고, **검증된 라이브러리(일반해)를 먼저 찾아 적용한다.** 동일한 문제가 반복될 때 매번 새로 찾지 않도록 아래 매핑을 따른다.
+
+| 문제 영역 | 라이브러리 | 예시 |
+|-----------|-----------|------|
+| 날짜 파싱·포맷·계산 | `date-fns` | `format`, `differenceInDays`, `parseISO` |
+| 배열·객체 유틸 함수 | `es-toolkit` | `groupBy`, `debounce`, `omit`, `chunk` |
+| 유틸성 React 훅 | `usehooks-ts` | `useLocalStorage`, `useDebounce`, `useMediaQuery` |
+| 폼 상태·유효성 관리 | `react-hook-form` | `useForm`, `Controller`, `useFieldArray` |
+| 런타임 타입 검증·스키마 | `zod` | `z.object`, `z.infer`, `safeParse` |
+
+**규칙:**
+- JS 내장 API(`Date`, `Array.prototype`)로 직접 구현하기 전에 위 라이브러리에 해당 기능이 있는지 확인한다.
+- 새로운 문제 영역이 발생하면 신뢰할 수 있는 라이브러리를 찾아 이 테이블에 추가한다.
+- 프로젝트에 이미 설치된 라이브러리를 우선 사용하고, 같은 역할의 라이브러리를 중복 도입하지 않는다.
+
+```typescript
+// Good: date-fns 사용
+import { formatDistanceToNow, parseISO } from 'date-fns';
+const relative = formatDistanceToNow(parseISO(dateStr), { locale: ko });
+
+// Bad: 직접 구현
+const diff = Date.now() - new Date(dateStr).getTime();
+const minutes = Math.floor(diff / 60000);
+```
+
 ### 의존 방향
 
 ```
