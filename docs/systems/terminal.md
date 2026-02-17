@@ -26,24 +26,15 @@ Main 프로세스 서비스:
 | `terminal:destroy` | Renderer → Main | 세션 종료 |
 | `terminal:data` | Main → Renderer | PTY 출력 스트리밍 |
 
-### useTerminal (`hooks/useTerminal.ts`)
-
-Renderer 훅:
-
-- xterm.js Terminal 인스턴스 관리
-- @xterm/addon-fit으로 자동 크기 맞춤
-- IPC 이벤트 리스너로 PTY 출력 수신
-- cleanup 시 세션 자동 정리
-
 ### terminalStore (`store/terminalStore.ts`)
 
 - `aiType` — AI CLI 종류 (claude | gemini)
 - 설정 페이지에서 변경 가능
+
+> **Note:** Renderer 쪽 대화형 터미널 UI(`useTerminal`, `ClaudeTerminalPanel`, `TerminalPanel`, `useResizablePanel`)는 제거됨. 현재 터미널 시스템은 Main 프로세스의 PTY 서비스와 IPC 핸들러만 유지.
 
 ## 기술 스택
 
 | 라이브러리 | 역할 |
 |-----------|------|
 | `node-pty` | 네이티브 PTY 프로세스 생성 |
-| `@xterm/xterm` | 터미널 UI 렌더링 |
-| `@xterm/addon-fit` | 터미널 크기 자동 조절 |

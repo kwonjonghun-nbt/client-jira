@@ -16,8 +16,8 @@ Jira 이슈 기반 AI 리포트 생성, 프롬프트 관리, 리포트 저장·�
 ### AI 리포트 생성
 
 - "AI 생성" 버튼 → CLI 백그라운드 실행
-- 플로팅 AI 태스크 매니저에 태스크 등록 → 다른 페이지로 이동 가능
-- 완료 시 플로팅 패널에서 태스크 클릭 → `AITaskDetailModal`에서 `SectionPresenter`로 결과 확인 + 저장
+- AI 태스크 매니저에 태스크 등록 → 다른 페이지로 이동 가능
+- 완료 시 사이드바 🤖 → 태스크 패널에서 클릭 → `AITaskDetailModal`에서 `SectionPresenter`로 결과 확인 + 저장
 - 이슈별 상태 전환 데이터(changelog) 병렬 수집 → 병목 구간·비정상 패턴 분석 포함
 
 ### 워크플로우 분석 (프롬프트 섹션 8)
@@ -59,7 +59,7 @@ Jira 이슈 기반 AI 리포트 생성, 프롬프트 관리, 리포트 저장·�
 | UI | `SectionPresenter` | 섹션별 프레젠테이션 뷰 |
 | UI Logic | `useReportFilter` | 담당자·기간 필터 |
 | UI Logic | `useReportPrompt` | 프롬프트 생성·복사 |
-| UI Logic | `useReportAI` | AI 리포트 생성 → 플로팅 태스크 등록 |
+| UI Logic | `useReportAI` | AI 리포트 생성 → 태스크 등록 |
 | UI Logic | `useReports` | React Query 기반 리포트 목록/상세 조회 |
 | UI Logic | `useAIRunner` | AI CLI 실행 상태 관리 |
 | Business | `utils/reports` | buildReportPrompt, buildIssueExportData, renderMarkdown |

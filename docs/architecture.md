@@ -96,6 +96,6 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 ### aiTaskStore (Zustand)
 
 - `tasks` — AI 태스크 목록 (실행중/완료/에러)
-- `panelOpen` — 플로팅 패널 표시 여부
+- `panelOpen` — 사이드바 AI 태스크 패널 표시 여부
 - `selectedTaskId` — 상세 모달 대상 태스크
 - IPC 이벤트 핸들러: `appendChunk()`, `markJobDone()`, `markJobError()`

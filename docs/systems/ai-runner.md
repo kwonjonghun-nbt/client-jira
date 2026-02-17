@@ -46,9 +46,9 @@ Renderer 상태 관리 훅:
 
 여러 AI 작업을 동시 관리하는 확장 훅.
 
-### 플로팅 AI 태스크 매니저
+### AI 태스크 매니저
 
-AI 작업을 비동기 태스크로 관리하는 전역 시스템. 모달에 묶이지 않고 작업을 시켜놓고 다른 페이지에서 작업 가능.
+AI 작업을 비동기 태스크로 관리하는 전역 시스템. 모달에 묶이지 않고 작업을 시켜놓고 다른 페이지에서 작업 가능. 사이드바 하단 🤖 버튼으로 태스크 패널을 토글한다.
 
 #### aiTaskStore (`store/aiTaskStore.ts`)
 
@@ -75,17 +75,17 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 
 | 컴포넌트 | 역할 |
 |----------|------|
-| `FloatingAIButton` | 우측 상단 플로팅 버튼. 실행 중 태스크 수 뱃지, pulse 애니메이션 |
-| `AITaskPanel` | 버튼 클릭 시 드롭다운 태스크 목록. 상태 아이콘, 경과 시간, 멀티 진행률 |
+| `Sidebar` 🤖 버튼 | 사이드바 하단 버튼. 실행 중 태스크 수 뱃지, pulse 애니메이션. 패널 토글 |
+| `AITaskPanel` | 사이드바 버튼 클릭 시 드롭다운 태스크 목록. 상태 아이콘, 경과 시간, 멀티 진행률 |
 | `AITaskDetailModal` | 완료 태스크 클릭 시 SectionPresenter로 결과 표시 + 리포트 저장 |
 
 ## 사용처
 
 | 페이지 | 기능 |
 |--------|------|
-| 리포트 | AI 리포트 생성 (`useReportAI`) → 플로팅 태스크로 등록 |
-| 대시보드 | AI 이슈공유 생성 (`useDailyShare`) → 플로팅 태스크로 등록 |
-| 전역 | `FloatingAIButton` + `AITaskPanel` + `AITaskDetailModal` (App.tsx) |
+| 리포트 | AI 리포트 생성 (`useReportAI`) → 태스크로 등록 |
+| 대시보드 | AI 이슈공유 생성 (`useDailyShare`) → 태스크로 등록 |
+| 전역 | 사이드바 🤖 버튼 + `AITaskPanel` + `AITaskDetailModal` (App.tsx) |
 
 ## 상태 흐름
 
@@ -102,7 +102,7 @@ running → abort() → idle
 running → ai:error → error
 ```
 
-### 태스크 흐름 (플로팅 매니저)
+### 태스크 흐름 (AI 태스크 매니저)
 
 ```
 useReportAI/useDailyShare
@@ -111,6 +111,6 @@ aiTaskStore.addTask({ jobIds: [jobId], status: 'running' })
   ↓ useAITaskListener
 ai:chunk → appendChunk (result 누적)
 ai:done → markJobDone (status: 'done')
-  ↓ 사용자가 FloatingAIButton → AITaskPanel → 태스크 클릭
+  ↓ 사용자가 사이드바 🤖 버튼 → AITaskPanel → 태스크 클릭
 AITaskDetailModal (SectionPresenter로 결과 표시, 리포트 저장)
 ```
