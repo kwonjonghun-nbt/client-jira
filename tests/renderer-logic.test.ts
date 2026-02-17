@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
 import { normalizeType, statusBadgeClass, getPriorityColor, getIssueTypeLabel, buildIssueUrl } from '../src/renderer/utils/issue';
-import { formatRelativeTime, formatDateSafe, formatDateShort } from '../src/renderer/utils/formatters';
+import { formatRelativeTime, formatDateSafe, formatDateShort, formatDate, formatDateTime, formatDuration } from '../src/renderer/utils/formatters';
 import { applyFilters, extractFilterOptions } from '../src/renderer/utils/issue-filters';
 import { getDescriptionTemplate, buildPrompt } from '../src/renderer/utils/issue-prompts';
+import { calcKRProgress, calcObjectiveProgress, buildOKRExportData } from '../src/renderer/utils/okr';
+import { filterByDateRange, filterByRowTypes, extractIssueTypeOptions } from '../src/renderer/utils/timeline';
 
 // ─── Filter logic (pure function equivalent of useFilters) ──────────────────
 
@@ -136,66 +138,31 @@ describe('필터 옵션 추출', () => {
 
 // ─── KR Progress calculation ────────────────────────────────────────────────
 
-interface OKRLink {
-  keyResultId: string;
-  type: 'jira' | 'virtual';
-  issueKey?: string;
-}
-
-function calcKRProgress(
-  krId: string,
-  links: OKRLink[],
-  issueMap: Map<string, { statusCategory: string }>,
-): number {
-  const krLinks = links.filter((l) => l.keyResultId === krId && l.type === 'jira');
-  if (krLinks.length === 0) return 0;
-  const doneCount = krLinks.filter((l) => {
-    const issue = issueMap.get(l.issueKey!);
-    return issue?.statusCategory === 'done';
-  }).length;
-  return Math.round((doneCount / krLinks.length) * 100);
-}
-
-function calcObjectiveProgress(
-  objectiveId: string,
-  keyResults: Array<{ id: string; objectiveId: string }>,
-  links: OKRLink[],
-  issueMap: Map<string, { statusCategory: string }>,
-): number {
-  const krs = keyResults.filter((kr) => kr.objectiveId === objectiveId);
-  if (krs.length === 0) return 0;
-  const total = krs.reduce(
-    (sum, kr) => sum + calcKRProgress(kr.id, links, issueMap),
-    0,
-  );
-  return Math.round(total / krs.length);
-}
-
 describe('KR 진행률 계산', () => {
   it('Jira 이슈 중 done 비율로 진행률을 계산한다', () => {
-    const links: OKRLink[] = [
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-1' },
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-2' },
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-3' },
+    const links = [
+      { id: 'link1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
+      { id: 'link2', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-2', order: 1 },
+      { id: 'link3', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-3', order: 2 },
     ];
     const issueMap = new Map([
-      ['PROJ-1', { statusCategory: 'done' }],
-      ['PROJ-2', { statusCategory: 'done' }],
-      ['PROJ-3', { statusCategory: 'indeterminate' }],
+      ['PROJ-1', makeIssue({ key: 'PROJ-1', statusCategory: 'done' })],
+      ['PROJ-2', makeIssue({ key: 'PROJ-2', statusCategory: 'done' })],
+      ['PROJ-3', makeIssue({ key: 'PROJ-3', statusCategory: 'indeterminate' })],
     ]);
 
-    expect(calcKRProgress('kr1', links, issueMap)).toBe(67);
+    expect(calcKRProgress('kr1', links as any, issueMap)).toBe(67);
   });
 
   it('모든 이슈가 done이면 100%이다', () => {
-    const links: OKRLink[] = [
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-1' },
+    const links = [
+      { id: 'link1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
     ];
     const issueMap = new Map([
-      ['PROJ-1', { statusCategory: 'done' }],
+      ['PROJ-1', makeIssue({ key: 'PROJ-1', statusCategory: 'done' })],
     ]);
 
-    expect(calcKRProgress('kr1', links, issueMap)).toBe(100);
+    expect(calcKRProgress('kr1', links as any, issueMap)).toBe(100);
   });
 
   it('연결된 Jira 이슈가 없으면 0%이다', () => {
@@ -203,47 +170,47 @@ describe('KR 진행률 계산', () => {
   });
 
   it('가상 티켓은 진행률 계산에서 제외한다', () => {
-    const links: OKRLink[] = [
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-1' },
-      { keyResultId: 'kr1', type: 'virtual' },
+    const links = [
+      { id: 'link1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
+      { id: 'link2', keyResultId: 'kr1', type: 'virtual' as const, order: 1 },
     ];
     const issueMap = new Map([
-      ['PROJ-1', { statusCategory: 'done' }],
+      ['PROJ-1', makeIssue({ key: 'PROJ-1', statusCategory: 'done' })],
     ]);
 
-    expect(calcKRProgress('kr1', links, issueMap)).toBe(100);
+    expect(calcKRProgress('kr1', links as any, issueMap)).toBe(100);
   });
 
   it('다른 KR의 링크는 포함하지 않는다', () => {
-    const links: OKRLink[] = [
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-1' },
-      { keyResultId: 'kr2', type: 'jira', issueKey: 'PROJ-2' },
+    const links = [
+      { id: 'link1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
+      { id: 'link2', keyResultId: 'kr2', type: 'jira' as const, issueKey: 'PROJ-2', order: 1 },
     ];
     const issueMap = new Map([
-      ['PROJ-1', { statusCategory: 'new' }],
-      ['PROJ-2', { statusCategory: 'done' }],
+      ['PROJ-1', makeIssue({ key: 'PROJ-1', statusCategory: 'new' })],
+      ['PROJ-2', makeIssue({ key: 'PROJ-2', statusCategory: 'done' })],
     ]);
 
-    expect(calcKRProgress('kr1', links, issueMap)).toBe(0);
+    expect(calcKRProgress('kr1', links as any, issueMap)).toBe(0);
   });
 });
 
 describe('Objective 진행률 계산', () => {
   it('하위 KR 진행률의 평균으로 계산한다', () => {
     const krs = [
-      { id: 'kr1', objectiveId: 'o1' },
-      { id: 'kr2', objectiveId: 'o1' },
+      { id: 'kr1', objectiveId: 'o1', title: 'KR1', order: 0 },
+      { id: 'kr2', objectiveId: 'o1', title: 'KR2', order: 1 },
     ];
-    const links: OKRLink[] = [
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-1' },
-      { keyResultId: 'kr2', type: 'jira', issueKey: 'PROJ-2' },
+    const links = [
+      { id: 'link1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
+      { id: 'link2', keyResultId: 'kr2', type: 'jira' as const, issueKey: 'PROJ-2', order: 1 },
     ];
     const issueMap = new Map([
-      ['PROJ-1', { statusCategory: 'done' }],  // kr1: 100%
-      ['PROJ-2', { statusCategory: 'new' }],   // kr2: 0%
+      ['PROJ-1', makeIssue({ key: 'PROJ-1', statusCategory: 'done' })],  // kr1: 100%
+      ['PROJ-2', makeIssue({ key: 'PROJ-2', statusCategory: 'new' })],   // kr2: 0%
     ]);
 
-    expect(calcObjectiveProgress('o1', krs, links, issueMap)).toBe(50);
+    expect(calcObjectiveProgress('o1', krs as any, links as any, issueMap)).toBe(50);
   });
 
   it('KR이 없으면 0%이다', () => {
@@ -252,19 +219,19 @@ describe('Objective 진행률 계산', () => {
 
   it('다른 Objective의 KR은 포함하지 않는다', () => {
     const krs = [
-      { id: 'kr1', objectiveId: 'o1' },
-      { id: 'kr2', objectiveId: 'o2' },
+      { id: 'kr1', objectiveId: 'o1', title: 'KR1', order: 0 },
+      { id: 'kr2', objectiveId: 'o2', title: 'KR2', order: 1 },
     ];
-    const links: OKRLink[] = [
-      { keyResultId: 'kr1', type: 'jira', issueKey: 'PROJ-1' },
-      { keyResultId: 'kr2', type: 'jira', issueKey: 'PROJ-2' },
+    const links = [
+      { id: 'link1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
+      { id: 'link2', keyResultId: 'kr2', type: 'jira' as const, issueKey: 'PROJ-2', order: 1 },
     ];
     const issueMap = new Map([
-      ['PROJ-1', { statusCategory: 'done' }],
-      ['PROJ-2', { statusCategory: 'done' }],
+      ['PROJ-1', makeIssue({ key: 'PROJ-1', statusCategory: 'done' })],
+      ['PROJ-2', makeIssue({ key: 'PROJ-2', statusCategory: 'done' })],
     ]);
 
-    expect(calcObjectiveProgress('o1', krs, links, issueMap)).toBe(100);
+    expect(calcObjectiveProgress('o1', krs as any, links as any, issueMap)).toBe(100);
   });
 });
 
@@ -326,25 +293,6 @@ describe('상대 시간 표시', () => {
 // ─── Date range filter logic ────────────────────────────────────────────────
 
 describe('기간 필터 로직', () => {
-  function filterByDateRange(
-    issues: NormalizedIssue[],
-    dateStart: string,
-    dateEnd: string,
-  ): NormalizedIssue[] {
-    if (!dateStart && !dateEnd) return issues;
-    const startMs = dateStart ? new Date(dateStart).getTime() : 0;
-    const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
-
-    return issues.filter((issue) => {
-      const createdMs = new Date(issue.created).getTime();
-      const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
-      const createdInRange = createdMs >= startMs && createdMs <= endMs;
-      const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;
-      const spansRange = dueMs !== null && createdMs <= startMs && dueMs >= endMs;
-      return createdInRange || dueInRange || spansRange;
-    });
-  }
-
   it('생성일이 기간 내인 이슈를 포함한다', () => {
     const issues = [makeIssue({ key: 'P-1', created: '2025-01-10T00:00:00Z' })];
     const result = filterByDateRange(issues, '2025-01-01', '2025-01-31');
@@ -554,5 +502,196 @@ describe('프롬프트 생성', () => {
     expect(prompt).toContain('PROJ-1');
     expect(prompt).toContain('PROJ-4, PROJ-5');
     expect(prompt).toContain('2025-03-01');
+  });
+});
+
+// ─── Row type filtering ─────────────────────────────────────────────────────
+
+describe('행 타입 필터링', () => {
+  const issues = [
+    makeIssue({ key: 'P-1', issueType: 'Task' }),
+    makeIssue({ key: 'P-2', issueType: 'Bug' }),
+    makeIssue({ key: 'P-3', issueType: 'Story' }),
+  ];
+
+  it('hiddenRowTypes가 비어있으면 전체를 반환한다', () => {
+    const result = filterByRowTypes(issues, new Set());
+    expect(result).toHaveLength(3);
+  });
+
+  it('숨김 타입에 해당하는 이슈를 제외한다', () => {
+    const result = filterByRowTypes(issues, new Set(['task', 'bug']));
+    expect(result).toHaveLength(1);
+    expect(result[0].key).toBe('P-3');
+  });
+
+  it('대소문자를 구분하지 않는다', () => {
+    const result = filterByRowTypes(issues, new Set(['task', 'bug']));
+    expect(result).toHaveLength(1);
+    expect(result[0].issueType).toBe('Story');
+  });
+});
+
+// ─── Issue type option extraction ────────────────────────────────────────────
+
+describe('이슈 타입 옵션 추출', () => {
+  it('고유한 이슈 타입 목록을 추출한다', () => {
+    const issues = [
+      makeIssue({ key: 'P-1', issueType: 'Task' }),
+      makeIssue({ key: 'P-2', issueType: 'Bug' }),
+      makeIssue({ key: 'P-3', issueType: 'Story' }),
+    ];
+    const result = extractIssueTypeOptions(issues);
+    expect(result).toHaveLength(3);
+    expect(result.map((r) => r.value).sort()).toEqual(['bug', 'story', 'task']);
+  });
+
+  it('value는 소문자, label은 원본 이름이다', () => {
+    const issues = [makeIssue({ key: 'P-1', issueType: 'BugFix' })];
+    const result = extractIssueTypeOptions(issues);
+    expect(result[0].value).toBe('bugfix');
+    expect(result[0].label).toBe('BugFix');
+  });
+
+  it('중복 타입은 제거한다', () => {
+    const issues = [
+      makeIssue({ key: 'P-1', issueType: 'Task' }),
+      makeIssue({ key: 'P-2', issueType: 'Task' }),
+      makeIssue({ key: 'P-3', issueType: 'Task' }),
+    ];
+    const result = extractIssueTypeOptions(issues);
+    expect(result).toHaveLength(1);
+  });
+
+  it('빈 배열이면 빈 배열을 반환한다', () => {
+    const result = extractIssueTypeOptions([]);
+    expect(result).toHaveLength(0);
+  });
+});
+
+// ─── Date formatters (format/formatDateTime/formatDuration) ──────────────────
+
+describe('날짜 포맷 (formatDate)', () => {
+  it('날짜를 한국어 형식으로 포맷한다', () => {
+    const result = formatDate('2025-01-15T00:00:00Z');
+    expect(result).toContain('2025');
+    expect(result).toContain('01');
+    expect(result).toContain('15');
+  });
+});
+
+describe('날짜시간 포맷 (formatDateTime)', () => {
+  it('날짜와 시간을 포맷한다', () => {
+    const result = formatDateTime('2025-01-15T14:30:00Z');
+    expect(result).toContain('2025');
+    expect(result).toContain('01');
+    expect(result).toContain('15');
+    // Time parts should be present
+    expect(result.match(/\d+:\d+/)).toBeTruthy();
+  });
+});
+
+describe('소요시간 포맷 (formatDuration)', () => {
+  it('1초 미만은 ms로 표시한다', () => {
+    expect(formatDuration(500)).toBe('500ms');
+    expect(formatDuration(999)).toBe('999ms');
+  });
+
+  it('60초 미만은 초로 표시한다', () => {
+    expect(formatDuration(1000)).toBe('1초');
+    expect(formatDuration(30000)).toBe('30초');
+    expect(formatDuration(59000)).toBe('59초');
+  });
+
+  it('60초 이상은 분과 초로 표시한다', () => {
+    expect(formatDuration(60000)).toContain('분');
+    expect(formatDuration(90000)).toBe('1분 30초');
+    expect(formatDuration(125000)).toBe('2분 5초');
+  });
+});
+
+// ─── OKR export data builder ────────────────────────────────────────────────
+
+describe('OKR 내보내기 데이터 생성', () => {
+  it('objectives/keyResults/links 구조로 내보내기 데이터를 생성한다', () => {
+    const okr = {
+      objectives: [{ id: 'o1', title: 'Obj 1', description: 'desc', order: 0 }],
+      keyResults: [{ id: 'kr1', objectiveId: 'o1', title: 'KR 1', description: null, order: 0 }],
+      links: [{ id: 'l1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 }],
+      relations: [],
+      groups: [],
+      virtualTickets: [],
+    } as any;
+    const issueMap = new Map([['PROJ-1', makeIssue({ key: 'PROJ-1' })]]);
+
+    const result = buildOKRExportData(okr, issueMap) as any;
+    expect(result.objectives).toHaveLength(1);
+    expect(result.objectives[0].keyResults).toHaveLength(1);
+    expect(result.objectives[0].keyResults[0].links).toHaveLength(1);
+  });
+
+  it('Jira 링크에 이슈 정보를 포함한다', () => {
+    const okr = {
+      objectives: [{ id: 'o1', title: 'Obj 1', description: null, order: 0 }],
+      keyResults: [{ id: 'kr1', objectiveId: 'o1', title: 'KR 1', description: null, order: 0 }],
+      links: [{ id: 'l1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 }],
+      relations: [],
+      groups: [],
+      virtualTickets: [],
+    } as any;
+    const issueMap = new Map([
+      [
+        'PROJ-1',
+        makeIssue({
+          key: 'PROJ-1',
+          summary: 'Test issue',
+          status: 'In Progress',
+          statusCategory: 'indeterminate',
+          assignee: 'Alice',
+          priority: 'High',
+        }),
+      ],
+    ]);
+
+    const result = buildOKRExportData(okr, issueMap) as any;
+    const link = result.objectives[0].keyResults[0].links[0];
+    expect(link.issueKey).toBe('PROJ-1');
+    expect(link.summary).toBe('Test issue');
+    expect(link.status).toBe('In Progress');
+    expect(link.assignee).toBe('Alice');
+  });
+
+  it('가상 티켓 링크에 가상 티켓 정보를 포함한다', () => {
+    const okr = {
+      objectives: [{ id: 'o1', title: 'Obj 1', description: null, order: 0 }],
+      keyResults: [{ id: 'kr1', objectiveId: 'o1', title: 'KR 1', description: null, order: 0 }],
+      links: [{ id: 'l1', keyResultId: 'kr1', type: 'virtual' as const, virtualTicketId: 'vt1', order: 0 }],
+      relations: [],
+      groups: [],
+      virtualTickets: [{ id: 'vt1', title: 'Virtual Task', description: 'Virtual desc', issueType: 'Task', assignee: 'Bob' }],
+    } as any;
+
+    const result = buildOKRExportData(okr, new Map()) as any;
+    const link = result.objectives[0].keyResults[0].links[0];
+    expect(link.virtualTicket).toBeDefined();
+    expect(link.virtualTicket.title).toBe('Virtual Task');
+    expect(link.virtualTicket.assignee).toBe('Bob');
+  });
+
+  it('exportedAt 타임스탬프를 포함한다', () => {
+    const okr = {
+      objectives: [],
+      keyResults: [],
+      links: [],
+      relations: [],
+      groups: [],
+      virtualTickets: [],
+    } as any;
+
+    const result = buildOKRExportData(okr, new Map());
+    expect(result.exportedAt).toBeDefined();
+    expect(typeof result.exportedAt).toBe('string');
+    // Should be ISO format
+    expect(result.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 });
