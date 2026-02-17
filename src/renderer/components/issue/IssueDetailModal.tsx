@@ -8,6 +8,7 @@ import { buildPrompt, downloadIssueJson } from '../../utils/issue-prompts';
 import { createTaskId, generateTaskTitle } from '../../utils/ai-tasks';
 import { useStatusTransitions } from '../../hooks/useStatusTransitions';
 import StatusTransitionTimeline from './StatusTransitionTimeline';
+import MarkdownRenderer from '../common/MarkdownRenderer';
 
 export default function IssueDetailModal() {
   const issue = useUIStore((s) => s.selectedIssue);
@@ -183,8 +184,8 @@ export default function IssueDetailModal() {
           {issue.description && (
             <div>
               <span className="text-gray-400 text-xs">설명</span>
-              <div className="mt-1 text-sm text-gray-700 bg-gray-50 rounded-lg p-4 whitespace-pre-wrap leading-relaxed">
-                {issue.description}
+              <div className="mt-1 bg-gray-50 rounded-lg p-4">
+                <MarkdownRenderer content={issue.description} />
               </div>
             </div>
           )}
