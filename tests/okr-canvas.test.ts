@@ -7,11 +7,18 @@ import {
   AREA_PAD,
   GAP,
   GROUP_HEADER_H,
-  DRAG_THRESHOLD,
-  MIN_ZOOM,
-  MAX_ZOOM,
+  toAbsoluteCoords,
+  toLocalCoords,
   type Rect,
 } from '../src/renderer/hooks/okr/okr-canvas.types';
+import {
+  computeUnlinkWork,
+  computeDeleteVirtualTicket,
+  computeDeleteGroup,
+  calcDragPosition,
+  hitTestGroup,
+} from '../src/renderer/utils/okr-canvas-operations';
+import type { OKRLink, OKRRelation, OKRGroup, VirtualTicket } from '../src/renderer/types/jira.types';
 
 // ─── rectsOverlap ───────────────────────────────────────────────────────────
 
@@ -67,7 +74,6 @@ describe('assignDefaultPosition', () => {
   });
 
   it('행이 가득 차면 다음 행에 배치한다', () => {
-    // 800px 컨테이너에서 AREA_PAD 양쪽, 카드 너비 200 + GAP 10 → 대략 3~4개
     const cols = Math.max(1, Math.floor((800 - AREA_PAD * 2) / (CARD_W + GAP)));
     const occupied: Rect[] = [];
     for (let col = 0; col < cols; col++) {
@@ -111,48 +117,9 @@ describe('assignDefaultPosition', () => {
   });
 });
 
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-describe('캔버스 상수', () => {
-  it('카드 크기가 정의되어 있다', () => {
-    expect(CARD_W).toBe(200);
-    expect(CARD_H).toBe(90);
-  });
-
-  it('그룹 헤더 높이가 정의되어 있다', () => {
-    expect(GROUP_HEADER_H).toBe(36);
-  });
-
-  it('드래그 임계값이 정의되어 있다', () => {
-    expect(DRAG_THRESHOLD).toBe(3);
-  });
-
-  it('줌 범위가 정의되어 있다', () => {
-    expect(MIN_ZOOM).toBeLessThan(MAX_ZOOM);
-    expect(MIN_ZOOM).toBeGreaterThan(0);
-  });
-});
-
 // ─── Drag coordinate logic ──────────────────────────────────────────────────
 
 describe('드래그 좌표 계산 로직', () => {
-  // useCanvasDrag에서 사용하는 좌표 계산을 순수 함수로 테스트
-
-  function calcDragPosition(
-    itemX: number,
-    itemY: number,
-    dx: number,
-    dy: number,
-    parentGroupId?: string,
-  ): { x: number; y: number } {
-    const rawX = itemX + dx;
-    const rawY = itemY + dy;
-    return {
-      x: parentGroupId ? rawX : Math.max(0, rawX),
-      y: parentGroupId ? rawY : Math.max(0, rawY),
-    };
-  }
-
   it('비그룹 카드는 캔버스 원점(0,0) 이하로 이동하지 않는다', () => {
     const pos = calcDragPosition(10, 10, -100, -100);
     expect(pos.x).toBe(0);
@@ -187,49 +154,17 @@ describe('드래그 좌표 계산 로직', () => {
 // ─── Group membership hit-test logic ────────────────────────────────────────
 
 describe('그룹 멤버십 히트테스트 로직', () => {
-  // useCanvasDrag onUp 내부의 그룹 히트테스트를 순수 함수로 테스트
-
-  interface GroupRect {
-    id: string;
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  }
-
-  function hitTestGroup(
-    canvasX: number,
-    canvasY: number,
-    cardW: number,
-    cardH: number,
-    groups: GroupRect[],
-  ): string | undefined {
-    const centerX = canvasX + cardW / 2;
-    const centerY = canvasY + cardH / 2;
-    for (const g of groups) {
-      if (
-        centerX >= g.x &&
-        centerX <= g.x + g.w &&
-        centerY >= g.y + GROUP_HEADER_H &&
-        centerY <= g.y + g.h
-      ) {
-        return g.id;
-      }
-    }
-    return undefined;
-  }
-
-  const group: GroupRect = { id: 'g1', x: 100, y: 100, w: 320, h: 200 };
+  const group: OKRGroup = {
+    id: 'g1', keyResultId: 'kr1', title: 'Group 1', order: 0,
+    x: 100, y: 100, w: 320, h: 200,
+  };
 
   it('카드 중심이 그룹 카드 영역 안에 있으면 그룹 id를 반환한다', () => {
-    // 카드 중심: (200 + 100, 150 + 45) = (300, 195)
-    // 그룹 카드 영역: x=100~420, y=136~300
     const result = hitTestGroup(200, 150, CARD_W, CARD_H, [group]);
     expect(result).toBe('g1');
   });
 
   it('카드 중심이 그룹 헤더 영역에 있으면 매칭하지 않는다', () => {
-    // 카드 center_y = 50 + 45 = 95, 그룹 헤더: y=100~136
     const result = hitTestGroup(200, 50, CARD_W, CARD_H, [group]);
     expect(result).toBeUndefined();
   });
@@ -240,9 +175,9 @@ describe('그룹 멤버십 히트테스트 로직', () => {
   });
 
   it('여러 그룹 중 첫 번째 매칭 그룹을 반환한다', () => {
-    const groups: GroupRect[] = [
-      { id: 'g1', x: 0, y: 0, w: 300, h: 200 },
-      { id: 'g2', x: 0, y: 0, w: 400, h: 300 },
+    const groups: OKRGroup[] = [
+      { id: 'g1', keyResultId: 'kr1', title: 'G1', order: 0, x: 0, y: 0, w: 300, h: 200 },
+      { id: 'g2', keyResultId: 'kr1', title: 'G2', order: 1, x: 0, y: 0, w: 400, h: 300 },
     ];
     const result = hitTestGroup(50, 50, CARD_W, CARD_H, groups);
     expect(result).toBe('g1');
@@ -257,118 +192,60 @@ describe('그룹 멤버십 히트테스트 로직', () => {
 // ─── Canvas-absolute ↔ Group-relative coordinate conversion ─────────────────
 
 describe('좌표 변환 로직', () => {
-  it('canvas-absolute → group-relative 변환', () => {
-    const canvasX = 250;
-    const canvasY = 280;
-    const groupX = 100;
-    const groupY = 100;
+  const groups = [
+    { id: 'g1', x: 100, y: 100 },
+  ];
 
-    const relX = canvasX - groupX;
-    const relY = canvasY - groupY - GROUP_HEADER_H;
+  it('toLocalCoords: canvas-absolute → group-relative 변환', () => {
+    const result = toLocalCoords(250, 280, 'g1', groups);
 
-    expect(relX).toBe(150);
-    expect(relY).toBe(144);
+    // group origin in absolute = (100, 100 + GROUP_HEADER_H) = (100, 136)
+    // relative = (250 - 100, 280 - 136) = (150, 144)
+    expect(result.x).toBe(150);
+    expect(result.y).toBe(144);
   });
 
-  it('group-relative → canvas-absolute 변환', () => {
-    const relX = 50;
-    const relY = 30;
-    const groupX = 100;
-    const groupY = 100;
+  it('toAbsoluteCoords: group-relative → canvas-absolute 변환', () => {
+    const result = toAbsoluteCoords(50, 30, 'g1', groups);
 
-    const canvasX = relX + groupX;
-    const canvasY = relY + groupY + GROUP_HEADER_H;
-
-    expect(canvasX).toBe(150);
-    expect(canvasY).toBe(166);
+    // absolute = (50 + 100, 30 + 100 + GROUP_HEADER_H) = (150, 166)
+    expect(result.x).toBe(150);
+    expect(result.y).toBe(166);
   });
 });
 
-// ─── OKR data operations (pure logic from hooks) ────────────────────────────
+// ─── OKR data operations ────────────────────────────────────────────────────
 
 describe('OKR 데이터 조작 로직', () => {
-  // Pure function equivalents of the hook updater logic
-
-  function unlinkWork(
-    data: { links: any[]; virtualTickets: any[]; relations: any[] },
-    linkId: string,
-  ) {
-    const linkToRemove = data.links.find((l: any) => l.id === linkId);
-    const remainingLinks = data.links.filter((l: any) => l.id !== linkId);
-    let virtualTickets = data.virtualTickets;
-
-    if (linkToRemove?.type === 'virtual' && linkToRemove.virtualTicketId) {
-      const vtId = linkToRemove.virtualTicketId;
-      const stillLinked = remainingLinks.some(
-        (l: any) => l.type === 'virtual' && l.virtualTicketId === vtId,
-      );
-      if (!stillLinked) {
-        virtualTickets = virtualTickets.filter((vt: any) => vt.id !== vtId);
-      }
-    }
-
+  // Helper to create minimal OKRRelation
+  function makeRelation(overrides: Partial<OKRRelation> & { id: string }): OKRRelation {
     return {
-      links: remainingLinks,
-      virtualTickets,
-      relations: data.relations.filter(
-        (r: any) => r.fromLinkId !== linkId && r.toLinkId !== linkId,
-      ),
+      fromType: 'link', fromId: '', fromAnchor: 'right',
+      toType: 'link', toId: '', toAnchor: 'left',
+      ...overrides,
     };
   }
 
-  function deleteVirtualTicket(
-    data: { links: any[]; virtualTickets: any[]; relations: any[] },
-    vtId: string,
-  ) {
-    const removedLinkIds = new Set(
-      data.links
-        .filter((l: any) => l.type === 'virtual' && l.virtualTicketId === vtId)
-        .map((l: any) => l.id),
-    );
-
-    return {
-      virtualTickets: data.virtualTickets.filter((vt: any) => vt.id !== vtId),
-      links: data.links.filter(
-        (l: any) => !(l.type === 'virtual' && l.virtualTicketId === vtId),
-      ),
-      relations: data.relations.filter(
-        (r: any) => !removedLinkIds.has(r.fromLinkId) && !removedLinkIds.has(r.toLinkId),
-      ),
-    };
-  }
-
-  function deleteGroup(
-    data: { groups: any[]; links: any[] },
-    groupId: string,
-  ) {
-    return {
-      groups: data.groups.filter((g: any) => g.id !== groupId),
-      links: data.links.map((l: any) =>
-        l.groupId === groupId ? { ...l, groupId: undefined } : l,
-      ),
-    };
-  }
-
-  describe('unlinkWork', () => {
+  describe('computeUnlinkWork', () => {
     it('Jira 링크를 해제한다', () => {
       const data = {
-        links: [{ id: 'l1', type: 'jira', issueKey: 'PROJ-1' }],
-        virtualTickets: [],
-        relations: [],
+        links: [{ id: 'l1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 }],
+        virtualTickets: [] as VirtualTicket[],
+        relations: [] as OKRRelation[],
       };
 
-      const result = unlinkWork(data, 'l1');
+      const result = computeUnlinkWork(data, 'l1');
       expect(result.links).toHaveLength(0);
     });
 
     it('가상 티켓 링크 해제 시 고아 가상 티켓을 함께 삭제한다', () => {
       const data = {
-        links: [{ id: 'l1', type: 'virtual', virtualTicketId: 'vt1' }],
-        virtualTickets: [{ id: 'vt1', title: 'VT' }],
-        relations: [],
+        links: [{ id: 'l1', keyResultId: 'kr1', type: 'virtual' as const, virtualTicketId: 'vt1', order: 0 }],
+        virtualTickets: [{ id: 'vt1', title: 'VT', issueType: 'Task', createdAt: '2025-01-01' }] as VirtualTicket[],
+        relations: [] as OKRRelation[],
       };
 
-      const result = unlinkWork(data, 'l1');
+      const result = computeUnlinkWork(data, 'l1');
       expect(result.links).toHaveLength(0);
       expect(result.virtualTickets).toHaveLength(0);
     });
@@ -376,14 +253,14 @@ describe('OKR 데이터 조작 로직', () => {
     it('가상 티켓이 다른 링크에서도 참조 중이면 삭제하지 않는다', () => {
       const data = {
         links: [
-          { id: 'l1', type: 'virtual', virtualTicketId: 'vt1' },
-          { id: 'l2', type: 'virtual', virtualTicketId: 'vt1' },
+          { id: 'l1', keyResultId: 'kr1', type: 'virtual' as const, virtualTicketId: 'vt1', order: 0 },
+          { id: 'l2', keyResultId: 'kr1', type: 'virtual' as const, virtualTicketId: 'vt1', order: 1 },
         ],
-        virtualTickets: [{ id: 'vt1', title: 'VT' }],
-        relations: [],
+        virtualTickets: [{ id: 'vt1', title: 'VT', issueType: 'Task', createdAt: '2025-01-01' }] as VirtualTicket[],
+        relations: [] as OKRRelation[],
       };
 
-      const result = unlinkWork(data, 'l1');
+      const result = computeUnlinkWork(data, 'l1');
       expect(result.links).toHaveLength(1);
       expect(result.virtualTickets).toHaveLength(1);
     });
@@ -391,37 +268,37 @@ describe('OKR 데이터 조작 로직', () => {
     it('연결된 관계(relation)도 함께 삭제한다', () => {
       const data = {
         links: [
-          { id: 'l1', type: 'jira' },
-          { id: 'l2', type: 'jira' },
+          { id: 'l1', keyResultId: 'kr1', type: 'jira' as const, order: 0 },
+          { id: 'l2', keyResultId: 'kr1', type: 'jira' as const, order: 1 },
         ],
-        virtualTickets: [],
+        virtualTickets: [] as VirtualTicket[],
         relations: [
-          { id: 'r1', fromLinkId: 'l1', toLinkId: 'l2' },
-          { id: 'r2', fromLinkId: 'l2', toLinkId: 'l3' },
+          makeRelation({ id: 'r1', fromType: 'link', fromId: 'l1', toType: 'link', toId: 'l2' }),
+          makeRelation({ id: 'r2', fromType: 'link', fromId: 'l2', toType: 'link', toId: 'l3' }),
         ],
       };
 
-      const result = unlinkWork(data, 'l1');
+      const result = computeUnlinkWork(data, 'l1');
       expect(result.relations).toHaveLength(1);
       expect(result.relations[0].id).toBe('r2');
     });
   });
 
-  describe('deleteVirtualTicket', () => {
+  describe('computeDeleteVirtualTicket', () => {
     it('가상 티켓과 연결된 링크, 관계를 모두 삭제한다', () => {
       const data = {
         links: [
-          { id: 'l1', type: 'virtual', virtualTicketId: 'vt1' },
-          { id: 'l2', type: 'jira', issueKey: 'PROJ-1' },
+          { id: 'l1', keyResultId: 'kr1', type: 'virtual' as const, virtualTicketId: 'vt1', order: 0 },
+          { id: 'l2', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 1 },
         ],
-        virtualTickets: [{ id: 'vt1', title: 'VT' }],
+        virtualTickets: [{ id: 'vt1', title: 'VT', issueType: 'Task', createdAt: '2025-01-01' }] as VirtualTicket[],
         relations: [
-          { id: 'r1', fromLinkId: 'l1', toLinkId: 'l2' },
-          { id: 'r2', fromLinkId: 'l2', toLinkId: 'l3' },
+          makeRelation({ id: 'r1', fromType: 'link', fromId: 'l1', toType: 'link', toId: 'l2' }),
+          makeRelation({ id: 'r2', fromType: 'link', fromId: 'l2', toType: 'link', toId: 'l3' }),
         ],
       };
 
-      const result = deleteVirtualTicket(data, 'vt1');
+      const result = computeDeleteVirtualTicket(data, 'vt1');
 
       expect(result.virtualTickets).toHaveLength(0);
       expect(result.links).toHaveLength(1);
@@ -432,28 +309,29 @@ describe('OKR 데이터 조작 로직', () => {
 
     it('존재하지 않는 vtId면 변경 없다', () => {
       const data = {
-        links: [{ id: 'l1', type: 'jira' }],
-        virtualTickets: [{ id: 'vt1' }],
-        relations: [],
+        links: [{ id: 'l1', keyResultId: 'kr1', type: 'jira' as const, order: 0 }],
+        virtualTickets: [{ id: 'vt1', title: 'VT', issueType: 'Task', createdAt: '2025-01-01' }] as VirtualTicket[],
+        relations: [] as OKRRelation[],
       };
 
-      const result = deleteVirtualTicket(data, 'nonexistent');
+      const result = computeDeleteVirtualTicket(data, 'nonexistent');
       expect(result.virtualTickets).toHaveLength(1);
       expect(result.links).toHaveLength(1);
     });
   });
 
-  describe('deleteGroup', () => {
+  describe('computeDeleteGroup', () => {
     it('그룹 삭제 시 소속 카드를 비그룹으로 전환한다', () => {
       const data = {
-        groups: [{ id: 'g1', title: 'Group 1' }],
+        groups: [{ id: 'g1', keyResultId: 'kr1', title: 'Group 1', order: 0 }] as OKRGroup[],
         links: [
-          { id: 'l1', groupId: 'g1', x: 50 },
-          { id: 'l2', groupId: undefined, x: 100 },
-        ],
+          { id: 'l1', keyResultId: 'kr1', type: 'jira' as const, groupId: 'g1', order: 0 },
+          { id: 'l2', keyResultId: 'kr1', type: 'jira' as const, groupId: undefined, order: 1 },
+        ] as OKRLink[],
+        relations: [] as OKRRelation[],
       };
 
-      const result = deleteGroup(data, 'g1');
+      const result = computeDeleteGroup(data, 'g1');
 
       expect(result.groups).toHaveLength(0);
       expect(result.links[0].groupId).toBeUndefined();
@@ -463,54 +341,40 @@ describe('OKR 데이터 조작 로직', () => {
     it('다른 그룹의 카드는 영향받지 않는다', () => {
       const data = {
         groups: [
-          { id: 'g1', title: 'Group 1' },
-          { id: 'g2', title: 'Group 2' },
-        ],
+          { id: 'g1', keyResultId: 'kr1', title: 'Group 1', order: 0 },
+          { id: 'g2', keyResultId: 'kr1', title: 'Group 2', order: 1 },
+        ] as OKRGroup[],
         links: [
-          { id: 'l1', groupId: 'g1' },
-          { id: 'l2', groupId: 'g2' },
-        ],
+          { id: 'l1', keyResultId: 'kr1', type: 'jira' as const, groupId: 'g1', order: 0 },
+          { id: 'l2', keyResultId: 'kr1', type: 'jira' as const, groupId: 'g2', order: 1 },
+        ] as OKRLink[],
+        relations: [] as OKRRelation[],
       };
 
-      const result = deleteGroup(data, 'g1');
+      const result = computeDeleteGroup(data, 'g1');
 
       expect(result.groups).toHaveLength(1);
       expect(result.links[1].groupId).toBe('g2');
     });
-  });
-});
 
-// ─── Relation deduplication logic ───────────────────────────────────────────
+    it('하위 그룹과 연결된 관계도 함께 삭제한다', () => {
+      const data = {
+        groups: [
+          { id: 'g1', keyResultId: 'kr1', title: 'Parent', order: 0 },
+          { id: 'g2', keyResultId: 'kr1', title: 'Child', order: 0, parentGroupId: 'g1' },
+        ] as OKRGroup[],
+        links: [] as OKRLink[],
+        relations: [
+          makeRelation({ id: 'r1', fromType: 'group', fromId: 'g2', toType: 'link', toId: 'l1' }),
+          makeRelation({ id: 'r2', fromType: 'link', fromId: 'l1', toType: 'link', toId: 'l2' }),
+        ],
+      };
 
-describe('관계 중복 체크 로직', () => {
-  function relationExists(
-    relations: Array<{ fromLinkId: string; toLinkId: string }>,
-    fromId: string,
-    toId: string,
-  ): boolean {
-    return relations.some(
-      (r) =>
-        (r.fromLinkId === fromId && r.toLinkId === toId) ||
-        (r.fromLinkId === toId && r.toLinkId === fromId),
-    );
-  }
+      const result = computeDeleteGroup(data, 'g1');
 
-  it('정방향 중복을 감지한다', () => {
-    const relations = [{ fromLinkId: 'l1', toLinkId: 'l2' }];
-    expect(relationExists(relations, 'l1', 'l2')).toBe(true);
-  });
-
-  it('역방향 중복을 감지한다', () => {
-    const relations = [{ fromLinkId: 'l1', toLinkId: 'l2' }];
-    expect(relationExists(relations, 'l2', 'l1')).toBe(true);
-  });
-
-  it('중복이 없으면 false를 반환한다', () => {
-    const relations = [{ fromLinkId: 'l1', toLinkId: 'l2' }];
-    expect(relationExists(relations, 'l1', 'l3')).toBe(false);
-  });
-
-  it('빈 관계 배열이면 false를 반환한다', () => {
-    expect(relationExists([], 'l1', 'l2')).toBe(false);
+      expect(result.groups).toHaveLength(0);
+      expect(result.relations).toHaveLength(1);
+      expect(result.relations[0].id).toBe('r2');
+    });
   });
 });

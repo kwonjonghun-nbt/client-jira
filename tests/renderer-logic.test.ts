@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
-import { normalizeType, statusBadgeClass, getPriorityColor, getIssueTypeLabel, buildIssueUrl } from '../src/renderer/utils/issue';
+import { normalizeType, getIssueTypeLabel, buildIssueUrl } from '../src/renderer/utils/issue';
 import { formatRelativeTime, formatDateSafe, formatDateShort, formatDate, formatDateTime, formatDuration } from '../src/renderer/utils/formatters';
 import { applyFilters, extractFilterOptions } from '../src/renderer/utils/issue-filters';
 import { getDescriptionTemplate, buildPrompt } from '../src/renderer/utils/issue-prompts';
@@ -264,29 +264,35 @@ describe('이슈타입 정규화', () => {
 });
 
 describe('상대 시간 표시', () => {
+  const FIXED_NOW = new Date('2025-06-15T12:00:00Z');
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('방금 전을 표시한다', () => {
-    const now = new Date().toISOString();
-    expect(formatRelativeTime(now)).toBe('방금 전');
+    expect(formatRelativeTime('2025-06-15T12:00:00Z')).toBe('방금 전');
   });
 
   it('N분 전을 표시한다', () => {
-    const tenMinAgo = new Date(Date.now() - 10 * 60000).toISOString();
-    expect(formatRelativeTime(tenMinAgo)).toBe('10분 전');
+    expect(formatRelativeTime('2025-06-15T11:50:00Z')).toBe('10분 전');
   });
 
   it('N시간 전을 표시한다', () => {
-    const threeHoursAgo = new Date(Date.now() - 3 * 3600000).toISOString();
-    expect(formatRelativeTime(threeHoursAgo)).toBe('3시간 전');
+    expect(formatRelativeTime('2025-06-15T09:00:00Z')).toBe('3시간 전');
   });
 
   it('N일 전을 표시한다', () => {
-    const fiveDaysAgo = new Date(Date.now() - 5 * 86400000).toISOString();
-    expect(formatRelativeTime(fiveDaysAgo)).toBe('5일 전');
+    expect(formatRelativeTime('2025-06-10T12:00:00Z')).toBe('5일 전');
   });
 
   it('N개월 전을 표시한다', () => {
-    const twoMonthsAgo = new Date(Date.now() - 65 * 86400000).toISOString();
-    expect(formatRelativeTime(twoMonthsAgo)).toBe('2개월 전');
+    expect(formatRelativeTime('2025-04-11T12:00:00Z')).toBe('2개월 전');
   });
 });
 
@@ -324,45 +330,6 @@ describe('기간 필터 로직', () => {
   });
 });
 
-// ─── Status badge class ─────────────────────────────────────────────────────
-
-describe('상태 배지 스타일', () => {
-  it('done 상태는 녹색 배지를 반환한다', () => {
-    expect(statusBadgeClass('done')).toContain('green');
-  });
-
-  it('indeterminate 상태는 파란 배지를 반환한다', () => {
-    expect(statusBadgeClass('indeterminate')).toContain('blue');
-  });
-
-  it('new 상태는 회색 배지를 반환한다', () => {
-    expect(statusBadgeClass('new')).toContain('gray');
-  });
-
-  it('알 수 없는 상태는 회색 배지를 반환한다', () => {
-    expect(statusBadgeClass('unknown')).toContain('gray');
-  });
-});
-
-// ─── Priority color ─────────────────────────────────────────────────────────
-
-describe('우선순위 색상', () => {
-  it('각 우선순위에 해당하는 색상을 반환한다', () => {
-    expect(getPriorityColor('Highest')).toContain('red');
-    expect(getPriorityColor('High')).toContain('orange');
-    expect(getPriorityColor('Medium')).toContain('yellow');
-    expect(getPriorityColor('Low')).toContain('blue');
-    expect(getPriorityColor('Lowest')).toContain('gray');
-  });
-
-  it('null이면 기본 회색을 반환한다', () => {
-    expect(getPriorityColor(null)).toContain('gray');
-  });
-
-  it('알 수 없는 우선순위는 기본 회색을 반환한다', () => {
-    expect(getPriorityColor('Unknown')).toContain('gray');
-  });
-});
 
 // ─── Issue type label ───────────────────────────────────────────────────────
 

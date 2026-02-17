@@ -576,185 +576,19 @@ describe('daily-share.ts', () => {
   });
 
   describe('buildDailyShareExportData', () => {
-    it('각 카테고리의 이슈를 내보내기 형식으로 변환한다', () => {
+    it('이슈의 핵심 필드를 모두 포함하는 내보내기 데이터를 생성한다', () => {
       const categories: DailyShareCategories = {
         inProgress: [
           makeIssue({
-            key: 'JIRA-24',
-            statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress).toHaveLength(1);
-      expect(result.dueToday).toHaveLength(0);
-    });
-
-    it('변환된 이슈에 key 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [makeIssue({ key: 'JIRA-25', statusCategory: 'indeterminate' })],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('key');
-      expect((result.inProgress[0] as any).key).toBe('JIRA-25');
-    });
-
-    it('변환된 이슈에 summary 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-26',
+            key: 'JIRA-25',
             summary: 'Test summary',
-            statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('summary');
-      expect((result.inProgress[0] as any).summary).toBe('Test summary');
-    });
-
-    it('변환된 이슈에 status 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-27',
             status: 'In Progress',
             statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('status');
-      expect((result.inProgress[0] as any).status).toBe('In Progress');
-    });
-
-    it('변환된 이슈에 statusCategory 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-28',
-            statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('statusCategory');
-      expect((result.inProgress[0] as any).statusCategory).toBe('indeterminate');
-    });
-
-    it('변환된 이슈에 priority 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-29',
             priority: 'High',
-            statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('priority');
-      expect((result.inProgress[0] as any).priority).toBe('High');
-    });
-
-    it('변환된 이슈에 issueType 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-30',
             issueType: 'Bug',
-            statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('issueType');
-      expect((result.inProgress[0] as any).issueType).toBe('Bug');
-    });
-
-    it('변환된 이슈에 storyPoints 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-31',
             storyPoints: 8,
-            statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('storyPoints');
-      expect((result.inProgress[0] as any).storyPoints).toBe(8);
-    });
-
-    it('변환된 이슈에 dueDate 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-32',
             dueDate: '2025-06-20',
-            statusCategory: 'indeterminate',
-          }),
-        ],
-        dueToday: [],
-        overdue: [],
-        atRisk: [],
-      };
-
-      const result = buildDailyShareExportData(categories);
-
-      expect(result.inProgress[0]).toHaveProperty('dueDate');
-      expect((result.inProgress[0] as any).dueDate).toBe('2025-06-20');
-    });
-
-    it('변환된 이슈에 assignee 필드를 포함한다', () => {
-      const categories: DailyShareCategories = {
-        inProgress: [
-          makeIssue({
-            key: 'JIRA-33',
             assignee: 'Charlie',
-            statusCategory: 'indeterminate',
           }),
         ],
         dueToday: [],
@@ -763,9 +597,19 @@ describe('daily-share.ts', () => {
       };
 
       const result = buildDailyShareExportData(categories);
+      const exported = result.inProgress[0] as any;
 
-      expect(result.inProgress[0]).toHaveProperty('assignee');
-      expect((result.inProgress[0] as any).assignee).toBe('Charlie');
+      expect(exported).toMatchObject({
+        key: 'JIRA-25',
+        summary: 'Test summary',
+        status: 'In Progress',
+        statusCategory: 'indeterminate',
+        priority: 'High',
+        issueType: 'Bug',
+        storyPoints: 8,
+        dueDate: '2025-06-20',
+        assignee: 'Charlie',
+      });
     });
 
     it('모든 카테고리를 변환한다', () => {

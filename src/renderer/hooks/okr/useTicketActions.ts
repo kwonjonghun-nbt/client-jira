@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { CARD_W, CARD_H, assignDefaultPosition, type Rect, type UpdateOKR } from './okr-canvas.types';
+import { computeUnlinkWork, computeDeleteVirtualTicket } from '../../utils/okr-canvas-operations';
 
 export function useTicketActions(krId: string, updateOKR: UpdateOKR) {
   const linkJiraIssue = useCallback((issueKey: string) => {
@@ -94,49 +95,18 @@ export function useTicketActions(krId: string, updateOKR: UpdateOKR) {
   }, [krId, updateOKR]);
 
   const unlinkWork = useCallback((linkId: string) => {
-    updateOKR((d) => {
-      const linkToRemove = d.links.find((l) => l.id === linkId);
-      const remainingLinks = d.links.filter((l) => l.id !== linkId);
-      let virtualTickets = d.virtualTickets;
-      if (linkToRemove?.type === 'virtual' && linkToRemove.virtualTicketId) {
-        const vtId = linkToRemove.virtualTicketId;
-        const stillLinked = remainingLinks.some(
-          (l) => l.type === 'virtual' && l.virtualTicketId === vtId,
-        );
-        if (!stillLinked) {
-          virtualTickets = virtualTickets.filter((vt) => vt.id !== vtId);
-        }
-      }
-      return {
-        ...d,
-        links: remainingLinks,
-        virtualTickets,
-        relations: d.relations.filter((r) =>
-          !(r.fromType === 'link' && r.fromId === linkId) &&
-          !(r.toType === 'link' && r.toId === linkId)
-        ),
-      };
-    });
+    updateOKR((d) => ({
+      ...d,
+      ...computeUnlinkWork(d, linkId),
+    }));
   }, [updateOKR]);
 
   const deleteVirtualTicket = useCallback((vtId: string) => {
     if (!window.confirm('이 가상 티켓을 삭제하시겠습니까?')) return;
-    updateOKR((d) => {
-      const removedLinkIds = new Set(
-        d.links.filter((l) => l.type === 'virtual' && l.virtualTicketId === vtId).map((l) => l.id),
-      );
-      return {
-        ...d,
-        virtualTickets: d.virtualTickets.filter((vt) => vt.id !== vtId),
-        links: d.links.filter(
-          (l) => !(l.type === 'virtual' && l.virtualTicketId === vtId),
-        ),
-        relations: d.relations.filter(
-          (r) => !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
-                 !(r.toType === 'link' && removedLinkIds.has(r.toId)),
-        ),
-      };
-    });
+    updateOKR((d) => ({
+      ...d,
+      ...computeDeleteVirtualTicket(d, vtId),
+    }));
   }, [updateOKR]);
 
   return { linkJiraIssue, linkJiraIssues, createAndLinkVirtual, unlinkWork, deleteVirtualTicket };

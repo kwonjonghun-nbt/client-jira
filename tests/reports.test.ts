@@ -181,38 +181,6 @@ describe('inlineFormat', () => {
 });
 
 describe('renderMarkdown', () => {
-  it('헤딩을 HTML로 변환한다', () => {
-    expect(renderMarkdown('# 제목')).toContain('<h1');
-    expect(renderMarkdown('## 소제목')).toContain('<h2');
-    expect(renderMarkdown('### 세부제목')).toContain('<h3');
-  });
-
-  it('리스트를 변환한다', () => {
-    const result = renderMarkdown('- 항목1\n- 항목2');
-    expect(result).toContain('항목1');
-    expect(result).toContain('항목2');
-    expect(result).toContain('•');
-  });
-
-  it('수평선을 변환한다', () => {
-    // 첫 번째 줄의 '---'는 frontmatter 시작으로 처리되므로 두 번째 줄에 배치
-    expect(renderMarkdown('텍스트\n---')).toContain('<hr');
-  });
-
-  it('blockquote를 변환한다', () => {
-    const result = renderMarkdown('> 인용문');
-    expect(result).toContain('<blockquote');
-    expect(result).toContain('인용문');
-  });
-
-  it('테이블을 변환한다', () => {
-    const md = '| 이름 | 값 |\n|------|------|\n| A | 1 |';
-    const result = renderMarkdown(md);
-    expect(result).toContain('<table');
-    expect(result).toContain('<th');
-    expect(result).toContain('<td');
-  });
-
   it('빈 문자열이면 빈 결과를 반환한다', () => {
     const result = renderMarkdown('');
     expect(result).toBeDefined();

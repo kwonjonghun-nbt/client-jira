@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { CARD_W, CARD_H, GROUP_HEADER_H, assignDefaultPosition, getDescendantGroupIds, type Rect, type UpdateOKR } from './okr-canvas.types';
+import { CARD_W, CARD_H, GROUP_HEADER_H, assignDefaultPosition, type Rect, type UpdateOKR } from './okr-canvas.types';
+import { computeDeleteGroup } from '../../utils/okr-canvas-operations';
 
 export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
   const [addingGroup, setAddingGroup] = useState(false);
@@ -77,21 +78,10 @@ export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
 
   const deleteGroup = useCallback((groupId: string) => {
     if (!window.confirm('이 그룹을 삭제하시겠습니까? 포함된 카드는 그룹 해제됩니다.')) return;
-    updateOKR((d) => {
-      const descendantIds = getDescendantGroupIds(groupId, d.groups);
-      const allDeletedIds = new Set([groupId, ...descendantIds]);
-      return {
-        ...d,
-        groups: d.groups.filter((g) => !allDeletedIds.has(g.id)),
-        links: d.links.map((l) =>
-          l.groupId && allDeletedIds.has(l.groupId) ? { ...l, groupId: undefined } : l,
-        ),
-        relations: d.relations.filter((r) =>
-          !(r.fromType === 'group' && allDeletedIds.has(r.fromId)) &&
-          !(r.toType === 'group' && allDeletedIds.has(r.toId))
-        ),
-      };
-    });
+    updateOKR((d) => ({
+      ...d,
+      ...computeDeleteGroup(d, groupId),
+    }));
   }, [updateOKR]);
 
   const renameGroup = useCallback(() => {
