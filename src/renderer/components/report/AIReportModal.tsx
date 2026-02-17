@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import SectionPresenter from './SectionPresenter';
-import type { useReportActions } from '../../hooks/useReportActions';
-
-type ReportActions = ReturnType<typeof useReportActions>;
+import type { useAIRunner } from '../../hooks/useAIRunner';
 
 interface Props {
-  ai: ReportActions['ai'];
+  ai: ReturnType<typeof useAIRunner>;
   saving: boolean;
   onSave: () => void;
   onClose: () => void;
