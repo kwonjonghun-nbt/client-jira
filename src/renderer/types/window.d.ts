@@ -24,6 +24,7 @@ export interface ElectronAPI {
     listReports: () => Promise<ReportMeta[]>;
     getReport: (filename: string) => Promise<string | null>;
     saveReport: (filename: string, content: string) => Promise<void>;
+    deleteReport: (filename: string) => Promise<void>;
     getChangelog: () => Promise<ChangelogData | null>;
     getOKR: () => Promise<OKRData | null>;
     saveOKR: (data: OKRData) => Promise<void>;

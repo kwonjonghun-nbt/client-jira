@@ -23,6 +23,7 @@ const api = {
     listReports: () => ipcRenderer.invoke('storage:list-reports'),
     getReport: (filename: string) => ipcRenderer.invoke('storage:get-report', filename),
     saveReport: (filename: string, content: string) => ipcRenderer.invoke('storage:save-report', filename, content),
+    deleteReport: (filename: string) => ipcRenderer.invoke('storage:delete-report', filename),
     getChangelog: () => ipcRenderer.invoke('storage:get-changelog'),
     getOKR: () => ipcRenderer.invoke('storage:get-okr'),
     saveOKR: (data: unknown) => ipcRenderer.invoke('storage:save-okr', data),

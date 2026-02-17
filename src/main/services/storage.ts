@@ -203,6 +203,12 @@ export class StorageService {
     logger.info(`Report saved: ${safeName}`);
   }
 
+  async deleteReport(filename: string): Promise<void> {
+    const filePath = path.join(getReportsDir(), filename);
+    await fs.unlink(filePath);
+    logger.info(`Report deleted: ${filename}`);
+  }
+
   // --- Cleanup ---
 
   async cleanupOldData(retentionDays: number): Promise<void> {

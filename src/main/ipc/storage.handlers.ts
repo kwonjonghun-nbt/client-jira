@@ -60,6 +60,15 @@ export function registerStorageHandlers(services: AppServices): void {
     }
   });
 
+  ipcMain.handle('storage:delete-report', async (_event, filename: string) => {
+    try {
+      if (!services.storage) return;
+      await services.storage.deleteReport(filename);
+    } catch (error: any) {
+      console.error('Failed to delete report:', error.message);
+    }
+  });
+
   ipcMain.handle('storage:get-meta', async () => {
     try {
       if (!services.storage) {
