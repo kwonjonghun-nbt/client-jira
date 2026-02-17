@@ -27,6 +27,7 @@
 - `IssueDetailModal` — 이슈 전체 정보 표시
 - Jira 원본 링크
 - 하위 이슈, 연결된 이슈 표시
+- 설명(description): ADF → Markdown 변환된 텍스트를 리치 텍스트로 렌더링 (제목, 리스트, 코드블록, 볼드/이탤릭 등)
 - 티켓 분석하기: AI 백그라운드 분석 실행 (스플릿 버튼 메인 동작)
 - 더보기(⋯) 메뉴: 프롬프트 복사, 티켓 정보 JSON 다운로드
 - 상태 전환 타임라인: Jira changelog 기반 상태 변경 이력을 수직 타임라인으로 표시, 병목 구간 하이라이트
@@ -45,6 +46,7 @@
 | UI | `IssueFilters` | 필터 UI |
 | UI | `IssueSearch` | 검색 입력 |
 | UI | `IssueDetailModal` | 이슈 상세 |
+| UI | `MarkdownRenderer` | Markdown → 리치 텍스트 렌더링 (react-markdown) |
 | UI | `StatusTransitionTimeline` | 상태 전환 수직 타임라인 |
 | UI | `SyncButton`, `SyncStatus` | 동기화 UI |
 | UI Logic | `useFilters` | 필터 상태 관리, 필터 적용 |

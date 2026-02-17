@@ -27,13 +27,15 @@ Jira Raw 응답을 `NormalizedIssue` 형태로 변환:
 
 ```
 NormalizedIssue {
-  key, summary, status, statusCategory,
+  key, summary, description, status, statusCategory,
   issueType, priority, assignee, reporter,
   labels, project, created, updated,
   dueDate, startDate, resolution,
   timeTracking, parent, subtasks, issueLinks
 }
 ```
+
+- `description`: ADF(Atlassian Document Format) JSON → Markdown 문자열로 변환 (`adf-to-markdown` 라이브러리 사용)
 
 ### diff (`utils/diff.ts`)
 
