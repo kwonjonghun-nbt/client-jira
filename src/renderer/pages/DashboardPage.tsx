@@ -128,6 +128,14 @@ export default function DashboardPage() {
           </select>
           <button
             type="button"
+            onClick={dailyShare.handleGenerateFromData}
+            disabled={!dailyShare.assignee || dailyShare.totalCount === 0}
+            className="px-4 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            데이터 기반 생성
+          </button>
+          <button
+            type="button"
             onClick={dailyShare.handleGenerate}
             disabled={!dailyShare.assignee || dailyShare.totalCount === 0 || dailyShare.ai.status === 'running'}
             className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"

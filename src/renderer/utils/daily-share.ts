@@ -139,6 +139,130 @@ ${JSON.stringify(formatIssues(categories.atRisk), null, 2)}
 }
 
 /**
+ * 카테고리 데이터를 발표 대본 형식의 마크다운으로 변환 (AI 없이)
+ */
+export function buildDailyShareMarkdown(
+  assignee: string,
+  categories: DailyShareCategories
+): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const target = assignee === '전체' ? '전체 팀원' : assignee;
+  const lines: string[] = [];
+
+  lines.push(`# ${target} 일일 이슈 공유`);
+  lines.push('');
+  lines.push(`> ${today} 기준`);
+  lines.push('');
+
+  // 진행 현황
+  lines.push(`## 진행 현황`);
+  lines.push('');
+  if (categories.inProgress.length === 0) {
+    lines.push('현재 진행중인 작업은 없습니다.');
+  } else {
+    lines.push(`현재 **${categories.inProgress.length}건**의 작업을 진행하고 있습니다.`);
+    lines.push('');
+    for (const i of categories.inProgress) {
+      const sp = i.storyPoints ? ` (${i.storyPoints}SP)` : '';
+      const pri = i.priority ? ` — 우선순위 ${i.priority}` : '';
+      lines.push(`- **${i.key}** ${i.summary}${sp}${pri}`);
+      lines.push(`  - 현재 상태: ${i.status}`);
+    }
+  }
+  lines.push('');
+
+  // 오늘 완료 예정
+  lines.push(`## 오늘 완료 예정`);
+  lines.push('');
+  if (categories.dueToday.length === 0) {
+    lines.push('오늘 마감 예정인 작업은 없습니다.');
+  } else {
+    lines.push(`오늘 마감인 작업이 **${categories.dueToday.length}건** 있습니다.`);
+    lines.push('');
+    for (const i of categories.dueToday) {
+      const pri = i.priority ? ` — 우선순위 ${i.priority}` : '';
+      lines.push(`- **${i.key}** ${i.summary}${pri}`);
+      lines.push(`  - 현재 상태: ${i.status}`);
+    }
+  }
+  lines.push('');
+
+  // 지연 이슈
+  lines.push(`## 지연 이슈`);
+  lines.push('');
+  if (categories.overdue.length === 0) {
+    lines.push('지연된 작업은 없습니다.');
+  } else {
+    const todayMs = new Date(today).getTime();
+    lines.push(`마감일이 지난 작업이 **${categories.overdue.length}건** 있어 확인이 필요합니다.`);
+    lines.push('');
+    for (const i of categories.overdue) {
+      const dueMs = new Date(i.dueDate!).getTime();
+      const delayDays = Math.ceil((todayMs - dueMs) / (1000 * 60 * 60 * 24));
+      const pri = i.priority ? ` — 우선순위 ${i.priority}` : '';
+      lines.push(`- **${i.key}** ${i.summary}${pri}`);
+      lines.push(`  - 마감일 ${i.dueDate!.slice(0, 10)}로부터 **${delayDays}일 지연**, 현재 상태: ${i.status}`);
+    }
+  }
+  lines.push('');
+
+  // 리스크 이슈
+  lines.push(`## 리스크 이슈`);
+  lines.push('');
+  if (categories.atRisk.length === 0) {
+    lines.push('주의가 필요한 리스크 이슈는 없습니다.');
+  } else {
+    lines.push(`내일 마감이지만 아직 리뷰 단계에 진입하지 못한 작업이 **${categories.atRisk.length}건** 있습니다.`);
+    lines.push('');
+    for (const i of categories.atRisk) {
+      const pri = i.priority ? ` — 우선순위 ${i.priority}` : '';
+      lines.push(`- **${i.key}** ${i.summary}${pri}`);
+      lines.push(`  - 마감일 ${i.dueDate!.slice(0, 10)}, 현재 상태: ${i.status}`);
+    }
+  }
+  lines.push('');
+
+  // 요약
+  const total = new Set([
+    ...categories.inProgress.map((i) => i.key),
+    ...categories.dueToday.map((i) => i.key),
+    ...categories.overdue.map((i) => i.key),
+    ...categories.atRisk.map((i) => i.key),
+  ]).size;
+  lines.push('## 요약');
+  lines.push('');
+  lines.push(`${target}의 오늘 업무 현황을 정리하면, 총 **${total}건**의 관련 이슈가 있습니다.`);
+  lines.push(`진행중 ${categories.inProgress.length}건, 오늘 마감 ${categories.dueToday.length}건, 지연 ${categories.overdue.length}건, 리스크 ${categories.atRisk.length}건입니다.`);
+  if (categories.overdue.length > 0) {
+    lines.push(`특히 지연 이슈 **${categories.overdue.length}건**에 대한 확인이 필요합니다.`);
+  }
+  if (categories.atRisk.length > 0) {
+    lines.push(`리스크 이슈 **${categories.atRisk.length}건**은 내일 마감이므로 우선적으로 리뷰 진입이 필요합니다.`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * 전체 팀원의 마크다운을 담당자별로 합산
+ */
+export function buildMultiAssigneeDailyShareMarkdown(
+  issues: NormalizedIssue[],
+  assignees: string[]
+): string {
+  const sections: string[] = [];
+
+  for (const name of assignees) {
+    const cats = categorizeDailyIssues(issues, name);
+    const hasIssues = cats.inProgress.length + cats.dueToday.length + cats.overdue.length + cats.atRisk.length > 0;
+    if (!hasIssues) continue;
+    sections.push(buildDailyShareMarkdown(name, cats));
+  }
+
+  return sections.join('\n\n---\n\n');
+}
+
+/**
  * 일일 공유 카테고리를 JSON 내보내기 형식으로 변환
  */
 export function buildDailyShareExportData(categories: DailyShareCategories): {

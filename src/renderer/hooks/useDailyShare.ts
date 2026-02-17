@@ -1,7 +1,12 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NormalizedIssue } from '../types/jira.types';
-import { categorizeDailyIssues, buildDailySharePrompt } from '../utils/daily-share';
+import {
+  categorizeDailyIssues,
+  buildDailySharePrompt,
+  buildDailyShareMarkdown,
+  buildMultiAssigneeDailyShareMarkdown,
+} from '../utils/daily-share';
 import { useAIRunner } from './useAIRunner';
 import { useMultiAIRunner } from './useMultiAIRunner';
 import { useTerminalStore } from '../store/terminalStore';
@@ -15,6 +20,7 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isMultiMode, setIsMultiMode] = useState(false);
+  const [dataResult, setDataResult] = useState<string | null>(null);
 
   const assignees = useMemo(() => {
     if (!issues) return [];
@@ -35,8 +41,22 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
     return keys.size;
   }, [categories]);
 
+  const resetDataResult = useCallback(() => setDataResult(null), []);
+
   // Unified AI state: expose same shape regardless of mode
   const ai = useMemo(() => {
+    if (dataResult !== null) {
+      return {
+        status: 'done' as const,
+        result: dataResult,
+        error: null as string | null,
+        jobId: null as string | null,
+        abort: async () => {},
+        reset: resetDataResult,
+        run: async () => {},
+        progress: null as { total: number; completed: number } | null,
+      };
+    }
     if (isMultiMode) {
       return {
         status: multiAI.status,
@@ -59,7 +79,7 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
       run: singleAI.run,
       progress: null as { total: number; completed: number } | null,
     };
-  }, [isMultiMode, singleAI, multiAI]);
+  }, [dataResult, resetDataResult, isMultiMode, singleAI, multiAI]);
 
   const handleGenerate = useCallback(() => {
     if (!issues) return;
@@ -89,8 +109,22 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
     }
   }, [issues, assignee, assignees, categories, totalCount, singleAI, multiAI, aiType]);
 
+  const handleGenerateFromData = useCallback(() => {
+    if (!issues) return;
+
+    if (assignee === '전체') {
+      const md = buildMultiAssigneeDailyShareMarkdown(issues, assignees);
+      if (!md) return;
+      setDataResult(md);
+    } else {
+      if (!categories || totalCount === 0) return;
+      setDataResult(buildDailyShareMarkdown(assignee, categories));
+    }
+    setShowModal(true);
+  }, [issues, assignee, assignees, categories, totalCount]);
+
   const handleSave = useCallback(async () => {
-    const result = isMultiMode ? multiAI.result : singleAI.result;
+    const result = dataResult ?? (isMultiMode ? multiAI.result : singleAI.result);
     if (!result.trim()) return;
     const today = new Date().toISOString().slice(0, 10);
     const title = `일일공유_${assignee}_${today}`;
@@ -99,14 +133,16 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
       await window.electronAPI.storage.saveReport(title, result);
       await queryClient.invalidateQueries({ queryKey: ['reports'] });
       setShowModal(false);
+      setDataResult(null);
       if (isMultiMode) multiAI.reset(); else singleAI.reset();
     } finally {
       setSaving(false);
     }
-  }, [isMultiMode, singleAI, multiAI, assignee, queryClient]);
+  }, [dataResult, isMultiMode, singleAI, multiAI, assignee, queryClient]);
 
   const handleClose = useCallback(() => {
     setShowModal(false);
+    setDataResult(null);
     if (isMultiMode) multiAI.reset(); else singleAI.reset();
   }, [isMultiMode, singleAI, multiAI]);
 
@@ -121,6 +157,7 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
     saving,
     isMultiMode,
     handleGenerate,
+    handleGenerateFromData,
     handleSave,
     handleClose,
   };
