@@ -11,8 +11,10 @@ Claude/Gemini CLI를 백그라운드에서 비대화형 모드(`-p`)로 실행�
 Main 프로세스 서비스:
 
 - `run(prompt, aiType)` — CLI 프로세스 생성, 결과 스트리밍
-- `abort(id)` — 실행 중인 작업 종료
-- 로그인 쉘(`/bin/zsh -l -c`)로 실행하여 PATH 환경 로드
+- `abort(id)` — 실행 중인 작업 종료 (stdin destroy → SIGTERM 순서로 안전 종료)
+- 인터랙티브 로그인 쉘(`/bin/zsh -l -i -c`)로 실행하여 `~/.zshrc` 기반 PATH 환경(nvm 등) 로드
+- oh-my-zsh 자동 업데이트 방지 환경변수 설정 (`DISABLE_AUTO_UPDATE`, `ZSH_DISABLE_AUTO_UPDATE`)
+- stdin에 EPIPE 에러 핸들러 등록 — 프로세스 조기 종료 시 uncaught exception 방지
 - stdin으로 프롬프트 전달 → stdout 청크 단위 IPC 전송
 
 #### CLI 명령
@@ -76,7 +78,7 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 | 컴포넌트 | 역할 |
 |----------|------|
 | `Sidebar` 🤖 버튼 | 사이드바 하단 버튼. 실행 중 태스크 수 뱃지, pulse 애니메이션. 패널 토글 |
-| `AITaskPanel` | 사이드바 버튼 클릭 시 드롭다운 태스크 목록. 상태 아이콘, 경과 시간, 멀티 진행률 |
+| `AITaskPanel` | 사이드바 버튼 클릭 시 드롭다운 태스크 목록. 상태 아이콘, 경과 시간, 멀티 진행률, 실행 중 태스크 중단 버튼 |
 | `AITaskDetailModal` | 완료 태스크 클릭 시 SectionPresenter로 결과 표시 + 리포트 저장 |
 
 ## 사용처
@@ -99,7 +101,7 @@ done (result에 전체 텍스트)
   ↓ reset()
 idle
 
-running → abort() → idle
+running → abort() → idle (태스크 패널 중단 버튼 또는 훅에서 호출)
 running → ai:error → error
 ```
 

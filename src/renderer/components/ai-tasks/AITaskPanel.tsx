@@ -66,7 +66,10 @@ function TaskItem({ task }: { task: AITask }) {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              /* abort handled via individual hooks */
+              for (const jobId of task.jobIds) {
+                window.electronAPI.ai.abort(jobId);
+              }
+              removeTask(task.id);
             }}
             className="text-xs text-red-400 hover:text-red-600 shrink-0"
             title="중단"

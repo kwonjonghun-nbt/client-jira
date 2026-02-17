@@ -25,12 +25,23 @@ export class AIRunnerService {
       ? "claude -p --output-format text --no-session-persistence --disallowedTools 'Edit,Write,Bash,NotebookEdit'"
       : 'gemini -p -o text';
 
-    const child = spawn('/bin/zsh', ['-l', '-c', shellCmd], {
-      env: { ...process.env } as Record<string, string>,
+    const child = spawn('/bin/zsh', ['-l', '-i', '-c', shellCmd], {
+      env: {
+        ...process.env,
+        DISABLE_AUTO_UPDATE: 'true',
+        DISABLE_UPDATE_PROMPT: 'true',
+        ZSH_DISABLE_AUTO_UPDATE: 'true',
+      } as Record<string, string>,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     this.jobs.set(id, { process: child, id });
+
+    child.stdin?.on('error', (err) => {
+      if ((err as NodeJS.ErrnoException).code !== 'EPIPE') {
+        logger.warn(`AI ${id} stdin error: ${err.message}`);
+      }
+    });
 
     child.stdin?.write(prompt);
     child.stdin?.end();
@@ -61,8 +72,9 @@ export class AIRunnerService {
   abort(id: string): void {
     const job = this.jobs.get(id);
     if (job) {
-      job.process.kill('SIGTERM');
       this.jobs.delete(id);
+      job.process.stdin?.destroy();
+      job.process.kill('SIGTERM');
     }
   }
 
