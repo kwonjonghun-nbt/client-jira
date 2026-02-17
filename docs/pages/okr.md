@@ -63,12 +63,14 @@ KR을 클릭하면 전체 화면 캔버스 모달이 열림:
 
 | 레이어 | 모듈 | 역할 |
 |--------|------|------|
-| UI | `OKRPage` | Objective/KR CRUD, 캔버스 모달 조합 |
-| UI | `KRCanvasModal` | 캔버스 뷰 (OKRPage 내부) |
-| UI | `LinkModal` | Jira 이슈 연결/가상 티켓 생성 (OKRPage 내부) |
+| UI | `OKRPage` | 훅 조합 및 레이아웃 (조합 지점) |
+| UI | `KRCanvasModal` | 캔버스 뷰 |
+| UI | `LinkModal` | Jira 이슈 연결/가상 티켓 생성 |
 | UI | `JiraCard` | Jira 이슈 캔버스 카드 |
 | UI | `VirtualCard` | 가상 티켓 캔버스 카드 |
 | UI | `GroupContainer` | 재귀적 그룹 컨테이너 |
+| UI | `Icons` | 공통 SVG 아이콘 |
+| UI Logic | `useOKRActions` | OKR CRUD 및 UI 상태 관리 |
 | UI Logic | `useCanvasTransform` | 줌, 팬, fitToView |
 | UI Logic | `useCanvasDrag` | 카드/그룹 드래그 |
 | UI Logic | `useCanvasRelations` | 관계 연결, 화살표 계산, 앵커 |
@@ -76,5 +78,6 @@ KR을 클릭하면 전체 화면 캔버스 모달이 열림:
 | UI Logic | `useGroupActions` | 그룹 CRUD |
 | UI Logic | `useWaypointDrag` | 웨이포인트 드래그 |
 | UI Logic | `useOKR` | React Query 기반 OKR 데이터 조회/저장 |
+| Business | `utils/okr` | calcKRProgress, calcObjectiveProgress, buildOKRExportData |
 | Business | `utils/anchor-points` | 앵커 포인트 계산, 직교 라우팅 |
 | Business | `hooks/okr/okr-canvas.types` | 캔버스 상수 (CARD_W, CARD_H, 줌 범위) |

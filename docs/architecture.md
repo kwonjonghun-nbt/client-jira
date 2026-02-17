@@ -72,7 +72,7 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 
 | 네임스페이스 | 핸들러 | 역할 |
 |-------------|--------|------|
-| `jira` | jira.handlers | 프로젝트 목록 조회 |
+| `jira` | jira.handlers | 프로젝트 목록 조회, 이슈 changelog 조회 |
 | `sync` | sync.handlers | 동기화 실행, 상태 이벤트 |
 | `settings` | settings.handlers | 설정 CRUD |
 | `storage` | storage.handlers | 이슈·리포트·OKR·changelog 조회/저장 |

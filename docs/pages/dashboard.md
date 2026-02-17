@@ -60,10 +60,16 @@
 
 | 레이어 | 모듈 | 역할 |
 |--------|------|------|
-| UI | `DashboardPage` | 훅 조합 및 레이아웃 |
+| UI | `DashboardPage` | 훅 조합 및 레이아웃 (조합 지점) |
+| UI | `SummaryCards` | 요약 카드 (전체/진행중/완료/미착수) |
+| UI | `DueThisWeek` | 이번 주 마감 이슈 목록 |
+| UI | `WorkloadChart` | 담당자별 워크로드 바 차트 |
+| UI | `RecentUpdates` | 최근 업데이트 이슈 목록 |
+| UI | `TypeDistribution` | 이슈 타입별 분포 |
+| UI | `ChangeTracking` | 최근 변경 추적 목록 |
 | UI | `DailyShareModal` | AI 이슈공유 결과 모달 |
-| UI Logic | `useDashboardStats` | 기간 필터, 통계 계산 |
+| UI Logic | `useDashboardStats` | 기간 필터, 통계 파생값 |
 | UI Logic | `useDailyShare` | 이슈공유 생성 로직 |
-| Business | `utils/dashboard` | DATE_PRESETS, changeTypeConfig, formatChangeValue |
+| Business | `utils/dashboard` | computeDashboardStats, filterDashboardIssues, DATE_PRESETS, changeTypeConfig |
 | Business | `utils/issue` | normalizeType, issueTypeColors, statusBadgeClass |
 | Business | `utils/formatters` | formatRelativeTime |

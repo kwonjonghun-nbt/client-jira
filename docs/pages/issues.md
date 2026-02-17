@@ -28,6 +28,7 @@
 - Jira 원본 링크
 - 하위 이슈, 연결된 이슈 표시
 - AI 분석 프롬프트 생성·복사 기능
+- 상태 전환 타임라인: Jira changelog 기반 상태 변경 이력을 수직 타임라인으로 표시, 병목 구간 하이라이트
 
 ### 동기화 상태
 
@@ -43,7 +44,10 @@
 | UI | `IssueFilters` | 필터 UI |
 | UI | `IssueSearch` | 검색 입력 |
 | UI | `IssueDetailModal` | 이슈 상세 |
+| UI | `StatusTransitionTimeline` | 상태 전환 수직 타임라인 |
 | UI | `SyncButton`, `SyncStatus` | 동기화 UI |
 | UI Logic | `useFilters` | 필터 상태 관리, 필터 적용 |
 | UI Logic | `useJiraIssues` | React Query 기반 이슈 데이터 조회 |
+| UI Logic | `useStatusTransitions` | React Query 기반 상태 전환 데이터 조회 |
 | Business | `utils/issue` | 타입 정규화, 뱃지 스타일 |
+| Business | `utils/status-transitions` | extractStatusTransitions, analyzeStatusTransitions, formatTransitionDuration |

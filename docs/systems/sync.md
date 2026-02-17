@@ -11,6 +11,7 @@ Jira REST API에서 이슈를 수집하고, 정규화하여 로컬에 저장하�
 - Jira REST API v2 클라이언트
 - Basic Auth (email + API token)
 - 이슈 검색 (JQL), 프로젝트 목록 조회
+- 이슈 changelog 조회 (REST API v3, 페이지네이션)
 - 페이징 처리 (maxResults 기반)
 
 ### sync (`services/sync.ts`)

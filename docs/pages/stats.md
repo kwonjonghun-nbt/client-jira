@@ -33,5 +33,6 @@ Jira 이슈의 라벨별 완료율과 분포를 테이블 또는 도넛 차트�
 | UI | `StatsPage` | 훅 조합 및 레이아웃 |
 | UI | `DonutChart` | SVG 도넛 차트 |
 | UI | `IssueFilters` | 공통 이슈 필터 |
-| UI Logic | `useStatsPage` | 기간 필터, 라벨 통계 계산, 뷰 모드 |
+| UI Logic | `useStatsPage` | 기간 필터, 라벨 통계 파생값, 뷰 모드 |
 | UI Logic | `useFilters` | 공통 이슈 필터링 |
+| Business | `utils/stats` | computeLabelStats, computeStatsSummary |

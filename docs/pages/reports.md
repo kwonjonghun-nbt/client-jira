@@ -19,6 +19,17 @@ Jira 이슈 기반 AI 리포트 생성, 프롬프트 관리, 리포트 저장·�
 - `AIReportModal`에서 생성 상태 표시 (스피너, 완료, 에러)
 - 완료 후 "섹션별로 보기" (`SectionPresenter`) 또는 "바로 저장"
 - 실행 중 "중단" 버튼
+- 이슈별 상태 전환 데이터(changelog) 병렬 수집 → 병목 구간·비정상 패턴 분석 포함
+
+### 워크플로우 분석 (프롬프트 섹션 8)
+
+- 프롬프트에 상태 전환 데이터를 JSON으로 포함하여 AI가 분석
+- 병목 구간 분석: 가장 오래 걸리는 상태 전환 구간 식별, 팀 공통 병목 패턴
+- 비정상 전환 패턴 감지:
+  - `single_jump`: 중간 단계 없이 바로 완료
+  - `reverse_transition`: 역방향 전환 (완료→진행중)
+  - `rapid_transition`: 작업 단계에서 5분 이내 전환 (형식적 상태 변경 의심)
+  - `no_transitions`: 상태 변경 이력 없음
 
 ### 리포트 저장
 
@@ -54,3 +65,4 @@ Jira 이슈 기반 AI 리포트 생성, 프롬프트 관리, 리포트 저장·�
 | UI Logic | `useReports` | React Query 기반 리포트 목록/상세 조회 |
 | UI Logic | `useAIRunner` | AI CLI 실행 상태 관리 |
 | Business | `utils/reports` | buildReportPrompt, buildIssueExportData, renderMarkdown |
+| Business | `utils/status-transitions` | buildTransitionSummary, detectTransitionFlags |
