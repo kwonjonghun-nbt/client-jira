@@ -9,10 +9,15 @@ import OKRPage from './pages/OKRPage';
 import DashboardPage from './pages/DashboardPage';
 import SyncProgress from './components/sync/SyncProgress';
 import IssueDetailModal from './components/issue/IssueDetailModal';
+import FloatingAIButton from './components/ai-tasks/FloatingAIButton';
+import AITaskPanel from './components/ai-tasks/AITaskPanel';
+import AITaskDetailModal from './components/ai-tasks/AITaskDetailModal';
 import { useUIStore } from './store/uiStore';
+import { useAITaskListener } from './hooks/useAITaskListener';
 
 export default function App() {
   const currentPage = useUIStore((s) => s.currentPage);
+  useAITaskListener();
 
   return (
     <Layout>
@@ -26,6 +31,9 @@ export default function App() {
       {currentPage === 'settings' && <SettingsPage />}
       <SyncProgress />
       <IssueDetailModal />
+      <FloatingAIButton />
+      <AITaskPanel />
+      <AITaskDetailModal />
     </Layout>
   );
 }

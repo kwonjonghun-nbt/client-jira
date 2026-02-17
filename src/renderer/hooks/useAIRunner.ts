@@ -41,12 +41,13 @@ export function useAIRunner() {
     return () => cleanups.forEach((fn) => fn());
   }, []);
 
-  const run = useCallback(async (prompt: string, aiType?: string) => {
+  const run = useCallback(async (prompt: string, aiType?: string): Promise<string | undefined> => {
     setState({ status: 'running', result: '', error: null, jobId: null });
     try {
       const id = await window.electronAPI.ai.run(prompt, aiType);
       jobIdRef.current = id;
       setState((prev) => ({ ...prev, jobId: id }));
+      return id;
     } catch (err) {
       setState((prev) => ({
         ...prev,

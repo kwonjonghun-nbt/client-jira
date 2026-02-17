@@ -5,7 +5,6 @@ import ReportDetailView from '../components/report/ReportDetailView';
 import ReportPromptSection from '../components/report/ReportPromptSection';
 import ReportSaveForm from '../components/report/ReportSaveForm';
 import ReportList from '../components/report/ReportList';
-import AIReportModal from '../components/report/AIReportModal';
 import { useReports, useReport } from '../hooks/useReports';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useReportFilter } from '../hooks/useReportFilter';
@@ -115,14 +114,6 @@ export default function ReportsPage() {
         />
       </div>
 
-      {aiReport.showAIModal && (
-        <AIReportModal
-          ai={aiReport.ai}
-          saving={aiReport.saving}
-          onSave={aiReport.handleSaveAIReport}
-          onClose={() => { aiReport.setShowAIModal(false); aiReport.ai.reset(); }}
-        />
-      )}
     </div>
   );
 }

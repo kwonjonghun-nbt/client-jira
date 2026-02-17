@@ -90,7 +90,7 @@ export function useMultiAIRunner() {
    * @param tasks Array of { assignee, prompt } pairs
    * @param aiType 'claude' | 'gemini'
    */
-  const runAll = useCallback(async (tasks: { assignee: string; prompt: string }[], aiType?: string) => {
+  const runAll = useCallback(async (tasks: { assignee: string; prompt: string }[], aiType?: string): Promise<{ assignee: string; jobId: string }[]> => {
     jobMapRef.current.clear();
     const initialJobs: JobState[] = [];
 
@@ -119,6 +119,7 @@ export function useMultiAIRunner() {
     }
 
     setState((prev) => ({ ...prev, jobs: initialJobs }));
+    return initialJobs.filter(j => j.jobId).map(j => ({ assignee: j.assignee, jobId: j.jobId }));
   }, []);
 
   const abort = useCallback(async () => {

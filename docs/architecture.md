@@ -43,7 +43,7 @@ Data Layer        → schemas/, types/, ipc/  스키마·타입·외부 통신
 | `pages/` | 페이지 컴포넌트 — 훅과 컴포넌트를 조합하는 지점 |
 | `components/` | 재사용 UI 컴포넌트 |
 | `hooks/` | 커스텀 훅 — 관심사별 분리 |
-| `store/` | Zustand 스토어 (uiStore, terminalStore) |
+| `store/` | Zustand 스토어 (uiStore, terminalStore, aiTaskStore) |
 | `utils/` | Renderer 순수 유틸 |
 | `types/` | TypeScript 인터페이스 |
 
@@ -92,3 +92,10 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 
 - `aiType` — AI CLI 종류 (claude | gemini)
 - `setAIType()`
+
+### aiTaskStore (Zustand)
+
+- `tasks` — AI 태스크 목록 (실행중/완료/에러)
+- `panelOpen` — 플로팅 패널 표시 여부
+- `selectedTaskId` — 상세 모달 대상 태스크
+- IPC 이벤트 핸들러: `appendChunk()`, `markJobDone()`, `markJobError()`

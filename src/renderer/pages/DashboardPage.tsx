@@ -1,7 +1,6 @@
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
-import DailyShareModal from '../components/dashboard/DailyShareModal';
 import SummaryCards from '../components/dashboard/SummaryCards';
 import DueThisWeek from '../components/dashboard/DueThisWeek';
 import WorkloadChart from '../components/dashboard/WorkloadChart';
@@ -182,15 +181,6 @@ export default function DashboardPage() {
       </div>
 
       <ChangeTracking changelog={changelog} />
-
-      {dailyShare.showModal && (
-        <DailyShareModal
-          ai={dailyShare.ai}
-          saving={dailyShare.saving}
-          onSave={dailyShare.handleSave}
-          onClose={dailyShare.handleClose}
-        />
-      )}
     </div>
   );
 }

@@ -26,8 +26,10 @@
 
 - 담당자 선택 후 "데이터 기반 생성" 또는 "AI 이슈공유 생성" 가능
 - 이슈를 카테고리별로 분류: 진행, 오늘마감, 지연, 리스크
-- AI 생성 시 `useAIRunner` 훅으로 CLI 백그라운드 실행
-- 결과를 `DailyShareModal`에서 확인·저장
+- AI 생성 시 `useAIRunner`/`useMultiAIRunner` 훅으로 CLI 백그라운드 실행
+- 플로팅 AI 태스크 매니저에 태스크 등록 → 다른 페이지로 이동 가능
+- 완료 시 플로팅 패널에서 태스크 클릭 → `AITaskDetailModal`에서 결과 확인·저장
+- "데이터 기반 생성"은 즉시 완료 태스크로 등록되어 바로 결과 확인 가능
 
 ### 이번 주 마감 이슈
 
@@ -67,7 +69,6 @@
 | UI | `RecentUpdates` | 최근 업데이트 이슈 목록 |
 | UI | `TypeDistribution` | 이슈 타입별 분포 |
 | UI | `ChangeTracking` | 최근 변경 추적 목록 |
-| UI | `DailyShareModal` | AI 이슈공유 결과 모달 |
 | UI Logic | `useDashboardStats` | 기간 필터, 통계 파생값 |
 | UI Logic | `useDailyShare` | 이슈공유 생성 로직 |
 | Business | `utils/dashboard` | computeDashboardStats, filterDashboardIssues, DATE_PRESETS, changeTypeConfig |
