@@ -68,7 +68,7 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 
 순수 함수 + 타입 정의:
 
-- `AITask`, `AITaskType` ('report' | 'daily-share' | 'daily-share-multi'), `AITaskStatus`
+- `AITask`, `AITaskType` ('report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis'), `AITaskStatus`
 - `createTaskId()`, `generateTaskTitle()`, `countRunningTasks()`, `mergeSubJobResults()`, `formatElapsedTime()`
 
 #### UI 컴포넌트 (`components/ai-tasks/`)
@@ -85,6 +85,7 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 |--------|------|
 | 리포트 | AI 리포트 생성 (`useReportAI`) → 태스크로 등록 |
 | 대시보드 | AI 이슈공유 생성 (`useDailyShare`) → 태스크로 등록 |
+| 이슈 상세 | 티켓 분석하기 (`IssueDetailModal` 스플릿 버튼) → 태스크로 등록 |
 | 전역 | 사이드바 🤖 버튼 + `AITaskPanel` + `AITaskDetailModal` (App.tsx) |
 
 ## 상태 흐름
@@ -105,7 +106,7 @@ running → ai:error → error
 ### 태스크 흐름 (AI 태스크 매니저)
 
 ```
-useReportAI/useDailyShare
+useReportAI/useDailyShare/IssueDetailModal
   ↓ ai.run() → jobId 반환
 aiTaskStore.addTask({ jobIds: [jobId], status: 'running' })
   ↓ useAITaskListener
