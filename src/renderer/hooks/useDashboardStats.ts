@@ -11,6 +11,12 @@ export function useDashboardStats(issues: NormalizedIssue[] | undefined) {
     return formatDateISO(d);
   });
   const [dateEnd, setDateEnd] = useState(() => formatDateISO(new Date()));
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('전체');
+
+  const assignees = useMemo(() => {
+    if (!issues) return [];
+    return [...new Set(issues.map((i) => i.assignee).filter(Boolean) as string[])].sort();
+  }, [issues]);
 
   const applyDatePreset = (days: number) => {
     setActivePreset(days);
@@ -28,19 +34,31 @@ export function useDashboardStats(issues: NormalizedIssue[] | undefined) {
 
   const filteredIssues = useMemo(() => {
     if (!issues) return [];
-    if (!dateStart && !dateEnd) return issues;
-    const startMs = dateStart ? new Date(dateStart).getTime() : 0;
-    const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
 
-    return issues.filter((issue) => {
-      const createdMs = new Date(issue.created).getTime();
-      const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
-      const createdInRange = createdMs >= startMs && createdMs <= endMs;
-      const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;
-      const spansRange = dueMs !== null && createdMs <= startMs && dueMs >= endMs;
-      return createdInRange || dueInRange || spansRange;
-    });
-  }, [issues, dateStart, dateEnd]);
+    let result = issues;
+
+    // 담당자 필터
+    if (assigneeFilter !== '전체') {
+      result = result.filter((i) => i.assignee === assigneeFilter);
+    }
+
+    // 날짜 필터
+    if (dateStart || dateEnd) {
+      const startMs = dateStart ? new Date(dateStart).getTime() : 0;
+      const endMs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
+
+      result = result.filter((issue) => {
+        const createdMs = new Date(issue.created).getTime();
+        const dueMs = issue.dueDate ? new Date(issue.dueDate).getTime() : null;
+        const createdInRange = createdMs >= startMs && createdMs <= endMs;
+        const dueInRange = dueMs !== null && dueMs >= startMs && dueMs <= endMs;
+        const spansRange = dueMs !== null && createdMs <= startMs && dueMs >= endMs;
+        return createdInRange || dueInRange || spansRange;
+      });
+    }
+
+    return result;
+  }, [issues, dateStart, dateEnd, assigneeFilter]);
 
   const stats = useMemo(() => {
     if (!issues) return null;
@@ -109,5 +127,8 @@ export function useDashboardStats(issues: NormalizedIssue[] | undefined) {
     applyDatePreset,
     setDateStart,
     setDateEnd,
+    assigneeFilter,
+    setAssigneeFilter,
+    assignees,
   };
 }

@@ -33,6 +33,9 @@ export default function DashboardPage() {
     applyDatePreset,
     setDateStart,
     setDateEnd,
+    assigneeFilter,
+    setAssigneeFilter,
+    assignees,
   } = useDashboardStats(data?.issues);
   const dailyShare = useDailyShare(data?.issues);
   if (isLoading) {
@@ -77,7 +80,7 @@ export default function DashboardPage() {
           </div>
           <SyncButton />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           {DATE_PRESETS.map((p) => (
             <button
               key={p.label}
@@ -105,6 +108,17 @@ export default function DashboardPage() {
             onChange={(e) => { setDateEnd(e.target.value); }}
             className="px-1.5 py-1 text-xs border border-gray-300 rounded w-28"
           />
+          <span className="text-xs text-gray-300 mx-1">|</span>
+          <select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+            className="px-1.5 py-1 text-xs border border-gray-300 rounded bg-white min-w-[100px]"
+          >
+            <option value="전체">담당자: 전체</option>
+            {assignees.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
           <span className="text-xs text-gray-400 ml-2">
             {filteredIssues.length}건 표시
             {filteredIssues.length !== data.issues.length && ` (전체 ${data.issues.length}건)`}
