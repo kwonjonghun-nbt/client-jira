@@ -26,6 +26,9 @@ Main 프로세스 서비스:
 
 ### IPC 핸들러 (`ipc/ai.handlers.ts`)
 
+- `aiType` 런타임 검증: `'claude'` 또는 `'gemini'`이 아닌 값이 전달되면 `'claude'`로 fallback
+- non-zero exit code 시 `ai:done` 대신 `ai:error` 전송
+
 | 채널 | 방향 | 용도 |
 |------|------|------|
 | `ai:run` | Renderer → Main | AI 실행 요청, job ID 반환 |

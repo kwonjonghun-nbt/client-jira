@@ -56,8 +56,14 @@ export class AIRunnerService {
 
     child.on('close', (code) => {
       this.jobs.delete(id);
-      this.send('ai:done', { id, exitCode: code ?? 0 });
-      logger.info(`AI job ${id} (${aiType}) finished with code ${code}`);
+      const exitCode = code ?? 0;
+      if (exitCode !== 0) {
+        this.send('ai:error', { id, message: `Process exited with code ${exitCode}` });
+        logger.warn(`AI job ${id} (${aiType}) failed with code ${exitCode}`);
+      } else {
+        this.send('ai:done', { id, exitCode });
+        logger.info(`AI job ${id} (${aiType}) finished with code ${exitCode}`);
+      }
     });
 
     child.on('error', (err) => {

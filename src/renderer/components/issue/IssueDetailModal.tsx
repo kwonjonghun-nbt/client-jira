@@ -203,7 +203,7 @@ export default function IssueDetailModal() {
               onClick={async () => {
                 const prompt = buildPrompt(issue);
                 try {
-                  const jobId = await window.electronAPI.ai.run(prompt, 'issue-analysis');
+                  const jobId = await window.electronAPI.ai.run(prompt);
                   if (jobId) {
                     addTask({
                       id: createTaskId(),
