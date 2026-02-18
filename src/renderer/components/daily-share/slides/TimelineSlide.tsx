@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { parseISO, differenceInCalendarDays, format, addDays, subDays, eachDayOfInterval } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import type { TimelineSlideData, TimelineItem } from '../../../utils/daily-share';
@@ -51,7 +51,9 @@ function computeRange(issues: TimelineItem[]) {
 }
 
 const ROW_HEIGHT = 40;
-const LABEL_WIDTH = 180;
+const DEFAULT_LABEL_WIDTH = 180;
+const MIN_LABEL_WIDTH = 100;
+const MAX_LABEL_WIDTH = 400;
 const DAY_COL_WIDTH = 32;
 
 interface Props {
@@ -81,37 +83,69 @@ export default function TimelineSlide({ data }: Props) {
     scrollRef.current.scrollLeft = Math.max(0, todayPx - containerWidth / 3);
   }, [todayIdx]);
 
+  // Resizable label column
+  const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
+  const isDragging = useRef(false);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const startX = e.clientX;
+    const startWidth = labelWidth;
+
+    const onPointerMove = (ev: PointerEvent) => {
+      if (!isDragging.current) return;
+      const delta = ev.clientX - startX;
+      setLabelWidth(Math.min(MAX_LABEL_WIDTH, Math.max(MIN_LABEL_WIDTH, startWidth + delta)));
+    };
+
+    const onPointerUp = () => {
+      isDragging.current = false;
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }, [labelWidth]);
+
   return (
     <div className="flex flex-col gap-3 h-full">
       <h2 className="text-lg font-bold text-gray-800">
         진행 현황 <span className="text-sm font-normal text-gray-400">({data.issues.length}건)</span>
       </h2>
 
-      <div ref={scrollRef} className="flex-1 overflow-x-auto">
-        <div className="flex" style={{ minWidth: chartWidth + LABEL_WIDTH }}>
-          {/* Left: issue labels */}
-          <div className="shrink-0" style={{ width: LABEL_WIDTH }}>
-            {/* Header spacer */}
-            <div className="h-8 border-b border-gray-200 flex items-end pb-1 px-2">
-              <span className="text-[10px] text-gray-400 font-medium">이슈</span>
-            </div>
-            {/* Issue rows */}
-            {data.issues.map((issue) => (
-              <div
-                key={issue.key}
-                className="flex items-center gap-1.5 px-2 border-b border-gray-100"
-                style={{ height: ROW_HEIGHT }}
-                title={`${issue.key}: ${issue.summary}`}
-              >
-                <span className="text-[10px] font-mono font-semibold text-blue-600 shrink-0">
-                  {issue.key}
-                </span>
-                <span className="text-xs text-gray-700 truncate flex-1">{issue.summary}</span>
-              </div>
-            ))}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: fixed issue labels */}
+        <div className="shrink-0" style={{ width: labelWidth }}>
+          {/* Header spacer */}
+          <div className="h-8 border-b border-gray-200 flex items-end pb-1 px-2">
+            <span className="text-[10px] text-gray-400 font-medium">이슈</span>
           </div>
+          {/* Issue rows */}
+          {data.issues.map((issue) => (
+            <div
+              key={issue.key}
+              className="flex items-center gap-1.5 px-2 border-b border-gray-100"
+              style={{ height: ROW_HEIGHT }}
+              title={`${issue.key}: ${issue.summary}`}
+            >
+              <span className="text-[10px] font-mono font-semibold text-blue-600 shrink-0">
+                {issue.key}
+              </span>
+              <span className="text-xs text-gray-700 truncate flex-1">{issue.summary}</span>
+            </div>
+          ))}
+        </div>
 
-          {/* Right: chart area */}
+        {/* Resize handle */}
+        <div
+          className="shrink-0 w-1 cursor-col-resize bg-gray-200 hover:bg-blue-400 active:bg-blue-500 transition-colors"
+          onPointerDown={handlePointerDown}
+        />
+
+        {/* Right: scrollable chart */}
+        <div ref={scrollRef} className="flex-1 overflow-x-auto">
           <div className="relative" style={{ width: chartWidth }}>
             {/* Date header */}
             <div className="flex h-8 border-b border-gray-200">
