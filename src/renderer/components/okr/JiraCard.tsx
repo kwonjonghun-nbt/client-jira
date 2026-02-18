@@ -70,7 +70,7 @@ export default function JiraCard({
           </span>
         )}
       </div>
-      <p className="text-xs text-gray-700 truncate">
+      <p className="text-xs text-gray-700 truncate" title={issue?.summary ?? undefined}>
         {issue?.summary ?? '(이슈 정보 없음)'}
       </p>
       {issue?.assignee && (
