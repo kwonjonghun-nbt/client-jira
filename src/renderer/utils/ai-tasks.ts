@@ -44,6 +44,10 @@ export function countRunningTasks(tasks: AITask[]): number {
   return tasks.filter((t) => t.status === 'running').length;
 }
 
+export function countCompletedTasks(tasks: AITask[]): number {
+  return tasks.filter((t) => t.status === 'done' || t.status === 'error').length;
+}
+
 export function mergeSubJobResults(
   subJobs: Record<string, { assignee: string; result: string }>,
 ): string {

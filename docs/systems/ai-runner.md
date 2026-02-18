@@ -74,13 +74,13 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 순수 함수 + 타입 정의:
 
 - `AITask`, `AITaskType` ('report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis'), `AITaskStatus`
-- `createTaskId()`, `generateTaskTitle()`, `countRunningTasks()`, `mergeSubJobResults()`, `formatElapsedTime()`
+- `createTaskId()`, `generateTaskTitle()`, `countRunningTasks()`, `countCompletedTasks()`, `mergeSubJobResults()`, `formatElapsedTime()`
 
 #### UI 컴포넌트 (`components/ai-tasks/`)
 
 | 컴포넌트 | 역할 |
 |----------|------|
-| `Sidebar` 🤖 버튼 | 사이드바 하단 버튼. 실행 중 태스크 수 뱃지, pulse 애니메이션. 패널 토글 |
+| `Sidebar` 🤖 버튼 | 사이드바 하단 버튼. 실행 중(빨간) / 완료(초록) 태스크 수 뱃지, 실행 중 pulse 애니메이션. 패널 토글 |
 | `AITaskPanel` | 사이드바 버튼 클릭 시 드롭다운 태스크 목록. 상태 아이콘, 경과 시간, 멀티 진행률, 실행 중 태스크 중단 버튼 |
 | `AITaskDetailModal` | 완료 태스크 클릭 시 SectionPresenter로 결과 표시 + 리포트 저장 |
 

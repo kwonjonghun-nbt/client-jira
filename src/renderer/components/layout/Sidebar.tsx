@@ -1,6 +1,6 @@
 import { useUIStore } from '../../store/uiStore';
 import { useAITaskStore } from '../../store/aiTaskStore';
-import { countRunningTasks } from '../../utils/ai-tasks';
+import { countRunningTasks, countCompletedTasks } from '../../utils/ai-tasks';
 
 export default function Sidebar() {
   const currentPage = useUIStore((s) => s.currentPage);
@@ -11,6 +11,7 @@ export default function Sidebar() {
   const panelOpen = useAITaskStore((s) => s.panelOpen);
   const togglePanel = useAITaskStore((s) => s.togglePanel);
   const runningCount = countRunningTasks(tasks);
+  const completedCount = countCompletedTasks(tasks);
 
   const navItems = [
     { page: 'dashboard' as const, label: '대시보드', icon: '🏠' },
@@ -81,6 +82,11 @@ export default function Sidebar() {
         {runningCount > 0 && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
             {runningCount}
+          </span>
+        )}
+        {completedCount > 0 && (
+          <span className={`absolute -right-1 w-4 h-4 bg-green-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ${runningCount > 0 ? '-bottom-1' : '-top-1'}`}>
+            {completedCount}
           </span>
         )}
       </button>

@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
+import { useMemo, useState } from 'react';
 import type { NormalizedIssue } from '../types/jira.types';
-import { DATE_PRESETS, formatDateISO } from '../utils/dashboard';
-import { computeLabelStats, computeLabelStatsSummary } from '../utils/stats';
+import { computeLabelStats, computeLabelStatsSummary, matchPresetDays } from '../utils/stats';
 
 export type StatsViewMode = 'table' | 'chart';
 
@@ -21,15 +20,14 @@ export function useStatsPage(filteredIssues: NormalizedIssue[]) {
     }
   };
 
+  const activePresetDays = matchPresetDays(startDate, endDate);
+
   const labelStats = useMemo(
     () => computeLabelStats(filteredIssues, startDate, endDate),
     [filteredIssues, startDate, endDate],
   );
 
-  const summary = useMemo(
-    () => computeLabelStatsSummary(labelStats),
-    [labelStats],
-  );
+  const summary = useMemo(() => computeLabelStatsSummary(labelStats), [labelStats]);
 
   return {
     startDate,
@@ -39,6 +37,7 @@ export function useStatsPage(filteredIssues: NormalizedIssue[]) {
     viewMode,
     setViewMode,
     applyPreset,
+    activePresetDays,
     labelStats,
     summary,
   };

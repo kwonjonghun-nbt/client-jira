@@ -1,5 +1,6 @@
-import { parseISO } from 'date-fns';
+import { format, parseISO, subDays } from 'date-fns';
 import type { NormalizedIssue } from '../types/jira.types';
+import { DATE_PRESETS } from './dashboard';
 
 export interface LabelStat {
   label: string;
@@ -56,6 +57,20 @@ export function computeLabelStats(
 
   result.sort((a, b) => b.total - a.total);
   return result;
+}
+
+/** Match current date range to a preset. Returns matching days value or null. Pure function. */
+export function matchPresetDays(startDate: string, endDate: string): number | null {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  for (const preset of DATE_PRESETS) {
+    if (preset.days === 0) {
+      if (!startDate && !endDate) return 0;
+    } else {
+      const expectedStart = format(subDays(new Date(), preset.days), 'yyyy-MM-dd');
+      if (startDate === expectedStart && endDate === today) return preset.days;
+    }
+  }
+  return null;
 }
 
 /** Compute summary from label stats. Pure function. */

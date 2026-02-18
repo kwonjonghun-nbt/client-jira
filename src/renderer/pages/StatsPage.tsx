@@ -23,6 +23,7 @@ export default function StatsPage() {
     viewMode,
     setViewMode,
     applyPreset,
+    activePresetDays,
     labelStats,
     summary,
   } = useStatsPage(filteredIssues);
@@ -87,7 +88,11 @@ export default function StatsPage() {
                 key={p.label}
                 type="button"
                 onClick={() => applyPreset(p.days)}
-                className="px-3 py-1 text-xs rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                className={`px-3 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
+                  activePresetDays === p.days
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
               >
                 {p.label}
               </button>
