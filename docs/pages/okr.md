@@ -58,6 +58,17 @@ KR을 클릭하면 전체 화면 캔버스 모달이 열림:
 - 웨이포인트 추가/제거/드래그로 경로 커스텀
 - 관계 삭제
 
+#### AI 캔버스 관리
+
+- "AI 캔버스" 버튼으로 하단 프롬프트 패널 열기
+- 자연어로 캔버스 수정 지시 (예: "프론트엔드/백엔드로 그룹핑해줘", "관련 티켓 간 의존관계 연결해줘")
+- AI가 현재 캔버스 상태(링크, 그룹, 관계, 가상 티켓)와 Jira 이슈 정보를 기반으로 변경분 생성
+- 변경분을 기존 OKRData에 안전하게 머지 (다른 KR 데이터 보존)
+- 지원 작업: 그룹 추가/수정/삭제, 링크 그룹 재할당, 관계 추가/삭제, 가상 티켓 추가
+- 스트리밍 응답 미리보기, 실행 중단 가능
+- AI 태스크 패널에서 완료된 캔버스 작업 클릭 시 전용 완료 모달 표시 (리포트 저장 없음)
+- 완료 모달에서 "캔버스 열기" 클릭 시 해당 KR 캔버스로 바로 이동 + AI 결과 자동 적용
+
 ### OKR 내보내기
 
 - JSON 형태로 전체 OKR 데이터 내보내기
@@ -82,6 +93,9 @@ KR을 클릭하면 전체 화면 캔버스 모달이 열림:
 | UI Logic | `useGroupActions` | 그룹 CRUD |
 | UI Logic | `useWaypointDrag` | 웨이포인트 드래그 |
 | UI Logic | `useOKR` | React Query 기반 OKR 데이터 조회/저장 |
+| UI | `CanvasAIPanel` | AI 프롬프트 입력 패널 |
+| UI Logic | `useCanvasAI` | AI 캔버스 관리 상태 및 실행 오케스트레이션 |
+| Business | `utils/ai-canvas` | AI 컨텍스트 생성, 프롬프트 조합, 응답 파싱, 변경 머지 |
 | Business | `utils/okr` | calcKRProgress, calcObjectiveProgress, buildOKRExportData |
 | Business | `utils/anchor-points` | 앵커 포인트 계산, 직교 라우팅 |
 | Business | `hooks/okr/okr-canvas.types` | 캔버스 상수 (CARD_W, CARD_H, 줌 범위) |

@@ -1,6 +1,6 @@
 import type { DailyShareSlide } from './daily-share';
 
-export type AITaskType = 'report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis';
+export type AITaskType = 'report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis' | 'canvas';
 export type AITaskStatus = 'running' | 'done' | 'error';
 
 export interface AITask {
@@ -14,6 +14,7 @@ export interface AITask {
   createdAt: number;
   subJobs?: Record<string, { assignee: string; status: AITaskStatus; result: string }>;
   slides?: DailyShareSlide[];
+  meta?: { krId?: string };
 }
 
 export function createTaskId(): string {
@@ -22,8 +23,11 @@ export function createTaskId(): string {
 
 export function generateTaskTitle(
   type: AITaskType,
-  meta: { assignee?: string; startDate?: string; endDate?: string; issueKey?: string },
+  meta: { assignee?: string; startDate?: string; endDate?: string; issueKey?: string; krTitle?: string },
 ): string {
+  if (type === 'canvas') {
+    return meta.krTitle ? `AI 캔버스 (${meta.krTitle})` : 'AI 캔버스';
+  }
   if (type === 'issue-analysis') {
     return meta.issueKey ? `티켓 분석 (${meta.issueKey})` : '티켓 분석';
   }

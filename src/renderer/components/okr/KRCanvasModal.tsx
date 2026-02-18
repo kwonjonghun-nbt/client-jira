@@ -8,11 +8,13 @@ import { useWaypointDrag } from '../../hooks/okr/useWaypointDrag';
 import { findBestInsertIndex } from '../../utils/anchor-points';
 import { useUIStore } from '../../store/uiStore';
 import { calcKRProgress } from '../../utils/okr';
+import { useCanvasAI } from '../../hooks/okr/useCanvasAI';
 import { XIcon, LinkIcon, ArrowRightIcon, PlusIcon } from '../common/Icons';
 import JiraCard from './JiraCard';
 import VirtualCard from './VirtualCard';
 import GroupContainer from './GroupContainer';
 import LinkModal from './LinkModal';
+import CanvasAIPanel from './CanvasAIPanel';
 import {
   CARD_W,
   CARD_H,
@@ -60,6 +62,7 @@ export default function KRCanvasModal({
   const tickets = useTicketActions(kr.id, updateOKR);
   const groups = useGroupActions(kr.id, updateOKR);
   const waypointDrag = useWaypointDrag(transform.zoom, canvasRef, relations.moveWaypoint);
+  const canvasAI = useCanvasAI(kr, okr, issueMap, updateOKR);
 
   // Keep zoomRef in sync so recalcArrows always reads the latest zoom
   zoomRef.current = transform.zoom;
@@ -130,6 +133,7 @@ export default function KRCanvasModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (canvasAI.isOpen) return; // AI panel handles its own ESC
         if (linkModalOpen) return;
         if (selectedIssue) return; // issue detail modal handles its own ESC
         onClose();
@@ -275,6 +279,20 @@ export default function KRCanvasModal({
             >
               <PlusIcon />
               그룹
+            </button>
+            <button
+              type="button"
+              onClick={canvasAI.isOpen ? canvasAI.close : canvasAI.open}
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg ${
+                canvasAI.isOpen
+                  ? 'bg-violet-600 text-white'
+                  : 'text-violet-600 bg-violet-50 hover:bg-violet-100'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+              </svg>
+              AI 캔버스
             </button>
           </div>
 
@@ -509,6 +527,20 @@ export default function KRCanvasModal({
               </div>
             )}
           </div>
+
+          {/* AI Canvas Panel */}
+          {canvasAI.isOpen && (
+            <CanvasAIPanel
+              prompt={canvasAI.prompt}
+              status={canvasAI.status}
+              streamingResult={canvasAI.streamingResult}
+              error={canvasAI.error}
+              onPromptChange={canvasAI.setPrompt}
+              onExecute={canvasAI.execute}
+              onAbort={canvasAI.abort}
+              onClose={canvasAI.close}
+            />
+          )}
         </div>
       </div>
 

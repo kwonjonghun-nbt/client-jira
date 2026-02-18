@@ -180,6 +180,52 @@ export interface OKRData {
   updatedAt: string;
 }
 
+// ─── AI Canvas Changes ──────────────────────────────────────────────────────
+
+export interface CanvasChangeGroup {
+  action: 'add' | 'update' | 'delete';
+  id?: string;
+  title?: string;
+  parentGroupId?: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+}
+
+export interface CanvasChangeLink {
+  action: 'update';
+  id: string;
+  groupId?: string | null;
+  x?: number;
+  y?: number;
+}
+
+export interface CanvasChangeRelation {
+  action: 'add' | 'delete';
+  id?: string;
+  fromId?: string;
+  toId?: string;
+  fromAnchor?: AnchorPosition;
+  toAnchor?: AnchorPosition;
+  label?: string;
+}
+
+export interface CanvasChangeVirtualTicket {
+  action: 'add';
+  title: string;
+  issueType: string;
+  assignee?: string;
+  groupId?: string;
+}
+
+export interface CanvasChanges {
+  groups?: CanvasChangeGroup[];
+  links?: CanvasChangeLink[];
+  relations?: CanvasChangeRelation[];
+  virtualTickets?: CanvasChangeVirtualTicket[];
+}
+
 // ─── Status Transition Analysis ──────────────────────────────────────────────
 
 export interface JiraChangelogItem {

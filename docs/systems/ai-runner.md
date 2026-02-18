@@ -82,7 +82,8 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 |----------|------|
 | `Sidebar` 🤖 버튼 | 사이드바 하단 버튼. 실행 중(빨간) / 완료(초록) 태스크 수 뱃지, 실행 중 pulse 애니메이션. 패널 토글 |
 | `AITaskPanel` | 사이드바 버튼 클릭 시 드롭다운 태스크 목록. 상태 아이콘, 경과 시간, 멀티 진행률, 실행 중 태스크 중단 버튼 |
-| `AITaskDetailModal` | 완료 태스크 클릭 시 SectionPresenter로 결과 표시 + 리포트 저장 |
+| `AITaskDetailModal` | 완료 태스크 클릭 시 SectionPresenter로 결과 표시 + 리포트 저장. canvas 타입은 CanvasResultModal로 위임 |
+| `CanvasResultModal` | AI 캔버스 전용 완료 모달. 리포트 저장 없이 결과 확인 + "캔버스 열기"로 해당 KR 캔버스 이동 |
 
 ## 사용처
 
@@ -91,6 +92,7 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 | 리포트 | AI 리포트 생성 (`useReportAI`) → 태스크로 등록 |
 | 대시보드 | AI 이슈공유 생성 (`useDailyShare`) → 태스크로 등록 |
 | 이슈 상세 | 티켓 분석하기 (`IssueDetailModal` 스플릿 버튼) → 태스크로 등록 |
+| OKR 캔버스 | AI 캔버스 관리 (`useCanvasAI`) → 프롬프트로 그룹/관계/가상티켓 자동 수정 |
 | 전역 | 사이드바 🤖 버튼 + `AITaskPanel` + `AITaskDetailModal` (App.tsx) |
 
 ## 상태 흐름

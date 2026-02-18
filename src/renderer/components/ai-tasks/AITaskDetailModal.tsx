@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAITaskStore } from '../../store/aiTaskStore';
 import SectionPresenter from '../report/SectionPresenter';
 import DailySharePresenter from '../daily-share/DailySharePresenter';
+import CanvasResultModal from './CanvasResultModal';
 
 export default function AITaskDetailModal() {
   const queryClient = useQueryClient();
@@ -67,6 +68,11 @@ export default function AITaskDetailModal() {
         </div>
       </div>
     );
+  }
+
+  // Canvas tasks use a dedicated modal (no report save)
+  if (task.type === 'canvas') {
+    return <CanvasResultModal task={task} onClose={handleClose} />;
   }
 
   // Done state with result

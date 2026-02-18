@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import Spinner from '../components/common/Spinner';
 import { useOKR } from '../hooks/useOKR';
@@ -16,6 +16,7 @@ import {
 } from '../components/common/Icons';
 import LinkModal from '../components/okr/LinkModal';
 import KRCanvasModal from '../components/okr/KRCanvasModal';
+import { useAITaskStore } from '../store/aiTaskStore';
 import type { NormalizedIssue } from '../types/jira.types';
 
 export default function OKRPage() {
@@ -26,6 +27,16 @@ export default function OKRPage() {
   // ── Hooks composition ───────────────────────────────────────────────────
   const actions = useOKRActions(data, save);
   const { okr, updateOKR } = actions;
+
+  // ── AI canvas navigation (from CanvasResultModal) ─────────────────────
+  const openCanvasKRId = useAITaskStore((s) => s.openCanvasKRId);
+  const setOpenCanvasKRId = useAITaskStore((s) => s.setOpenCanvasKRId);
+  useEffect(() => {
+    if (openCanvasKRId) {
+      actions.setCanvasKRId(openCanvasKRId);
+      setOpenCanvasKRId(null);
+    }
+  }, [openCanvasKRId, actions.setCanvasKRId, setOpenCanvasKRId]);
 
   // ── Derived data ────────────────────────────────────────────────────────
   const issueMap = useMemo(() => {

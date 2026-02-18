@@ -5,10 +5,17 @@ import { mergeSubJobResults } from '../utils/ai-tasks';
 
 const MAX_TASKS = 20;
 
+interface PendingCanvasApply {
+  krId: string;
+  result: string;
+}
+
 interface AITaskState {
   tasks: AITask[];
   panelOpen: boolean;
   selectedTaskId: string | null;
+  openCanvasKRId: string | null;
+  pendingCanvasApply: PendingCanvasApply | null;
 
   // Task lifecycle
   addTask: (task: AITask) => void;
@@ -24,12 +31,16 @@ interface AITaskState {
   togglePanel: () => void;
   closePanel: () => void;
   selectTask: (taskId: string | null) => void;
+  setOpenCanvasKRId: (krId: string | null) => void;
+  setPendingCanvasApply: (pending: PendingCanvasApply | null) => void;
 }
 
 export const useAITaskStore = create<AITaskState>((set) => ({
   tasks: [],
   panelOpen: false,
   selectedTaskId: null,
+  openCanvasKRId: null,
+  pendingCanvasApply: null,
 
   addTask: (task) =>
     set((state) => {
@@ -136,4 +147,6 @@ export const useAITaskStore = create<AITaskState>((set) => ({
   togglePanel: () => set((state) => ({ panelOpen: !state.panelOpen })),
   closePanel: () => set({ panelOpen: false }),
   selectTask: (taskId) => set({ selectedTaskId: taskId }),
+  setOpenCanvasKRId: (krId) => set({ openCanvasKRId: krId }),
+  setPendingCanvasApply: (pending) => set({ pendingCanvasApply: pending }),
 }));
