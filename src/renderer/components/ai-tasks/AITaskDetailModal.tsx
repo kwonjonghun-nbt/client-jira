@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { useAITaskStore } from '../../store/aiTaskStore';
 import SectionPresenter from '../report/SectionPresenter';
+import DailySharePresenter from '../daily-share/DailySharePresenter';
 
 export default function AITaskDetailModal() {
   const queryClient = useQueryClient();
@@ -68,21 +69,35 @@ export default function AITaskDetailModal() {
     );
   }
 
-  // Done state with result — show SectionPresenter
+  // Done state with result
+  const saveButton = (
+    <button
+      type="button"
+      onClick={handleSave}
+      disabled={saving}
+      className="px-4 py-1.5 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      {saving ? '저장 중...' : '리포트 저장'}
+    </button>
+  );
+
+  // Visual slides presenter for data-based daily-share
+  if (task.slides && task.slides.length > 0) {
+    return (
+      <DailySharePresenter
+        slides={task.slides}
+        onClose={handleClose}
+        headerActions={saveButton}
+      />
+    );
+  }
+
+  // Markdown presenter for AI-generated results and reports
   return (
     <SectionPresenter
       markdown={task.result}
       onClose={handleClose}
-      headerActions={
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-1.5 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {saving ? '저장 중...' : '리포트 저장'}
-        </button>
-      }
+      headerActions={saveButton}
     />
   );
 }

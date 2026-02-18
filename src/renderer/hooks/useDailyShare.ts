@@ -6,6 +6,7 @@ import {
   buildDailySharePrompt,
   buildDailyShareMarkdown,
   buildMultiAssigneeDailyShareMarkdown,
+  buildDailyShareSlides,
 } from '../utils/daily-share';
 import { useAIRunner } from './useAIRunner';
 import { useMultiAIRunner } from './useMultiAIRunner';
@@ -134,6 +135,12 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
     }
     if (!md) return;
 
+    // Build visual slides
+    const cats = assignee === '전체'
+      ? categorizeDailyIssues(issues, '전체')
+      : categories;
+    const slides = cats ? buildDailyShareSlides(assignee, cats) : undefined;
+
     // Register as immediate 'done' task so it appears in floating panel
     const taskId = createTaskId();
     addTask({
@@ -145,6 +152,7 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
       result: md,
       error: null,
       createdAt: Date.now(),
+      slides,
     });
     // Auto-open the result
     selectTask(taskId);

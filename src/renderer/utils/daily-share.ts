@@ -8,6 +8,58 @@ export interface DailyShareCategories {
   atRisk: NormalizedIssue[];
 }
 
+// ─── Slide types for visual presenter ────────────────────────────────────────
+
+export interface TimelineItem {
+  key: string;
+  summary: string;
+  status: string;
+  priority: string | null;
+  storyPoints: number | null;
+  startDate: string;
+  dueDate: string | null;
+  daysRemaining: number | null;
+}
+
+export interface TicketCardItem {
+  key: string;
+  summary: string;
+  status: string;
+  priority: string | null;
+  dueDate: string | null;
+  delayDays?: number;
+}
+
+export interface OverviewSlideData {
+  assignee: string;
+  date: string;
+  counts: { inProgress: number; dueToday: number; overdue: number; atRisk: number };
+  total: number;
+}
+
+export interface TimelineSlideData {
+  issues: TimelineItem[];
+}
+
+export interface TicketSlideData {
+  category: 'dueToday' | 'overdue' | 'atRisk';
+  label: string;
+  severity: 'info' | 'warning' | 'danger';
+  issues: TicketCardItem[];
+}
+
+export interface SummarySlideData {
+  total: number;
+  counts: { inProgress: number; dueToday: number; overdue: number; atRisk: number };
+  highlights: string[];
+}
+
+export type DailyShareSlide =
+  | { type: 'overview'; title: string; data: OverviewSlideData }
+  | { type: 'timeline'; title: string; data: TimelineSlideData }
+  | { type: 'tickets'; title: string; data: TicketSlideData }
+  | { type: 'summary'; title: string; data: SummarySlideData };
+
 /**
  * 날짜 문자열을 YYYY-MM-DD 형식으로 정규화
  */
@@ -257,6 +309,131 @@ export function buildMultiAssigneeDailyShareMarkdown(
   }
 
   return sections.join('\n\n---\n\n');
+}
+
+/**
+ * DailyShareCategories → 시각적 프레젠터용 슬라이드 배열로 변환
+ */
+export function buildDailyShareSlides(
+  assignee: string,
+  categories: DailyShareCategories,
+): DailyShareSlide[] {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayDate = new Date();
+  const target = assignee === '전체' ? '전체 팀원' : assignee;
+
+  const counts = {
+    inProgress: categories.inProgress.length,
+    dueToday: categories.dueToday.length,
+    overdue: categories.overdue.length,
+    atRisk: categories.atRisk.length,
+  };
+  const total = new Set([
+    ...categories.inProgress.map((i) => i.key),
+    ...categories.dueToday.map((i) => i.key),
+    ...categories.overdue.map((i) => i.key),
+    ...categories.atRisk.map((i) => i.key),
+  ]).size;
+
+  const slides: DailyShareSlide[] = [];
+
+  // 1. 개요 슬라이드 (항상)
+  slides.push({
+    type: 'overview',
+    title: `${target} 일일 이슈 공유`,
+    data: { assignee: target, date: today, counts, total },
+  });
+
+  // 2. 타임라인 슬라이드 (진행중 이슈가 있을 때)
+  if (categories.inProgress.length > 0) {
+    slides.push({
+      type: 'timeline',
+      title: '진행 현황',
+      data: {
+        issues: categories.inProgress.map((issue) => {
+          const dueNorm = normalizeDate(issue.dueDate);
+          const daysRemaining = dueNorm
+            ? differenceInCalendarDays(parseISO(dueNorm), todayDate)
+            : null;
+          return {
+            key: issue.key,
+            summary: issue.summary,
+            status: issue.status,
+            priority: issue.priority,
+            storyPoints: issue.storyPoints,
+            startDate: issue.startDate ?? issue.created,
+            dueDate: issue.dueDate,
+            daysRemaining,
+          };
+        }),
+      },
+    });
+  }
+
+  // 3. 티켓 카드 슬라이드들 (비어있지 않은 카테고리만)
+  const ticketCategories: {
+    key: 'dueToday' | 'overdue' | 'atRisk';
+    label: string;
+    severity: 'info' | 'warning' | 'danger';
+  }[] = [
+    { key: 'dueToday', label: '오늘 완료 예정', severity: 'info' },
+    { key: 'overdue', label: '지연 이슈', severity: 'danger' },
+    { key: 'atRisk', label: '리스크 이슈', severity: 'warning' },
+  ];
+
+  for (const cat of ticketCategories) {
+    const issues = categories[cat.key];
+    if (issues.length === 0) continue;
+
+    slides.push({
+      type: 'tickets',
+      title: cat.label,
+      data: {
+        category: cat.key,
+        label: cat.label,
+        severity: cat.severity,
+        issues: issues.map((issue) => {
+          const item: TicketCardItem = {
+            key: issue.key,
+            summary: issue.summary,
+            status: issue.status,
+            priority: issue.priority,
+            dueDate: issue.dueDate,
+          };
+          if (cat.key === 'overdue' && issue.dueDate) {
+            item.delayDays = differenceInCalendarDays(
+              todayDate,
+              parseISO(normalizeDate(issue.dueDate)!),
+            );
+          }
+          return item;
+        }),
+      },
+    });
+  }
+
+  // 4. 요약 슬라이드 (항상)
+  const highlights: string[] = [];
+  if (counts.inProgress > 0) {
+    highlights.push(`현재 ${counts.inProgress}건의 작업이 진행중입니다.`);
+  }
+  if (counts.dueToday > 0) {
+    highlights.push(`오늘 마감 예정 작업이 ${counts.dueToday}건 있습니다.`);
+  }
+  if (counts.overdue > 0) {
+    highlights.push(`지연 이슈 ${counts.overdue}건에 대한 즉각적인 확인이 필요합니다.`);
+  }
+  if (counts.atRisk > 0) {
+    highlights.push(`리스크 이슈 ${counts.atRisk}건은 내일 마감이므로 리뷰 진입이 시급합니다.`);
+  }
+
+  slides.push({
+    type: 'summary',
+    title: '요약',
+    data: { total, counts, highlights },
+  });
+
+  return slides;
 }
 
 /**

@@ -1,7 +1,7 @@
 {
   "name": "client-jira",
   "productName": "Client Jira",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Jira 데이터 수집 및 시각화 대시보드",
   "main": ".vite/build/index.js",
   "private": true,

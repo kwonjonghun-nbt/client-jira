@@ -1,3 +1,5 @@
+import type { DailyShareSlide } from './daily-share';
+
 export type AITaskType = 'report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis';
 export type AITaskStatus = 'running' | 'done' | 'error';
 
@@ -11,6 +13,7 @@ export interface AITask {
   error: string | null;
   createdAt: number;
   subJobs?: Record<string, { assignee: string; status: AITaskStatus; result: string }>;
+  slides?: DailyShareSlide[];
 }
 
 export function createTaskId(): string {

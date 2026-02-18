@@ -6,6 +6,7 @@ import {
   buildMultiAssigneeDailyShareMarkdown,
   buildDailyShareExportData,
   buildDailySharePrompt,
+  buildDailyShareSlides,
   DailyShareCategories,
 } from '../src/renderer/utils/daily-share';
 
@@ -742,6 +743,266 @@ describe('daily-share.ts', () => {
 
       expect(result).toContain('마크다운');
       expect(result).toContain('## 섹션 제목');
+    });
+  });
+
+  describe('buildDailyShareSlides', () => {
+    it('항상 개요와 요약 슬라이드를 포함한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+
+      expect(slides.length).toBeGreaterThanOrEqual(2);
+      expect(slides[0].type).toBe('overview');
+      expect(slides[slides.length - 1].type).toBe('summary');
+    });
+
+    it('개요 슬라이드에 카운트와 날짜를 포함한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [makeIssue({ key: 'S-1', statusCategory: 'indeterminate' })],
+        dueToday: [],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const overview = slides[0];
+
+      expect(overview.type).toBe('overview');
+      if (overview.type === 'overview') {
+        expect(overview.data.assignee).toBe('Alice');
+        expect(overview.data.date).toBe('2025-06-15');
+        expect(overview.data.counts.inProgress).toBe(1);
+        expect(overview.data.total).toBe(1);
+      }
+    });
+
+    it('담당자가 전체일 때 전체 팀원으로 표시한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('전체', categories);
+
+      if (slides[0].type === 'overview') {
+        expect(slides[0].data.assignee).toBe('전체 팀원');
+      }
+    });
+
+    it('진행중 이슈가 있으면 타임라인 슬라이드를 생성한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [
+          makeIssue({ key: 'S-2', statusCategory: 'indeterminate', status: 'In Progress', dueDate: '2025-06-20' }),
+        ],
+        dueToday: [],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const timeline = slides.find((s) => s.type === 'timeline');
+
+      expect(timeline).toBeDefined();
+      if (timeline?.type === 'timeline') {
+        expect(timeline.data.issues).toHaveLength(1);
+        expect(timeline.data.issues[0].key).toBe('S-2');
+        expect(timeline.data.issues[0].daysRemaining).toBe(5);
+        expect(timeline.data.issues[0].startDate).toBe('2025-01-01T00:00:00Z');
+      }
+    });
+
+    it('진행중 이슈가 없으면 타임라인 슬라이드를 생성하지 않는다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [makeIssue({ key: 'S-3', statusCategory: 'todo', dueDate: '2025-06-15' })],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+
+      expect(slides.find((s) => s.type === 'timeline')).toBeUndefined();
+    });
+
+    it('startDate가 있는 이슈는 startDate를 사용한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [
+          makeIssue({
+            key: 'S-SD',
+            statusCategory: 'indeterminate',
+            startDate: '2025-06-10',
+            created: '2025-06-01T00:00:00Z',
+          }),
+        ],
+        dueToday: [],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const timeline = slides.find((s) => s.type === 'timeline');
+
+      if (timeline?.type === 'timeline') {
+        expect(timeline.data.issues[0].startDate).toBe('2025-06-10');
+      }
+    });
+
+    it('dueDate가 없는 타임라인 이슈의 daysRemaining은 null이다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [makeIssue({ key: 'S-4', statusCategory: 'indeterminate', dueDate: null })],
+        dueToday: [],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const timeline = slides.find((s) => s.type === 'timeline');
+
+      if (timeline?.type === 'timeline') {
+        expect(timeline.data.issues[0].daysRemaining).toBeNull();
+      }
+    });
+
+    it('비어있지 않은 카테고리만 티켓 슬라이드를 생성한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [],
+        overdue: [makeIssue({ key: 'S-5', statusCategory: 'todo', dueDate: '2025-06-10' })],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const ticketSlides = slides.filter((s) => s.type === 'tickets');
+
+      expect(ticketSlides).toHaveLength(1);
+      if (ticketSlides[0].type === 'tickets') {
+        expect(ticketSlides[0].data.category).toBe('overdue');
+        expect(ticketSlides[0].data.severity).toBe('danger');
+      }
+    });
+
+    it('지연 이슈에 delayDays를 계산한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [],
+        overdue: [makeIssue({ key: 'S-6', statusCategory: 'todo', dueDate: '2025-06-10' })],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const overdueSlide = slides.find(
+        (s) => s.type === 'tickets' && s.data.category === 'overdue',
+      );
+
+      if (overdueSlide?.type === 'tickets') {
+        expect(overdueSlide.data.issues[0].delayDays).toBe(5);
+      }
+    });
+
+    it('dueToday와 atRisk 이슈에는 delayDays가 없다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [makeIssue({ key: 'S-7a', statusCategory: 'todo', dueDate: '2025-06-15' })],
+        overdue: [],
+        atRisk: [makeIssue({ key: 'S-7b', statusCategory: 'indeterminate', dueDate: '2025-06-16' })],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const dueTodaySlide = slides.find(
+        (s) => s.type === 'tickets' && s.data.category === 'dueToday',
+      );
+      const atRiskSlide = slides.find(
+        (s) => s.type === 'tickets' && s.data.category === 'atRisk',
+      );
+
+      if (dueTodaySlide?.type === 'tickets') {
+        expect(dueTodaySlide.data.issues[0].delayDays).toBeUndefined();
+      }
+      if (atRiskSlide?.type === 'tickets') {
+        expect(atRiskSlide.data.issues[0].delayDays).toBeUndefined();
+      }
+    });
+
+    it('티켓 슬라이드 순서는 dueToday → overdue → atRisk이다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [makeIssue({ key: 'S-8a', statusCategory: 'todo', dueDate: '2025-06-15' })],
+        overdue: [makeIssue({ key: 'S-8b', statusCategory: 'todo', dueDate: '2025-06-10' })],
+        atRisk: [makeIssue({ key: 'S-8c', statusCategory: 'indeterminate', dueDate: '2025-06-16' })],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const ticketSlides = slides.filter((s) => s.type === 'tickets');
+
+      expect(ticketSlides).toHaveLength(3);
+      if (ticketSlides[0].type === 'tickets' && ticketSlides[1].type === 'tickets' && ticketSlides[2].type === 'tickets') {
+        expect(ticketSlides[0].data.category).toBe('dueToday');
+        expect(ticketSlides[1].data.category).toBe('overdue');
+        expect(ticketSlides[2].data.category).toBe('atRisk');
+      }
+    });
+
+    it('요약 슬라이드에 하이라이트를 포함한다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [makeIssue({ key: 'S-9a', statusCategory: 'indeterminate' })],
+        dueToday: [],
+        overdue: [makeIssue({ key: 'S-9b', statusCategory: 'todo', dueDate: '2025-06-10' })],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const summary = slides[slides.length - 1];
+
+      if (summary.type === 'summary') {
+        expect(summary.data.highlights.length).toBeGreaterThan(0);
+        expect(summary.data.highlights.some((h) => h.includes('진행중'))).toBe(true);
+        expect(summary.data.highlights.some((h) => h.includes('지연'))).toBe(true);
+      }
+    });
+
+    it('중복 이슈 key는 total에서 한 번만 센다', () => {
+      const sharedIssue = makeIssue({
+        key: 'S-10',
+        statusCategory: 'indeterminate',
+        status: 'In Progress',
+        dueDate: '2025-06-15',
+      });
+      // 이 이슈는 inProgress와 dueToday 모두에 해당
+      const categories: DailyShareCategories = {
+        inProgress: [sharedIssue],
+        dueToday: [sharedIssue],
+        overdue: [],
+        atRisk: [],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+
+      if (slides[0].type === 'overview') {
+        expect(slides[0].data.total).toBe(1);
+      }
+    });
+
+    it('severity가 올바르게 매핑된다', () => {
+      const categories: DailyShareCategories = {
+        inProgress: [],
+        dueToday: [makeIssue({ key: 'S-11a', statusCategory: 'todo', dueDate: '2025-06-15' })],
+        overdue: [makeIssue({ key: 'S-11b', statusCategory: 'todo', dueDate: '2025-06-10' })],
+        atRisk: [makeIssue({ key: 'S-11c', statusCategory: 'indeterminate', dueDate: '2025-06-16' })],
+      };
+
+      const slides = buildDailyShareSlides('Alice', categories);
+      const ticketSlides = slides.filter((s) => s.type === 'tickets');
+
+      const severities = ticketSlides.map((s) => s.type === 'tickets' ? s.data.severity : null);
+      expect(severities).toEqual(['info', 'danger', 'warning']);
     });
   });
 });

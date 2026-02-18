@@ -30,6 +30,12 @@
 - AI 태스크 매니저에 태스크 등록 → 다른 페이지로 이동 가능
 - 완료 시 사이드바 🤖 → 태스크 패널에서 클릭 → `AITaskDetailModal`에서 결과 확인·저장
 - "데이터 기반 생성"은 즉시 완료 태스크로 등록되어 바로 결과 확인 가능
+- "데이터 기반 생성" 결과는 시각적 슬라이드 프레젠터(`DailySharePresenter`)로 표시:
+  - **개요 슬라이드**: 담당자, 날짜, 카테고리별 이슈 건수 카드
+  - **타임라인 슬라이드**: 진행중 이슈를 날짜 기반 Gantt 바로 시각화 (오늘 기준선, D-day 뱃지)
+  - **티켓 카드 슬라이드**: 오늘마감/지연/리스크 이슈를 심각도별 카드로 표시
+  - **요약 슬라이드**: 전체 통계 및 주요 포인트
+- AI 생성 결과는 기존 마크다운 프레젠터(`SectionPresenter`)로 표시
 
 ### 이번 주 마감 이슈
 
@@ -71,6 +77,12 @@
 | UI | `ChangeTracking` | 최근 변경 추적 목록 |
 | UI Logic | `useDashboardStats` | 기간 필터, 통계 파생값 |
 | UI Logic | `useDailyShare` | 이슈공유 생성 로직 |
+| UI | `DailySharePresenter` | 시각적 슬라이드 프레젠터 (키보드 네비게이션, 프로그레스 바) |
+| UI | `OverviewSlide` | 개요 슬라이드 (카테고리별 이슈 건수) |
+| UI | `TimelineSlide` | Gantt 바 타임라인 (날짜 기반 바, 오늘 기준선) |
+| UI | `TicketCardSlide` | 티켓 카드 그리드 (심각도별 색상) |
+| UI | `SummarySlide` | 요약 통계 슬라이드 |
+| Business | `utils/daily-share` | buildDailyShareSlides, 슬라이드 타입 정의 |
 | Business | `utils/dashboard` | computeDashboardStats, filterDashboardIssues, DATE_PRESETS, changeTypeConfig |
 | Business | `utils/issue` | normalizeType, issueTypeColors, statusBadgeClass |
 | Business | `utils/formatters` | formatRelativeTime |
