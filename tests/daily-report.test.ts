@@ -5,6 +5,7 @@ import {
   buildDailyReportPrompt,
   buildIssueDataForPrompt,
   formatReportForSlack,
+  buildStructuredReport,
 } from '../src/main/utils/daily-report';
 import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
 import { SlackSettingsSchema, SettingsSchema } from '../src/main/schemas/settings.schema';
@@ -31,6 +32,7 @@ function makeIssue(overrides: Partial<NormalizedIssue> = {}): NormalizedIssue {
     resolution: null,
     timeTracking: null,
     parent: null,
+    startDate: null,
     subtasks: [],
     issueLinks: [],
     ...overrides,
@@ -138,6 +140,10 @@ describe('SlackSettingsSchema', () => {
     expect(result.enabled).toBe(false);
     expect(result.webhookUrl).toBe('');
     expect(result.dailyReportTime).toBe('11:20');
+    expect(result.replyToThread).toBe(false);
+    expect(result.botToken).toBe('');
+    expect(result.channelId).toBe('');
+    expect(result.threadSearchText).toBe('');
   });
 
   it('유효한 시간 형식을 통과한다', () => {
@@ -159,5 +165,106 @@ describe('SlackSettingsSchema', () => {
     });
     expect(settings.slack).toBeDefined();
     expect(settings.slack.enabled).toBe(false);
+  });
+
+  it('스레드 댓글 설정을 파싱한다', () => {
+    const result = SlackSettingsSchema.parse({
+      replyToThread: true,
+      botToken: 'xoxb-test-token',
+      channelId: 'C0123456789',
+      threadSearchText: '데일리 스탠드업',
+    });
+    expect(result.replyToThread).toBe(true);
+    expect(result.botToken).toBe('xoxb-test-token');
+    expect(result.channelId).toBe('C0123456789');
+    expect(result.threadSearchText).toBe('데일리 스탠드업');
+  });
+
+  it('기존 설정(스레드 필드 없음)도 호환된다', () => {
+    const result = SlackSettingsSchema.parse({
+      enabled: true,
+      webhookUrl: 'https://hooks.slack.com/services/xxx',
+      dailyReportTime: '09:00',
+    });
+    expect(result.replyToThread).toBe(false);
+    expect(result.botToken).toBe('');
+    expect(result.channelId).toBe('');
+    expect(result.threadSearchText).toBe('');
+  });
+});
+
+describe('buildStructuredReport', () => {
+  const baseUrl = 'https://jira.example.com';
+
+  it('컴포넌트 → 에픽 → 하위작업 구조로 메시지를 생성한다', () => {
+    const issues = [
+      makeIssue({ key: 'AO-100', summary: '게이미피케이션 개선', issueType: 'Epic', components: ['게이미피케이션'], assignee: null, statusCategory: 'indeterminate' }),
+      makeIssue({ key: 'AO-101', summary: 'API 리팩토링', issueType: 'Task', parent: 'AO-100', components: ['게이미피케이션'], assignee: '홍길동', status: '진행중', statusCategory: 'indeterminate' }),
+      makeIssue({ key: 'AO-102', summary: '오류 핸들링 추가', issueType: 'Task', parent: 'AO-100', components: ['게이미피케이션'], assignee: '홍길동', status: '진행중', statusCategory: 'indeterminate' }),
+    ];
+
+    const result = buildStructuredReport('홍길동', issues, baseUrl);
+    expect(result).toContain('*홍길동*');
+    expect(result).toContain('*게이미피케이션*');
+    expect(result).toContain('<https://jira.example.com/browse/AO-100|AO-100>');
+    expect(result).toContain('<https://jira.example.com/browse/AO-101|AO-101> API 리팩토링 (진행중)');
+    expect(result).toContain('<https://jira.example.com/browse/AO-102|AO-102> 오류 핸들링 추가 (진행중)');
+  });
+
+  it('진행중 하위작업이 없는 에픽은 생략한다', () => {
+    const issues = [
+      makeIssue({ key: 'AO-100', summary: '완료된 에픽', issueType: 'Epic', components: ['테스트'], assignee: null }),
+      makeIssue({ key: 'AO-101', summary: '완료된 작업', issueType: 'Task', parent: 'AO-100', components: ['테스트'], assignee: '홍길동', statusCategory: 'done' }),
+      makeIssue({ key: 'AO-200', summary: '진행중 에픽', issueType: 'Epic', components: ['테스트'], assignee: null }),
+      makeIssue({ key: 'AO-201', summary: '진행중 작업', issueType: 'Task', parent: 'AO-200', components: ['테스트'], assignee: '홍길동', status: '진행중', statusCategory: 'indeterminate' }),
+    ];
+
+    const result = buildStructuredReport('홍길동', issues, baseUrl);
+    expect(result).not.toContain('AO-100');
+    expect(result).not.toContain('AO-101');
+    expect(result).toContain('AO-200');
+    expect(result).toContain('AO-201');
+  });
+
+  it('담당자의 진행중 작업이 없으면 빈 문자열을 반환한다', () => {
+    const issues = [
+      makeIssue({ key: 'AO-100', summary: '완료된 작업', assignee: '홍길동', statusCategory: 'done' }),
+    ];
+
+    const result = buildStructuredReport('홍길동', issues, baseUrl);
+    expect(result).toBe('');
+  });
+
+  it('여러 컴포넌트의 이슈를 각각 그룹핑한다', () => {
+    const issues = [
+      makeIssue({ key: 'AO-100', summary: '에픽A', issueType: 'Epic', components: ['홈 화면'], assignee: null }),
+      makeIssue({ key: 'AO-101', summary: '작업A', issueType: 'Task', parent: 'AO-100', components: ['홈 화면'], assignee: '홍길동', status: '진행중', statusCategory: 'indeterminate' }),
+      makeIssue({ key: 'AO-200', summary: '에픽B', issueType: 'Epic', components: ['설정'], assignee: null }),
+      makeIssue({ key: 'AO-201', summary: '작업B', issueType: 'Task', parent: 'AO-200', components: ['설정'], assignee: '홍길동', status: '진행중', statusCategory: 'indeterminate' }),
+    ];
+
+    const result = buildStructuredReport('홍길동', issues, baseUrl);
+    expect(result).toContain('*홈 화면*');
+    expect(result).toContain('*설정*');
+  });
+
+  it('컴포넌트가 없는 이슈는 기타로 분류한다', () => {
+    const issues = [
+      makeIssue({ key: 'AO-100', summary: '에픽', issueType: 'Epic', components: [], assignee: null }),
+      makeIssue({ key: 'AO-101', summary: '작업', issueType: 'Task', parent: 'AO-100', components: [], assignee: '홍길동', status: '진행중', statusCategory: 'indeterminate' }),
+    ];
+
+    const result = buildStructuredReport('홍길동', issues, baseUrl);
+    expect(result).toContain('*기타*');
+  });
+
+  it('Jira URL 링크가 올바르게 생성된다', () => {
+    const issues = [
+      makeIssue({ key: 'AO-100', summary: '단독 작업', assignee: '홍길동', status: '진행중', statusCategory: 'indeterminate', components: ['공통'] }),
+    ];
+
+    const result = buildStructuredReport('홍길동', issues, 'https://myteam.atlassian.net/');
+    // trailing slash 제거 확인
+    expect(result).toContain('<https://myteam.atlassian.net/browse/AO-100|AO-100>');
   });
 });

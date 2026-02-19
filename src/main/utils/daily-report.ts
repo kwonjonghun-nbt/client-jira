@@ -86,3 +86,139 @@ export function buildIssueDataForPrompt(issues: NormalizedIssue[]): string {
 export function getTodayDateStr(): string {
   return format(new Date(), 'yyyy-MM-dd');
 }
+
+/**
+ * 담당자의 진행중 작업을 컴포넌트 → 에픽 → 하위작업 구조로 슬랙 메시지 생성
+ *
+ * 규칙:
+ * - 진행중(statusCategory === 'indeterminate') 이슈만 포함
+ * - 컴포넌트별 그룹핑, 에픽 하위에 작업 티켓 리스트
+ * - 진행중 하위작업이 없는 에픽은 생략
+ * - 티켓 번호에 Jira 링크 포함
+ */
+export function buildStructuredReport(
+  assignee: string,
+  allIssues: NormalizedIssue[],
+  baseUrl: string,
+): string {
+  const issueMap = new Map<string, NormalizedIssue>();
+  for (const issue of allIssues) {
+    issueMap.set(issue.key, issue);
+  }
+
+  const isEpic = (issue: NormalizedIssue) =>
+    issue.issueType === 'Epic' || issue.issueType === '에픽';
+
+  // 담당자의 진행중 작업 (에픽 제외)
+  const inProgressTasks = allIssues.filter(
+    (issue) =>
+      issue.assignee === assignee &&
+      issue.statusCategory === 'indeterminate' &&
+      !isEpic(issue),
+  );
+
+  if (inProgressTasks.length === 0) return '';
+
+  // parent 체인을 타고 올라가서 에픽을 찾는다 (Epic → Story → Task 구조 대응)
+  const findEpic = (issue: NormalizedIssue): NormalizedIssue | null => {
+    let current = issue;
+    const visited = new Set<string>();
+    while (current.parent) {
+      if (visited.has(current.parent)) break; // 순환 방지
+      visited.add(current.parent);
+      const parent = issueMap.get(current.parent);
+      if (!parent) break;
+      if (isEpic(parent)) return parent;
+      current = parent;
+    }
+    return null;
+  };
+
+  // 에픽별 그룹핑
+  const epicTaskMap = new Map<string, NormalizedIssue[]>();
+  const noEpicTasks: NormalizedIssue[] = [];
+
+  for (const task of inProgressTasks) {
+    const epic = findEpic(task);
+    if (epic) {
+      const list = epicTaskMap.get(epic.key) ?? [];
+      list.push(task);
+      epicTaskMap.set(epic.key, list);
+    } else {
+      noEpicTasks.push(task);
+    }
+  }
+
+  // 컴포넌트별 그룹핑
+  interface EpicGroup {
+    epic: NormalizedIssue;
+    tasks: NormalizedIssue[];
+  }
+
+  const componentMap = new Map<string, EpicGroup[]>();
+  const jiraUrl = baseUrl.replace(/\/$/, '');
+
+  const addToComponent = (componentName: string, epicGroup: EpicGroup) => {
+    const list = componentMap.get(componentName) ?? [];
+    // 같은 에픽이 이미 있으면 머지
+    const existing = list.find((g) => g.epic.key === epicGroup.epic.key);
+    if (existing) {
+      existing.tasks.push(...epicGroup.tasks);
+    } else {
+      list.push(epicGroup);
+    }
+    componentMap.set(componentName, list);
+  };
+
+  for (const [epicKey, tasks] of epicTaskMap) {
+    const epic = issueMap.get(epicKey)!;
+    const components = epic.components.length > 0 ? epic.components : ['기타'];
+    for (const comp of components) {
+      addToComponent(comp, { epic, tasks: [...tasks] });
+    }
+  }
+
+  // 에픽 없는 작업도 컴포넌트별로
+  for (const task of noEpicTasks) {
+    const components = task.components.length > 0 ? task.components : ['기타'];
+    for (const comp of components) {
+      const list = componentMap.get(comp) ?? [];
+      // 에픽 없는 작업은 가짜 그룹으로
+      list.push({ epic: task, tasks: [] });
+      componentMap.set(comp, list);
+    }
+  }
+
+  const makeLink = (key: string) => `<${jiraUrl}/browse/${key}|${key}>`;
+
+  const lines: string[] = [`*${assignee}*`, ''];
+
+  // 컴포넌트 정렬 (기타는 마지막)
+  const sortedComponents = [...componentMap.keys()].sort((a, b) => {
+    if (a === '기타') return 1;
+    if (b === '기타') return -1;
+    return a.localeCompare(b);
+  });
+
+  for (const comp of sortedComponents) {
+    const epicGroups = componentMap.get(comp)!;
+    lines.push(`*${comp}*`);
+
+    for (const { epic, tasks } of epicGroups) {
+      if (tasks.length > 0) {
+        // 에픽 + 하위 작업
+        lines.push(`  ${makeLink(epic.key)} ${epic.summary}`);
+        for (const task of tasks) {
+          lines.push(`    • ${makeLink(task.key)} ${task.summary} (${task.status})`);
+        }
+      } else {
+        // 에픽 없는 단독 작업
+        lines.push(`  • ${makeLink(epic.key)} ${epic.summary} (${epic.status})`);
+      }
+    }
+
+    lines.push('');
+  }
+
+  return lines.join('\n').trimEnd();
+}

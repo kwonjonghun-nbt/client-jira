@@ -25,6 +25,10 @@ export interface SlackSettings {
   enabled: boolean;
   webhookUrl: string;
   dailyReportTime: string;
+  replyToThread: boolean;
+  botToken: string;
+  channelId: string;
+  threadSearchText: string;
 }
 
 export interface Settings {
@@ -40,5 +44,5 @@ export const DEFAULT_SETTINGS: Settings = {
   collection: { projects: [], assignees: [], customJql: '' },
   schedule: { enabled: true, times: ['09:00', '13:00', '18:00'] },
   storage: { retentionDays: 90 },
-  slack: { enabled: false, webhookUrl: '', dailyReportTime: '11:20' },
+  slack: { enabled: false, webhookUrl: '', dailyReportTime: '11:20', replyToThread: false, botToken: '', channelId: '', threadSearchText: '' },
 };

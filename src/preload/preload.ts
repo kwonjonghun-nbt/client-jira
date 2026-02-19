@@ -144,6 +144,10 @@ const api = {
       ipcRenderer.invoke('slack:test-webhook', webhookUrl),
     triggerDailyReport: () =>
       ipcRenderer.invoke('slack:trigger-daily-report'),
+    testBotToken: (botToken: string, channelId: string) =>
+      ipcRenderer.invoke('slack:test-bot-token', botToken, channelId),
+    findThreadMessage: (botToken: string, channelId: string, searchText: string) =>
+      ipcRenderer.invoke('slack:find-thread-message', botToken, channelId, searchText),
   },
 };
 

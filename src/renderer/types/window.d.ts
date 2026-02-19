@@ -66,6 +66,8 @@ export interface ElectronAPI {
   slack: {
     testWebhook: (webhookUrl: string) => Promise<{ success: boolean; error?: string }>;
     triggerDailyReport: () => Promise<{ success: boolean; error?: string }>;
+    testBotToken: (botToken: string, channelId: string) => Promise<{ success: boolean; error?: string }>;
+    findThreadMessage: (botToken: string, channelId: string, searchText: string) => Promise<{ success: boolean; found?: boolean; text?: string; error?: string }>;
   };
 }
 

@@ -79,7 +79,7 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 | `terminal` | terminal.handlers | PTY 세션 생성/입력/종료 |
 | `ai` | ai.handlers | AI CLI 실행/중단 |
 | `updater` | updater.handlers | 앱 업데이트 확인/설치 |
-| `slack` | slack.handlers | 슬랙 웹훅 테스트, 일일 리포트 수동 트리거 |
+| `slack` | slack.handlers | 슬랙 웹훅 테스트, Bot Token 연결 테스트, 스레드 메시지 검색, 일일 리포트 수동 트리거 |
 
 ## 전역 상태
 

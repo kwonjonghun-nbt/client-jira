@@ -24,6 +24,10 @@ export const SlackSettingsSchema = z.object({
   enabled: z.boolean().default(false),
   webhookUrl: z.string().default(''),
   dailyReportTime: z.string().regex(/^\d{2}:\d{2}$/).default('11:20'),
+  replyToThread: z.boolean().default(false),
+  botToken: z.string().default(''),
+  channelId: z.string().default(''),
+  threadSearchText: z.string().default(''),
 });
 
 export const SettingsSchema = z.object({
@@ -31,7 +35,7 @@ export const SettingsSchema = z.object({
   collection: CollectionSchema,
   schedule: ScheduleSchema,
   storage: StorageSettingsSchema,
-  slack: SlackSettingsSchema.default({ enabled: false, webhookUrl: '', dailyReportTime: '11:20' }),
+  slack: SlackSettingsSchema.default({ enabled: false, webhookUrl: '', dailyReportTime: '11:20', replyToThread: false, botToken: '', channelId: '', threadSearchText: '' }),
 });
 
 // Type exports
@@ -63,5 +67,9 @@ export const DEFAULT_SETTINGS: Settings = {
     enabled: false,
     webhookUrl: '',
     dailyReportTime: '11:20',
+    replyToThread: false,
+    botToken: '',
+    channelId: '',
+    threadSearchText: '',
   },
 };

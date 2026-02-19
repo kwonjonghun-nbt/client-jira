@@ -118,6 +118,10 @@ export default function SettingsPage() {
           enabled={draft.slack.enabled}
           webhookUrl={draft.slack.webhookUrl}
           dailyReportTime={draft.slack.dailyReportTime}
+          replyToThread={draft.slack.replyToThread}
+          botToken={draft.slack.botToken}
+          channelId={draft.slack.channelId}
+          threadSearchText={draft.slack.threadSearchText}
           onToggle={(enabled) =>
             setDraft({ ...draft, slack: { ...draft.slack, enabled } })
           }
@@ -126,6 +130,18 @@ export default function SettingsPage() {
           }
           onChangeDailyReportTime={(dailyReportTime) =>
             setDraft({ ...draft, slack: { ...draft.slack, dailyReportTime } })
+          }
+          onChangeReplyToThread={(replyToThread) =>
+            setDraft({ ...draft, slack: { ...draft.slack, replyToThread } })
+          }
+          onChangeBotToken={(botToken) =>
+            setDraft({ ...draft, slack: { ...draft.slack, botToken } })
+          }
+          onChangeChannelId={(channelId) =>
+            setDraft({ ...draft, slack: { ...draft.slack, channelId } })
+          }
+          onChangeThreadSearchText={(threadSearchText) =>
+            setDraft({ ...draft, slack: { ...draft.slack, threadSearchText } })
           }
         />
       </section>
