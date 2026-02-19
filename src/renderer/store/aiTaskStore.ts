@@ -35,6 +35,10 @@ interface AITaskState {
   setPendingCanvasApply: (pending: PendingCanvasApply | null) => void;
 }
 
+function notifyTaskCompleted(title: string, status: 'done' | 'error'): void {
+  window.electronAPI.ai.notifyTaskCompleted({ title, status });
+}
+
 export const useAITaskStore = create<AITaskState>((set) => ({
   tasks: [],
   panelOpen: false,
@@ -96,6 +100,7 @@ export const useAITaskStore = create<AITaskState>((set) => ({
             (j) => j.status === 'done' || j.status === 'error',
           );
           if (allDone) {
+            notifyTaskCompleted(task.title, 'done');
             return {
               ...task,
               subJobs: updatedSubJobs,
@@ -107,6 +112,7 @@ export const useAITaskStore = create<AITaskState>((set) => ({
         }
 
         // Single-job task
+        notifyTaskCompleted(task.title, 'done');
         return { ...task, status: 'done' as AITaskStatus };
       }),
     })),
@@ -126,12 +132,16 @@ export const useAITaskStore = create<AITaskState>((set) => ({
             (j) => j.status === 'done' || j.status === 'error',
           );
           if (allDone) {
+            const finalStatus: 'done' | 'error' = Object.values(updatedSubJobs).some(
+              (j) => j.status === 'done',
+            )
+              ? 'done'
+              : 'error';
+            notifyTaskCompleted(task.title, finalStatus);
             return {
               ...task,
               subJobs: updatedSubJobs,
-              status: Object.values(updatedSubJobs).some((j) => j.status === 'done')
-                ? ('done' as AITaskStatus)
-                : ('error' as AITaskStatus),
+              status: finalStatus,
               result: mergeSubJobResults(updatedSubJobs),
               error: message,
             };
@@ -140,6 +150,7 @@ export const useAITaskStore = create<AITaskState>((set) => ({
         }
 
         // Single-job task
+        notifyTaskCompleted(task.title, 'error');
         return { ...task, status: 'error' as AITaskStatus, error: message };
       }),
     })),

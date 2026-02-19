@@ -33,6 +33,7 @@ Main 프로세스 서비스:
 |------|------|------|
 | `ai:run` | Renderer → Main | AI 실행 요청, job ID 반환 |
 | `ai:abort` | Renderer → Main | 실행 중단 |
+| `ai:notify-task-completed` | Renderer → Main | 작업 완료/실패 시 OS 시스템 알림 요청 |
 | `ai:chunk` | Main → Renderer | 텍스트 청크 스트리밍 |
 | `ai:done` | Main → Renderer | 완료 (exitCode 포함) |
 | `ai:error` | Main → Renderer | 에러 (message 포함) |
@@ -64,6 +65,7 @@ Zustand 전역 스토어:
 - `selectedTaskId` — 상세 모달로 볼 태스크 ID
 - IPC 이벤트 핸들러: `appendChunk`, `markJobDone`, `markJobError`
 - 단일 작업 및 멀티 작업(subJobs) 모두 지원
+- 작업 최종 완료/실패 시 `ai:notify-task-completed` IPC로 OS 시스템 알림 요청
 
 #### useAITaskListener (`hooks/useAITaskListener.ts`)
 
@@ -94,6 +96,15 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 | 이슈 상세 | 티켓 분석하기 (`IssueDetailModal` 스플릿 버튼) → 태스크로 등록 |
 | OKR 캔버스 | AI 캔버스 관리 (`useCanvasAI`) → 프롬프트로 그룹/관계/가상티켓 자동 수정 |
 | 전역 | 사이드바 🤖 버튼 + `AITaskPanel` + `AITaskDetailModal` (App.tsx) |
+
+### 시스템 알림 (`utils/notification.ts`)
+
+작업 완료/실패 시 OS 네이티브 알림을 표시하는 Main 프로세스 유틸.
+
+- `showTaskNotification({ title, status })` — Electron `Notification` API로 OS 알림 표시
+- `buildTaskNotificationBody(status)` — 상태에 따른 알림 본문 생성 (순수 함수)
+- `Notification.isSupported()` 체크 — 미지원 환경에서 안전하게 무시
+- aiTaskStore의 `markJobDone`/`markJobError`에서 최종 상태 전환 시 `ai:notify-task-completed` IPC로 호출
 
 ## 상태 흐름
 

@@ -110,6 +110,8 @@ const api = {
         ipcRenderer.removeListener('ai:error', handler);
       };
     },
+    notifyTaskCompleted: (params: { title: string; status: 'done' | 'error' }) =>
+      ipcRenderer.invoke('ai:notify-task-completed', params),
   },
   terminal: {
     create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) =>

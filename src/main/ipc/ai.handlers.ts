@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import type { AppServices } from '../services/types';
+import { showTaskNotification } from '../utils/notification';
 
 export function registerAIHandlers(services: AppServices): void {
   ipcMain.handle('ai:run', (_event, prompt: string, aiType?: string) => {
@@ -11,4 +12,11 @@ export function registerAIHandlers(services: AppServices): void {
   ipcMain.handle('ai:abort', (_event, id: string) => {
     services.aiRunner?.abort(id);
   });
+
+  ipcMain.handle(
+    'ai:notify-task-completed',
+    (_event, params: { title: string; status: 'done' | 'error' }) => {
+      showTaskNotification(params);
+    },
+  );
 }
