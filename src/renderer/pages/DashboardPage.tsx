@@ -7,6 +7,7 @@ import WorkloadChart from '../components/dashboard/WorkloadChart';
 import RecentUpdates from '../components/dashboard/RecentUpdates';
 import TypeDistribution from '../components/dashboard/TypeDistribution';
 import ChangeTracking from '../components/dashboard/ChangeTracking';
+import TodayFocus from '../components/dashboard/TodayFocus';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useChangelog } from '../hooks/useChangelog';
 import { useDashboardStats } from '../hooks/useDashboardStats';
@@ -159,6 +160,11 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      <TodayFocus
+        issues={stats.todayFocus}
+        onIssueClick={(issue) => openIssueDetail(issue, baseUrl)}
+      />
 
       <SummaryCards
         totalCount={stats.totalCount}

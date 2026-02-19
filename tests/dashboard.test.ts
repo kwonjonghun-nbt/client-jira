@@ -6,6 +6,8 @@ import {
   formatChangeValue,
   computeDashboardStats,
   filterDashboardIssues,
+  getPriorityWeight,
+  computeTodayFocus,
 } from '../src/renderer/utils/dashboard';
 
 function makeIssue(overrides: Partial<NormalizedIssue> & { key: string }): NormalizedIssue {
@@ -600,5 +602,259 @@ describe('filterDashboardIssues', () => {
     const result = filterDashboardIssues(issues, '2025-01-12', '2025-01-18', '전체');
 
     expect(result).toHaveLength(0);
+  });
+});
+
+describe('getPriorityWeight', () => {
+  it('Highest는 0을 반환한다', () => {
+    expect(getPriorityWeight('Highest')).toBe(0);
+  });
+
+  it('High는 1을 반환한다', () => {
+    expect(getPriorityWeight('High')).toBe(1);
+  });
+
+  it('Medium은 2를 반환한다', () => {
+    expect(getPriorityWeight('Medium')).toBe(2);
+  });
+
+  it('Low는 3을 반환한다', () => {
+    expect(getPriorityWeight('Low')).toBe(3);
+  });
+
+  it('Lowest는 4를 반환한다', () => {
+    expect(getPriorityWeight('Lowest')).toBe(4);
+  });
+
+  it('null은 5를 반환한다', () => {
+    expect(getPriorityWeight(null)).toBe(5);
+  });
+
+  it('알 수 없는 문자열은 5를 반환한다', () => {
+    expect(getPriorityWeight('Unknown')).toBe(5);
+  });
+});
+
+describe('computeTodayFocus', () => {
+  const today = new Date('2025-06-11');
+
+  it('완료 이슈와 미착수(new) 이슈를 제외한다', () => {
+    const issues = [
+      makeIssue({ key: 'P-1', statusCategory: 'done', priority: 'Highest' }),
+      makeIssue({ key: 'P-2', statusCategory: 'indeterminate', priority: 'Low' }),
+      makeIssue({ key: 'P-3', statusCategory: 'new', priority: 'Medium' }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].key).toBe('P-2');
+  });
+
+  it('priority 심각도 순으로 정렬한다 (Highest > High > Medium > Low > Lowest)', () => {
+    const issues = [
+      makeIssue({ key: 'P-LOW', statusCategory: 'indeterminate', priority: 'Low' }),
+      makeIssue({ key: 'P-HIGH', statusCategory: 'indeterminate', priority: 'High' }),
+      makeIssue({ key: 'P-MED', statusCategory: 'indeterminate', priority: 'Medium' }),
+      makeIssue({ key: 'P-HIGHEST', statusCategory: 'indeterminate', priority: 'Highest' }),
+      makeIssue({ key: 'P-LOWEST', statusCategory: 'indeterminate', priority: 'Lowest' }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result.map((i) => i.key)).toEqual([
+      'P-HIGHEST', 'P-HIGH', 'P-MED', 'P-LOW', 'P-LOWEST',
+    ]);
+  });
+
+  it('동일 priority 내에서 마감 임박(D-0~D-1) + 진행중 이슈가 상위에 온다', () => {
+    const issues = [
+      makeIssue({
+        key: 'P-NORMAL',
+        statusCategory: 'indeterminate',
+        priority: 'High',
+        dueDate: '2025-06-20',
+      }),
+      makeIssue({
+        key: 'P-URGENT',
+        statusCategory: 'indeterminate',
+        priority: 'High',
+        dueDate: '2025-06-11', // 오늘 (D-0)
+      }),
+      makeIssue({
+        key: 'P-TOMORROW',
+        statusCategory: 'indeterminate',
+        priority: 'High',
+        dueDate: '2025-06-12', // 내일 (D-1)
+      }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result[0].key).toBe('P-URGENT');
+    expect(result[1].key).toBe('P-TOMORROW');
+    expect(result[2].key).toBe('P-NORMAL');
+  });
+
+  it('isDueUrgent는 마감 임박이어도 dueDate가 D-0~D-1이면 urgent로 판별한다', () => {
+    const issues = [
+      makeIssue({
+        key: 'P-IP-URGENT',
+        statusCategory: 'indeterminate',
+        status: 'In Progress',
+        priority: 'High',
+        dueDate: '2025-06-11', // D-0
+      }),
+      makeIssue({
+        key: 'P-IP-NORMAL',
+        statusCategory: 'indeterminate',
+        status: 'In Progress',
+        priority: 'High',
+        dueDate: '2025-06-20',
+      }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result[0].key).toBe('P-IP-URGENT');
+    expect(result[1].key).toBe('P-IP-NORMAL');
+  });
+
+  it('동일 priority + urgent 조건에서 리뷰중 이슈가 상위에 온다', () => {
+    const issues = [
+      makeIssue({
+        key: 'P-IP',
+        statusCategory: 'indeterminate',
+        status: 'In Progress',
+        priority: 'Medium',
+        dueDate: '2025-06-20',
+      }),
+      makeIssue({
+        key: 'P-REVIEW',
+        statusCategory: 'indeterminate',
+        status: 'In Review',
+        priority: 'Medium',
+        dueDate: '2025-06-20',
+      }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result[0].key).toBe('P-REVIEW');
+    expect(result[1].key).toBe('P-IP');
+  });
+
+  it('리뷰 상태를 대소문자 무시로 감지한다', () => {
+    const issues = [
+      makeIssue({
+        key: 'P-NORMAL',
+        statusCategory: 'indeterminate',
+        status: 'In Progress',
+        priority: 'Medium',
+      }),
+      makeIssue({
+        key: 'P-REVIEW',
+        statusCategory: 'indeterminate',
+        status: 'CODE REVIEW',
+        priority: 'Medium',
+      }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result[0].key).toBe('P-REVIEW');
+  });
+
+  it('limit 파라미터로 반환 건수를 제한한다', () => {
+    const issues = Array.from({ length: 20 }, (_, i) =>
+      makeIssue({ key: `P-${i + 1}`, statusCategory: 'indeterminate', priority: 'Medium' }),
+    );
+
+    const result = computeTodayFocus(issues, today, 5);
+
+    expect(result).toHaveLength(5);
+  });
+
+  it('기본 limit는 10이다', () => {
+    const issues = Array.from({ length: 20 }, (_, i) =>
+      makeIssue({ key: `P-${i + 1}`, statusCategory: 'indeterminate', priority: 'Medium' }),
+    );
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result).toHaveLength(10);
+  });
+
+  it('빈 배열 입력 시 빈 배열을 반환한다', () => {
+    const result = computeTodayFocus([], today);
+    expect(result).toHaveLength(0);
+  });
+
+  it('동일 조건에서 dueDate가 가까운 이슈가 먼저 온다', () => {
+    const issues = [
+      makeIssue({
+        key: 'P-FAR',
+        statusCategory: 'indeterminate',
+        priority: 'Medium',
+        dueDate: '2025-06-30',
+      }),
+      makeIssue({
+        key: 'P-NEAR',
+        statusCategory: 'indeterminate',
+        priority: 'Medium',
+        dueDate: '2025-06-15',
+      }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result[0].key).toBe('P-NEAR');
+    expect(result[1].key).toBe('P-FAR');
+  });
+
+  it('dueDate가 없는 이슈는 있는 이슈보다 뒤에 온다', () => {
+    const issues = [
+      makeIssue({
+        key: 'P-NO-DUE',
+        statusCategory: 'indeterminate',
+        priority: 'Medium',
+        dueDate: null,
+      }),
+      makeIssue({
+        key: 'P-HAS-DUE',
+        statusCategory: 'indeterminate',
+        priority: 'Medium',
+        dueDate: '2025-06-30',
+      }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result[0].key).toBe('P-HAS-DUE');
+    expect(result[1].key).toBe('P-NO-DUE');
+  });
+
+  it('dueDate 동일 시 updated가 최신인 이슈가 먼저 온다', () => {
+    const issues = [
+      makeIssue({
+        key: 'P-OLD',
+        statusCategory: 'indeterminate',
+        priority: 'Medium',
+        dueDate: '2025-06-20',
+        updated: '2025-06-01T00:00:00Z',
+      }),
+      makeIssue({
+        key: 'P-NEW',
+        statusCategory: 'indeterminate',
+        priority: 'Medium',
+        dueDate: '2025-06-20',
+        updated: '2025-06-10T00:00:00Z',
+      }),
+    ];
+
+    const result = computeTodayFocus(issues, today);
+
+    expect(result[0].key).toBe('P-NEW');
+    expect(result[1].key).toBe('P-OLD');
   });
 });

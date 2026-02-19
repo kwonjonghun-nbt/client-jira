@@ -1,5 +1,5 @@
 import type { ChangelogEntry, NormalizedIssue } from '../types/jira.types';
-import { format, parseISO, startOfWeek, endOfWeek, compareAsc, compareDesc } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, compareAsc, compareDesc, differenceInCalendarDays } from 'date-fns';
 import { groupBy } from 'es-toolkit';
 import { normalizeType } from './issue';
 
@@ -41,11 +41,75 @@ export interface DashboardStats {
   inProgressCount: number;
   doneCount: number;
   newCount: number;
+  todayFocus: NormalizedIssue[];
   dueThisWeek: NormalizedIssue[];
   workload: { name: string; count: number }[];
   maxWorkload: number;
   recentlyUpdated: NormalizedIssue[];
   typeDistribution: { type: string; count: number }[];
+}
+
+const PRIORITY_WEIGHT: Record<string, number> = {
+  Highest: 0,
+  High: 1,
+  Medium: 2,
+  Low: 3,
+  Lowest: 4,
+};
+
+/** priority 문자열을 정렬 가중치로 변환. 값이 작을수록 높은 우선순위. */
+export function getPriorityWeight(priority: string | null): number {
+  if (priority == null) return 5;
+  return PRIORITY_WEIGHT[priority] ?? 5;
+}
+
+/** 마감 임박(D-0~D-1) + 진행중 여부 판별 */
+function isDueUrgent(issue: NormalizedIssue, today: Date): boolean {
+  if (!issue.dueDate || issue.statusCategory !== 'indeterminate') return false;
+  const daysLeft = differenceInCalendarDays(parseISO(issue.dueDate), today);
+  return daysLeft >= 0 && daysLeft <= 1;
+}
+
+/** 리뷰중 상태 여부 판별 */
+function isInReview(issue: NormalizedIssue): boolean {
+  return issue.status.toLowerCase().includes('review');
+}
+
+/** 오늘 집중 처리해야 할 업무 목록 생성. 순수 함수. */
+export function computeTodayFocus(issues: NormalizedIssue[], today?: Date, limit = 10): NormalizedIssue[] {
+  const now = today ?? new Date();
+  const incomplete = issues.filter((i) => i.statusCategory === 'indeterminate');
+
+  return [...incomplete]
+    .sort((a, b) => {
+      // 1순위: priority 심각도
+      const pw = getPriorityWeight(a.priority) - getPriorityWeight(b.priority);
+      if (pw !== 0) return pw;
+
+      // 2순위: 마감 임박 + 진행중
+      const aUrgent = isDueUrgent(a, now) ? 0 : 1;
+      const bUrgent = isDueUrgent(b, now) ? 0 : 1;
+      if (aUrgent !== bUrgent) return aUrgent - bUrgent;
+
+      // 3순위: 리뷰중
+      const aReview = isInReview(a) ? 0 : 1;
+      const bReview = isInReview(b) ? 0 : 1;
+      if (aReview !== bReview) return aReview - bReview;
+
+      // 4: dueDate 가까운 순 (없으면 뒤로)
+      if (a.dueDate && b.dueDate) {
+        const dueCmp = compareAsc(parseISO(a.dueDate), parseISO(b.dueDate));
+        if (dueCmp !== 0) return dueCmp;
+      } else if (a.dueDate) {
+        return -1;
+      } else if (b.dueDate) {
+        return 1;
+      }
+
+      // 5: updated 최신 순
+      return compareDesc(parseISO(a.updated), parseISO(b.updated));
+    })
+    .slice(0, limit);
 }
 
 /** Compute all dashboard stats from filtered issues. Pure function. */
@@ -79,11 +143,14 @@ export function computeDashboardStats(filteredIssues: NormalizedIssue[]): Dashbo
   const typeGrouped = groupBy(filteredIssues, (i) => normalizeType(i.issueType));
   const typeDistribution = Object.entries(typeGrouped).map(([type, items]) => ({ type, count: items.length }));
 
+  const todayFocus = computeTodayFocus(filteredIssues);
+
   return {
     totalCount,
     inProgressCount,
     doneCount,
     newCount,
+    todayFocus,
     dueThisWeek,
     workload,
     maxWorkload,
