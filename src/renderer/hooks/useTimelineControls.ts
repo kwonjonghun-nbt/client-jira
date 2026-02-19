@@ -15,6 +15,7 @@ export function useTimelineControls(filteredIssues: NormalizedIssue[]) {
   const [activePreset, setActivePreset] = useState(30);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
+  const [showTodayPanel, setShowTodayPanel] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
 
   const [dateStart, setDateStart] = useState(() => format(subDays(new Date(), 30), 'yyyy-MM-dd'));
@@ -94,5 +95,7 @@ export function useTimelineControls(filteredIssues: NormalizedIssue[]) {
     dateFilteredIssues,
     displayedIssues,
     issueTypeOptions,
+    showTodayPanel,
+    setShowTodayPanel,
   };
 }

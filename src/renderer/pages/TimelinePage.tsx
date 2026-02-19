@@ -1,4 +1,5 @@
 import TimelineChart from '../components/timeline/TimelineChart';
+import TodayPanel from '../components/timeline/TodayPanel';
 import IssueFilters from '../components/issue/IssueFilters';
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
@@ -6,6 +7,7 @@ import Spinner from '../components/common/Spinner';
 import { useJiraIssues } from '../hooks/useJiraIssues';
 import { useFilters } from '../hooks/useFilters';
 import { useTimelineControls } from '../hooks/useTimelineControls';
+import { useDailyShare } from '../hooks/useDailyShare';
 import { useUIStore } from '../store/uiStore';
 import { VIEW_MODE_OPTIONS, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from '../utils/timeline';
 import { DATE_PRESETS } from '../utils/dashboard';
@@ -40,8 +42,12 @@ export default function TimelinePage() {
     dateFilteredIssues,
     displayedIssues,
     issueTypeOptions,
+    showTodayPanel,
+    setShowTodayPanel,
   } = useTimelineControls(filteredIssues);
+  const dailyShare = useDailyShare(data?.issues);
   const setPage = useUIStore((s) => s.setPage);
+  const openIssueDetail = useUIStore((s) => s.openIssueDetail);
 
   if (isLoading && !data) {
     return (
@@ -149,6 +155,18 @@ export default function TimelinePage() {
                     <div className="px-3 py-2 border-b border-gray-100">
                       <span className="text-xs font-semibold text-gray-700">타임라인 설정</span>
                     </div>
+                    <div className="px-3 py-2 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-700">오늘의 업무 보기</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowTodayPanel((v) => !v)}
+                          className={`w-8 h-4 rounded-full transition-colors cursor-pointer border-none relative ${showTodayPanel ? 'bg-blue-500' : 'bg-gray-300'}`}
+                        >
+                          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${showTodayPanel ? 'left-4' : 'left-0.5'}`} />
+                        </button>
+                      </div>
+                    </div>
                     <div className="px-3 py-1.5">
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="flex-1 text-[11px] font-medium text-gray-500">이슈타입</span>
@@ -204,79 +222,91 @@ export default function TimelinePage() {
         {displayedIssues.length !== issues.length && ` (전체 ${issues.length}건)`}
       </div>
 
-      {/* Timeline Chart */}
-      <div className="flex-1 overflow-hidden relative">
-        <TimelineChart issues={dateFilteredIssues} baseUrl={data.source.baseUrl} viewMode={viewMode} zoom={zoom} onZoomChange={setZoom} scrollToTodayTrigger={scrollToTodayTrigger} hiddenTypes={hiddenTypes} hiddenRowTypes={hiddenRowTypes} />
+      {/* Timeline Chart + Today Panel */}
+      <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden relative">
+          <TimelineChart issues={dateFilteredIssues} baseUrl={data.source.baseUrl} viewMode={viewMode} zoom={zoom} onZoomChange={setZoom} scrollToTodayTrigger={scrollToTodayTrigger} hiddenTypes={hiddenTypes} hiddenRowTypes={hiddenRowTypes} />
 
-        {/* Floating controls */}
-        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg px-2 py-1.5">
-          {controlsCollapsed ? (
-            <button
-              type="button"
-              onClick={() => setControlsCollapsed(false)}
-              className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-              title="컨트롤 펼치기"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          ) : (
-            <>
-              {VIEW_MODE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setViewMode(opt.value)}
-                  className={`px-3 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
-                    viewMode === opt.value
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-              <div className="w-px h-5 bg-gray-200" />
+          {/* Floating controls */}
+          <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg px-2 py-1.5">
+            {controlsCollapsed ? (
               <button
                 type="button"
-                onClick={() => setScrollToTodayTrigger((t) => t + 1)}
-                className="px-3 py-1 text-xs rounded cursor-pointer border-none bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-              >
-                오늘
-              </button>
-              <div className="w-px h-5 bg-gray-200" />
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}
-                disabled={zoom <= ZOOM_MIN}
-                className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                -
-              </button>
-              <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}
-                disabled={zoom >= ZOOM_MAX}
-                className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                +
-              </button>
-              <div className="w-px h-5 bg-gray-200" />
-              <button
-                type="button"
-                onClick={() => setControlsCollapsed(true)}
+                onClick={() => setControlsCollapsed(false)}
                 className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-                title="컨트롤 접기"
+                title="컨트롤 펼치기"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-            </>
-          )}
+            ) : (
+              <>
+                {VIEW_MODE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setViewMode(opt.value)}
+                    className={`px-3 py-1 text-xs rounded cursor-pointer border-none transition-colors ${
+                      viewMode === opt.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                <div className="w-px h-5 bg-gray-200" />
+                <button
+                  type="button"
+                  onClick={() => setScrollToTodayTrigger((t) => t + 1)}
+                  className="px-3 py-1 text-xs rounded cursor-pointer border-none bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                >
+                  오늘
+                </button>
+                <div className="w-px h-5 bg-gray-200" />
+                <button
+                  type="button"
+                  onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}
+                  disabled={zoom <= ZOOM_MIN}
+                  className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  -
+                </button>
+                <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+                <button
+                  type="button"
+                  onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}
+                  disabled={zoom >= ZOOM_MAX}
+                  className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  +
+                </button>
+                <div className="w-px h-5 bg-gray-200" />
+                <button
+                  type="button"
+                  onClick={() => setControlsCollapsed(true)}
+                  className="w-7 h-7 flex items-center justify-center text-sm rounded cursor-pointer border-none bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                  title="컨트롤 접기"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {showTodayPanel && (
+          <TodayPanel
+            dateFilteredIssues={dateFilteredIssues}
+            allIssues={data?.issues}
+            dailyShare={dailyShare}
+            onIssueClick={(issue) => openIssueDetail(issue, data.source.baseUrl)}
+            onClose={() => setShowTodayPanel(false)}
+          />
+        )}
       </div>
     </div>
   );
