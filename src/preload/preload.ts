@@ -139,6 +139,12 @@ const api = {
       };
     },
   },
+  slack: {
+    testWebhook: (webhookUrl: string) =>
+      ipcRenderer.invoke('slack:test-webhook', webhookUrl),
+    triggerDailyReport: () =>
+      ipcRenderer.invoke('slack:trigger-daily-report'),
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

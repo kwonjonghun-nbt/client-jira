@@ -31,7 +31,7 @@ Data Layer        → schemas/, types/, ipc/  스키마·타입·외부 통신
 
 | 디렉토리 | 역할 |
 |----------|------|
-| `services/` | 비즈니스 로직 (sync, storage, ai-runner, terminal, scheduler) |
+| `services/` | 비즈니스 로직 (sync, storage, ai-runner, terminal, scheduler, slack, daily-report-scheduler) |
 | `ipc/` | IPC 핸들러 (Main↔Renderer 통신) |
 | `schemas/` | Zod 스키마 (설정, 이슈 정규화) |
 | `utils/` | 순수 변환 함수 (normalize, diff) |
@@ -79,6 +79,7 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 | `terminal` | terminal.handlers | PTY 세션 생성/입력/종료 |
 | `ai` | ai.handlers | AI CLI 실행/중단 |
 | `updater` | updater.handlers | 앱 업데이트 확인/설치 |
+| `slack` | slack.handlers | 슬랙 웹훅 테스트, 일일 리포트 수동 트리거 |
 
 ## 전역 상태
 

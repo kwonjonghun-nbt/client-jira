@@ -26,6 +26,14 @@ Jira 연결, 데이터 수집, 스케줄, AI, 앱 업데이트 설정을 관리�
 
 - 데이터 보관 기간(일) 설정
 
+### 슬랙 일일 리포트
+
+- 일일 공유 리포트 활성화 ON/OFF 토글
+- Slack Incoming Webhook URL 입력 + 테스트 전송 버튼
+- 리포트 전송 시간 설정 (기본 11:20)
+- 수동 리포트 생성/전송 버튼
+- 매일 지정 시간에 담당자별 AI 리포트를 자동 생성하여 슬랙으로 전송
+
 ### AI 에이전트
 
 - CLI 에이전트 선택 (Claude / Gemini)
@@ -46,6 +54,7 @@ Jira 연결, 데이터 수집, 스케줄, AI, 앱 업데이트 설정을 관리�
 | UI | `AssigneeInput` | 담당자 입력 UI |
 | UI | `ScheduleConfig` | 스케줄 설정 UI |
 | UI | `StorageConfig` | 저장 설정 UI |
+| UI | `SlackConfig` | 슬랙 일일 리포트 설정 UI |
 | UI Logic | `useSettings` | React Query 기반 설정 CRUD |
 | UI Logic | `useToken` | API 토큰 관리 (키체인) |
 | UI Logic | `useTestConnection` | Jira 연결 테스트 |

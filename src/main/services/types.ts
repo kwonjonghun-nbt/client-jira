@@ -14,4 +14,6 @@ export interface AppServices {
   terminal: any;
   aiRunner: any;
   updater: any;
+  slack: any;
+  dailyReportScheduler: any;
 }

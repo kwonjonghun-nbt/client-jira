@@ -4,6 +4,7 @@ import ProjectSelector from '../components/settings/ProjectSelector';
 import AssigneeInput from '../components/settings/AssigneeInput';
 import ScheduleConfig from '../components/settings/ScheduleConfig';
 import StorageConfig from '../components/settings/StorageConfig';
+import SlackConfig from '../components/settings/SlackConfig';
 import Button from '../components/common/Button';
 import Spinner from '../components/common/Spinner';
 import { useSettings } from '../hooks/useSettings';
@@ -107,6 +108,24 @@ export default function SettingsPage() {
           retentionDays={draft.storage.retentionDays}
           onChangeRetention={(retentionDays) =>
             setDraft({ ...draft, storage: { ...draft.storage, retentionDays } })
+          }
+        />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold text-gray-800 border-b pb-2">슬랙 일일 리포트</h2>
+        <SlackConfig
+          enabled={draft.slack.enabled}
+          webhookUrl={draft.slack.webhookUrl}
+          dailyReportTime={draft.slack.dailyReportTime}
+          onToggle={(enabled) =>
+            setDraft({ ...draft, slack: { ...draft.slack, enabled } })
+          }
+          onChangeWebhookUrl={(webhookUrl) =>
+            setDraft({ ...draft, slack: { ...draft.slack, webhookUrl } })
+          }
+          onChangeDailyReportTime={(dailyReportTime) =>
+            setDraft({ ...draft, slack: { ...draft.slack, dailyReportTime } })
           }
         />
       </section>

@@ -62,7 +62,11 @@ export interface ElectronAPI {
     close: (id: string) => Promise<void>;
     onData: (callback: (id: string, data: string) => void) => () => void;
     onExit: (callback: (id: string, exitCode: number) => void) => () => void;
-};
+  };
+  slack: {
+    testWebhook: (webhookUrl: string) => Promise<{ success: boolean; error?: string }>;
+    triggerDailyReport: () => Promise<{ success: boolean; error?: string }>;
+  };
 }
 
 declare global {

@@ -22,6 +22,8 @@ const services: AppServices = {
   terminal: null,
   aiRunner: null,
   updater: null,
+  slack: null,
+  dailyReportScheduler: null,
 };
 
 const createWindow = (): BrowserWindow => {
@@ -90,6 +92,18 @@ async function initializeNetworkServices(): Promise<void> {
       }
     }
 
+    // Initialize Slack + Daily Report Scheduler (independent of Jira connection)
+    const { SlackService } = await import('./services/slack');
+    services.slack = new SlackService();
+
+    const { DailyReportScheduler } = await import('./services/daily-report-scheduler');
+    services.dailyReportScheduler = new DailyReportScheduler(
+      services.storage,
+      services.slack,
+      services.mainWindow,
+    );
+    services.dailyReportScheduler.start(settings.slack);
+
     console.log('Services initialized successfully');
   } catch (error) {
     console.error('Failed to initialize services:', error);
@@ -131,6 +145,18 @@ export async function reinitializeJiraServices(services: AppServices): Promise<v
     const { SchedulerService } = await import('./services/scheduler');
     services.scheduler = new SchedulerService(services.sync, services.mainWindow);
     services.scheduler.start(settings.schedule);
+
+    // Restart daily report scheduler
+    services.dailyReportScheduler?.stop();
+    if (services.storage && services.slack) {
+      const { DailyReportScheduler } = await import('./services/daily-report-scheduler');
+      services.dailyReportScheduler = new DailyReportScheduler(
+        services.storage,
+        services.slack,
+        services.mainWindow,
+      );
+      services.dailyReportScheduler.start(settings.slack);
+    }
 
     console.log('[reinit] Jira services re-initialized successfully');
   } catch (error) {
@@ -179,5 +205,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   services.scheduler?.stop();
+  services.dailyReportScheduler?.stop();
   services.terminal?.closeAll();
 });
