@@ -87,8 +87,9 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 ### uiStore (Zustand)
 
 - `currentPage` — 현재 활성 페이지
+- `settingsSection` — 설정 상세 섹션 (null이면 리스트, 값이면 해당 상세)
 - `selectedIssue` — 이슈 상세 모달 대상
-- `setPage()`, `openIssueDetail()`, `closeIssueDetail()`
+- `setPage()`, `setSettingsSection()`, `openIssueDetail()`, `closeIssueDetail()`
 
 ### aiConfigStore (Zustand)
 

@@ -10,12 +10,15 @@ interface Filters {
 
 type Page = 'dashboard' | 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports' | 'okr';
 
+export type SettingsSection = 'jira' | 'collection' | 'schedule' | 'storage' | 'slack' | 'email' | 'ai' | 'update' | null;
+
 interface UIState {
   currentPage: Page;
   sidebarExpanded: boolean;
   filters: Filters;
   selectedIssue: NormalizedIssue | null;
   issueBaseUrl: string | null;
+  settingsSection: SettingsSection;
   toggleSidebar: () => void;
   setPage: (page: Page) => void;
   setFilter: (key: 'project' | 'assignee' | 'search', value: string) => void;
@@ -23,6 +26,7 @@ interface UIState {
   clearFilters: () => void;
   openIssueDetail: (issue: NormalizedIssue, baseUrl?: string) => void;
   closeIssueDetail: () => void;
+  setSettingsSection: (section: SettingsSection) => void;
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -39,7 +43,9 @@ export const useUIStore = create<UIState>((set) => ({
   selectedIssue: null,
   issueBaseUrl: null,
   toggleSidebar: () => set((state) => ({ sidebarExpanded: !state.sidebarExpanded })),
-  setPage: (page) => set({ currentPage: page }),
+  settingsSection: null,
+  setPage: (page) => set({ currentPage: page, settingsSection: null }),
+  setSettingsSection: (section) => set({ settingsSection: section }),
   setFilter: (key, value) =>
     set((state) => ({ filters: { ...state.filters, [key]: value } })),
   toggleStatus: (status) =>
