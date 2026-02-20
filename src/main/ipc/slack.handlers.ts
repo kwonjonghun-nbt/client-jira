@@ -35,4 +35,17 @@ export function registerSlackHandlers(services: AppServices): void {
       return { success: false, error: error.message };
     }
   });
+
+  ipcMain.handle('slack:test-dm', async (_event, botToken: string, userId: string) => {
+    if (!services.slack) throw new Error('Slack service not available');
+    return services.slack.testDM(botToken, userId);
+  });
+
+  ipcMain.handle('slack:trigger-dm-reminder', async () => {
+    if (!services.dmReminderScheduler || !services.storage) {
+      throw new Error('DM reminder scheduler not available');
+    }
+    const settings = await services.storage.loadSettings();
+    return services.dmReminderScheduler.triggerNow(settings.slack);
+  });
 }

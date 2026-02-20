@@ -5,6 +5,7 @@ import AssigneeInput from '../components/settings/AssigneeInput';
 import ScheduleConfig from '../components/settings/ScheduleConfig';
 import StorageConfig from '../components/settings/StorageConfig';
 import SlackConfig from '../components/settings/SlackConfig';
+import DMReminderConfig from '../components/settings/DMReminderConfig';
 import Button from '../components/common/Button';
 import Spinner from '../components/common/Spinner';
 import { useSettings } from '../hooks/useSettings';
@@ -144,6 +145,16 @@ export default function SettingsPage() {
             setDraft({ ...draft, slack: { ...draft.slack, threadSearchText } })
           }
         />
+        {draft.slack.enabled && (
+          <DMReminderConfig
+            dmReminder={draft.slack.dmReminder}
+            botToken={draft.slack.botToken}
+            assignees={draft.collection.assignees}
+            onChange={(dmReminder) =>
+              setDraft({ ...draft, slack: { ...draft.slack, dmReminder } })
+            }
+          />
+        )}
       </section>
 
       <section className="space-y-4">

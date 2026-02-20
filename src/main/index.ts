@@ -24,6 +24,7 @@ const services: AppServices = {
   updater: null,
   slack: null,
   dailyReportScheduler: null,
+  dmReminderScheduler: null,
 };
 
 const createWindow = (): BrowserWindow => {
@@ -104,6 +105,10 @@ async function initializeNetworkServices(): Promise<void> {
     );
     services.dailyReportScheduler.start(settings.slack);
 
+    const { DMReminderScheduler } = await import('./services/dm-reminder-scheduler');
+    services.dmReminderScheduler = new DMReminderScheduler(services.slack);
+    services.dmReminderScheduler.start(settings.slack);
+
     console.log('Services initialized successfully');
   } catch (error) {
     console.error('Failed to initialize services:', error);
@@ -158,6 +163,14 @@ export async function reinitializeJiraServices(services: AppServices): Promise<v
       services.dailyReportScheduler.start(settings.slack);
     }
 
+    // Restart DM reminder scheduler
+    services.dmReminderScheduler?.stop();
+    if (services.slack) {
+      const { DMReminderScheduler } = await import('./services/dm-reminder-scheduler');
+      services.dmReminderScheduler = new DMReminderScheduler(services.slack);
+      services.dmReminderScheduler.start(settings.slack);
+    }
+
     console.log('[reinit] Jira services re-initialized successfully');
   } catch (error) {
     console.error('[reinit] Failed:', error);
@@ -209,6 +222,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   services.scheduler?.stop();
   services.dailyReportScheduler?.stop();
+  services.dmReminderScheduler?.stop();
   services.aiRunner?.destroyAll();
   services.terminal?.closeAll();
 });

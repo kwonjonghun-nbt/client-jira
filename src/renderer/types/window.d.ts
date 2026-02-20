@@ -68,6 +68,8 @@ export interface ElectronAPI {
     triggerDailyReport: () => Promise<{ success: boolean; error?: string }>;
     testBotToken: (botToken: string, channelId: string) => Promise<{ success: boolean; error?: string }>;
     findThreadMessage: (botToken: string, channelId: string, searchText: string) => Promise<{ success: boolean; found?: boolean; text?: string; error?: string }>;
+    testDM: (botToken: string, userId: string) => Promise<{ success: boolean; error?: string }>;
+    triggerDMReminder: () => Promise<{ success: boolean; error?: string }>;
   };
 }
 

@@ -104,6 +104,33 @@ export class SlackService {
     logger.info('Slack thread reply sent successfully');
   }
 
+  /** 특정 사용자에게 DM 전송 (chat.postMessage에 userId를 channel로 전달) */
+  async sendDM(botToken: string, userId: string, text: string): Promise<void> {
+    const data = await this.slackApiPost(botToken, 'chat.postMessage', {
+      channel: userId,
+      text,
+    });
+
+    if (!data.ok) {
+      throw new Error(`chat.postMessage (DM) failed: ${data.error}`);
+    }
+
+    logger.info(`Slack DM sent to ${userId}`);
+  }
+
+  /** DM 전송 테스트 */
+  async testDM(
+    botToken: string,
+    userId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.sendDM(botToken, userId, '🔔 Client Jira DM 연동 테스트 메시지입니다.');
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
   /** Slack Web API GET 호출 */
   private async slackApiGet(
     token: string,

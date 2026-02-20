@@ -45,6 +45,17 @@ Jira 연결, 데이터 수집, 스케줄, AI, 앱 업데이트 설정을 관리�
 - 스레드 리포트 포맷: 컴포넌트 → 에픽 → 하위작업 구조로 담당자별 진행중 업무 표시
 - 진행중 하위작업이 없는 에픽은 생략, 티켓 번호에 Jira 링크 포함
 
+#### DM 리마인더
+
+- DM 리마인더 활성화 ON/OFF 토글
+- 스케줄 설정: 시간 + 메시지를 자유롭게 추가/삭제 (기본 3개: 10:30, 15:00, 18:30)
+- 평일(월~금)만 발송
+- 담당자 ↔ Slack User ID 수동 매핑 (담당자별 체크박스로 활성/비활성 선택)
+- 개별 DM 테스트 전송 버튼
+- 수동 DM 리마인더 전송 버튼
+- Bot Token의 `chat:write` 권한 필요 (기존 스레드 모드와 동일)
+- 수집 대상 담당자 목록에서 원하는 사람만 추가 가능
+
 ### AI 에이전트
 
 - CLI 에이전트 선택 (Claude / Gemini)
@@ -66,6 +77,7 @@ Jira 연결, 데이터 수집, 스케줄, AI, 앱 업데이트 설정을 관리�
 | UI | `ScheduleConfig` | 스케줄 설정 UI |
 | UI | `StorageConfig` | 저장 설정 UI |
 | UI | `SlackConfig` | 슬랙 일일 리포트 설정 UI |
+| UI | `DMReminderConfig` | DM 리마인더 설정 UI |
 | UI Logic | `useSettings` | React Query 기반 설정 CRUD |
 | UI Logic | `useToken` | API 토큰 관리 (키체인) |
 | UI Logic | `useTestConnection` | Jira 연결 테스트 |
