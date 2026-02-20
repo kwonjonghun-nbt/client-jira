@@ -55,3 +55,11 @@ export function getOKRPath(): string {
 export function getGmailTokenPath(): string {
   return path.join(app.getPath('userData'), 'gmail-token.enc');
 }
+
+export function getGmailClientSecretPath(): string {
+  return path.join(app.getPath('userData'), 'gmail-client-secret.enc');
+}
+
+export function getSlackBotTokenPath(): string {
+  return path.join(app.getPath('userData'), 'slack-bot-token.enc');
+}

@@ -26,8 +26,13 @@ export class StorageService {
       const parsed = JSON.parse(content);
       const result = SettingsSchema.safeParse(parsed);
       if (!result.success) {
-        logger.warn('Settings validation failed:', JSON.stringify(result.error));
-        return parsed as Settings;
+        logger.warn('Settings validation failed, merging with defaults:', JSON.stringify(result.error));
+        const merged = SettingsSchema.safeParse({ ...DEFAULT_SETTINGS, ...parsed });
+        if (merged.success) {
+          return merged.data;
+        }
+        logger.warn('Settings merge with defaults also failed, returning DEFAULT_SETTINGS');
+        return DEFAULT_SETTINGS;
       }
       logger.info(`[Settings] Loaded successfully: baseUrl=${result.data.jira.baseUrl}`);
       return result.data;
@@ -42,11 +47,9 @@ export class StorageService {
     logger.info(`[Settings] Saving to: ${settingsPath}`);
     const result = SettingsSchema.safeParse(settings);
     if (!result.success) {
-      logger.warn('Settings save validation failed, saving raw:', JSON.stringify(result.error));
-      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-    } else {
-      await fs.writeFile(settingsPath, JSON.stringify(result.data, null, 2), 'utf-8');
+      throw new Error('Settings validation failed: ' + result.error.message);
     }
+    await fs.writeFile(settingsPath, JSON.stringify(result.data, null, 2), 'utf-8');
     // 저장 후 파일 존재 확인
     try {
       const stat = await fs.stat(settingsPath);
@@ -185,9 +188,18 @@ export class StorageService {
     }
   }
 
+  private validateReportPath(filename: string): string {
+    const reportsDir = getReportsDir();
+    const filePath = path.resolve(reportsDir, filename);
+    if (!filePath.startsWith(reportsDir + path.sep) && filePath !== reportsDir) {
+      throw new Error('Invalid report path: path traversal detected');
+    }
+    return filePath;
+  }
+
   async getReport(filename: string): Promise<string | null> {
     try {
-      const filePath = path.join(getReportsDir(), filename);
+      const filePath = this.validateReportPath(filename);
       return await fs.readFile(filePath, 'utf-8');
     } catch {
       return null;
@@ -205,7 +217,7 @@ export class StorageService {
   }
 
   async deleteReport(filename: string): Promise<void> {
-    const filePath = path.join(getReportsDir(), filename);
+    const filePath = this.validateReportPath(filename);
     await fs.unlink(filePath);
     logger.info(`Report deleted: ${filename}`);
   }

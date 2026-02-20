@@ -6,31 +6,56 @@ export function registerSettingsHandlers(services: AppServices): void {
   ipcMain.handle('settings:load', async () => {
     try {
       if (!services.storage) {
-        console.log('[DEBUG] settings:load - storage service is null');
         return null;
       }
       const result = await services.storage.loadSettings();
-      console.log('[DEBUG] settings:load - result:', JSON.stringify(result));
+      if (result && services.credentials) {
+        // Restore sensitive fields from encrypted storage into the settings object
+        // so that the renderer continues to receive them as part of settings
+        const clientSecret = await services.credentials.getGmailClientSecret();
+        const botToken = await services.credentials.getSlackBotToken();
+        if (result.email && clientSecret) {
+          result.email.clientSecret = clientSecret;
+        }
+        if (result.slack && botToken) {
+          result.slack.botToken = botToken;
+        }
+      }
       return result;
     } catch (error: any) {
-      console.error('[DEBUG] settings:load - error:', error.message);
+      console.error('settings:load - error:', error.message);
       return null;
     }
   });
 
   ipcMain.handle('settings:save', async (_event, settings: unknown) => {
     try {
-      console.log('[DEBUG] settings:save - received:', JSON.stringify(settings));
       if (!services.storage) {
-        console.log('[DEBUG] settings:save - storage service is null');
         return;
       }
+      // Migrate sensitive fields out of settings into encrypted credential storage
+      if (services.credentials && settings && typeof settings === 'object') {
+        const s = settings as Record<string, any>;
+        if (s.email && typeof s.email === 'object') {
+          const clientSecret = s.email.clientSecret;
+          if (clientSecret && typeof clientSecret === 'string' && clientSecret.trim()) {
+            await services.credentials.saveGmailClientSecret(clientSecret);
+          }
+          s.email = { ...s.email, clientSecret: '' };
+        }
+        if (s.slack && typeof s.slack === 'object') {
+          const botToken = s.slack.botToken;
+          if (botToken && typeof botToken === 'string' && botToken.trim()) {
+            await services.credentials.saveSlackBotToken(botToken);
+          }
+          s.slack = { ...s.slack, botToken: '' };
+        }
+      }
       await services.storage.saveSettings(settings);
-      console.log('[DEBUG] settings:save - success');
       // Re-initialize Jira services with updated settings
       await reinitializeJiraServices(services);
     } catch (error: any) {
-      console.error('[DEBUG] settings:save - error:', error.message);
+      console.error('settings:save - error:', error.message);
       throw error;
     }
   });

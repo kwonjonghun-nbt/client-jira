@@ -15,7 +15,7 @@
 
 ### 타입 안전성
 
-- [ ] **Q1-1. `AppServices` 인터페이스 `any` 타입 제거**
+- [x] **Q1-1. `AppServices` 인터페이스 `any` 타입 제거**
   - 파일: `src/main/services/types.ts:10-22`
   - 문제: 11/13 필드가 `any`. 모든 IPC 핸들러의 서비스 호출에 타입 체크가 작동하지 않음. 메서드 오타, 리턴 타입 변경, 삭제된 서비스 — 컴파일 타임에 잡히지 않음
   - 해결: 실제 서비스 타입 import (`StorageService | null`, `SyncService | null` 등)
@@ -23,7 +23,7 @@
 
 ### 데이터 무결성
 
-- [ ] **Q1-2. Storage 검증 실패 시 무효 데이터 저장/로드 차단**
+- [x] **Q1-2. Storage 검증 실패 시 무효 데이터 저장/로드 차단**
   - 파일: `src/main/services/storage.ts:40-57`
   - 문제: Zod 검증 실패 시 경고 로그만 남기고 무효 데이터를 그대로 저장. 로드 시에도 `as Settings`로 캐스팅. 검증 레이어가 장식에 불과
   - 해결: `saveSettings`에서 무효 데이터는 reject + throw. `loadSettings`에서는 디폴트 merge 전략 적용
@@ -31,25 +31,25 @@
 
 ### 보안
 
-- [ ] **Q1-3. 디버그 로그에서 민감 데이터 노출 제거**
+- [x] **Q1-3. 디버그 로그에서 민감 데이터 노출 제거**
   - 파일: `src/main/ipc/settings.handlers.ts:13,23`
   - 문제: `JSON.stringify(result)`로 OAuth clientSecret, Slack botToken이 평문 로깅
   - 해결: 디버그 로그 제거 또는 민감 필드 마스킹
   - 영향: 자격 증명 노출 차단
 
-- [ ] **Q1-4. OAuth `clientSecret` → CredentialsService 이동**
+- [x] **Q1-4. OAuth `clientSecret` → CredentialsService 이동**
   - 파일: `src/main/schemas/settings.schema.ts:67`
   - 문제: Jira 토큰과 Gmail refresh token은 `safeStorage`(OS keychain)로 보호하면서, `clientSecret`은 `settings.json` 평문 저장
   - 해결: `CredentialsService.saveGmailClientSecret()` 추가, `safeStorage` 사용
   - 영향: OAuth 자격 증명 보호
 
-- [ ] **Q1-5. Slack `botToken` → CredentialsService 이동**
+- [x] **Q1-5. Slack `botToken` → CredentialsService 이동**
   - 파일: `src/main/schemas/settings.schema.ts:49`
   - 문제: `xoxb-...` 형태의 Slack 봇 토큰이 `settings.json` 평문 저장
   - 해결: `CredentialsService`로 이동
   - 영향: Slack 봇 토큰 보호
 
-- [ ] **Q1-6. Report get/delete 경로 순회(Path Traversal) 차단**
+- [x] **Q1-6. Report get/delete 경로 순회(Path Traversal) 차단**
   - 파일: `src/main/services/storage.ts:188-211`
   - 문제: `getReport`/`deleteReport`가 파일명을 sanitize하지 않음. `../../settings.json` 같은 입력으로 임의 파일 접근 가능. `saveReport`는 sanitize 적용되어 있어 불일치
   - 해결: resolved 경로가 `getReportsDir()` 내부인지 검증
@@ -520,7 +520,12 @@
 
 | 날짜 | 항목 | 비고 |
 |------|------|------|
-| — | — | — |
+| 2026-02-21 | Q1-1 | `AppServices` 11개 `any` → 실제 서비스 타입으로 교체 |
+| 2026-02-21 | Q1-2 | `saveSettings` 검증 실패 시 throw, `loadSettings` 디폴트 merge 전략 |
+| 2026-02-21 | Q1-3 | `settings.handlers.ts` 디버그 로그 5건 제거 |
+| 2026-02-21 | Q1-4 | `clientSecret` → `CredentialsService.saveGmailClientSecret()` (safeStorage) |
+| 2026-02-21 | Q1-5 | `botToken` → `CredentialsService.saveSlackBotToken()` (safeStorage) |
+| 2026-02-21 | Q1-6 | `validateReportPath()` 메서드 추가, path traversal 차단 |
 
 ---
 
