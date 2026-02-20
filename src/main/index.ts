@@ -193,6 +193,9 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const win = createWindow();
       services.mainWindow = win;
+      services.aiRunner?.updateWindow(win);
+      services.scheduler?.updateWindow(win);
+      services.dailyReportScheduler?.updateWindow(win);
     }
   });
 });
@@ -206,5 +209,6 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   services.scheduler?.stop();
   services.dailyReportScheduler?.stop();
+  services.aiRunner?.destroyAll();
   services.terminal?.closeAll();
 });

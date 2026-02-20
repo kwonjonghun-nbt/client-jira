@@ -10,12 +10,15 @@ Claude/Gemini CLI를 백그라운드에서 비대화형 모드(`-p`)로 실행�
 
 Main 프로세스 서비스:
 
-- `run(prompt, aiType)` — CLI 프로세스 생성, 결과 스트리밍
+- `run(prompt, aiType, timeoutMs?)` — CLI 프로세스 생성, 결과 스트리밍. idle 타임아웃 내장 (기본 5분)
 - `abort(id)` — 실행 중인 작업 종료 (stdin destroy → SIGTERM 순서로 안전 종료)
+- `updateWindow(win)` — BrowserWindow 재생성 시 IPC 대상 윈도우 갱신
+- `destroyAll()` — 앱 종료 시 모든 실행 중인 job 정리 (타이머 해제 + SIGTERM)
 - 인터랙티브 로그인 쉘(`/bin/zsh -l -i -c`)로 실행하여 `~/.zshrc` 기반 PATH 환경(nvm 등) 로드
 - oh-my-zsh 자동 업데이트 방지 환경변수 설정 (`DISABLE_AUTO_UPDATE`, `ZSH_DISABLE_AUTO_UPDATE`)
 - stdin에 EPIPE 에러 핸들러 등록 — 프로세스 조기 종료 시 uncaught exception 방지
 - stdin으로 프롬프트 전달 → stdout 청크 단위 IPC 전송
+- **Idle 타임아웃**: stdout chunk 수신 시마다 타이머 리셋. 마지막 출력 이후 5분간 무응답이면 프로세스 kill + `ai:error` 전송. 응답 생성 중(chunk 수신 중)에는 타임아웃되지 않음
 
 #### CLI 명령
 
@@ -119,6 +122,7 @@ idle
 
 running → abort() → idle (태스크 패널 중단 버튼 또는 훅에서 호출)
 running → ai:error → error
+running → idle timeout (5분 무응답) → ai:error → error
 ```
 
 ### 태스크 흐름 (AI 태스크 매니저)

@@ -4,21 +4,28 @@ import { logger } from '../utils/logger';
 
 type AIType = 'claude' | 'gemini';
 
-interface RunningJob {
+const DEFAULT_TIMEOUT_MS = 5 * 60_000; // 5분
+
+interface RunningJobEntry {
   process: ChildProcess;
   id: string;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 export class AIRunnerService {
   private win: BrowserWindow;
-  private jobs = new Map<string, RunningJob>();
+  private jobs = new Map<string, RunningJobEntry>();
   private nextId = 0;
 
   constructor(win: BrowserWindow) {
     this.win = win;
   }
 
-  run(prompt: string, aiType: AIType = 'claude'): string {
+  updateWindow(win: BrowserWindow): void {
+    this.win = win;
+  }
+
+  run(prompt: string, aiType: AIType = 'claude', timeoutMs = DEFAULT_TIMEOUT_MS): string {
     const id = `ai-${++this.nextId}`;
 
     const shellCmd = aiType === 'claude'
@@ -35,7 +42,30 @@ export class AIRunnerService {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    this.jobs.set(id, { process: child, id });
+    const resetTimer = () => {
+      const entry = this.jobs.get(id);
+      if (!entry) return;
+      clearTimeout(entry.timer);
+      entry.timer = setTimeout(() => {
+        if (this.jobs.has(id)) {
+          logger.warn(`AI job ${id} (${aiType}) timed out (no output for ${timeoutMs / 1000}s)`);
+          this.jobs.delete(id);
+          child.kill('SIGTERM');
+          this.send('ai:error', { id, message: `No output for ${timeoutMs / 1000}s — process killed` });
+        }
+      }, timeoutMs);
+    };
+
+    const timer = setTimeout(() => {
+      if (this.jobs.has(id)) {
+        logger.warn(`AI job ${id} (${aiType}) timed out (no output for ${timeoutMs / 1000}s)`);
+        this.jobs.delete(id);
+        child.kill('SIGTERM');
+        this.send('ai:error', { id, message: `No output for ${timeoutMs / 1000}s — process killed` });
+      }
+    }, timeoutMs);
+
+    this.jobs.set(id, { process: child, id, timer });
 
     child.stdin?.on('error', (err) => {
       if ((err as NodeJS.ErrnoException).code !== 'EPIPE') {
@@ -47,6 +77,7 @@ export class AIRunnerService {
     child.stdin?.end();
 
     child.stdout?.on('data', (chunk: Buffer) => {
+      resetTimer();
       this.send('ai:chunk', { id, text: chunk.toString() });
     });
 
@@ -55,7 +86,11 @@ export class AIRunnerService {
     });
 
     child.on('close', (code) => {
+      const entry = this.jobs.get(id);
+      if (!entry) return; // already handled (timeout or abort)
+      clearTimeout(entry.timer);
       this.jobs.delete(id);
+
       const exitCode = code ?? 0;
       if (exitCode !== 0) {
         this.send('ai:error', { id, message: `Process exited with code ${exitCode}` });
@@ -67,6 +102,8 @@ export class AIRunnerService {
     });
 
     child.on('error', (err) => {
+      const entry = this.jobs.get(id);
+      if (entry) clearTimeout(entry.timer);
       this.jobs.delete(id);
       this.send('ai:error', { id, message: err.message });
       logger.warn(`AI job ${id} error: ${err.message}`);
@@ -76,12 +113,23 @@ export class AIRunnerService {
   }
 
   abort(id: string): void {
-    const job = this.jobs.get(id);
-    if (job) {
+    const entry = this.jobs.get(id);
+    if (entry) {
+      clearTimeout(entry.timer);
       this.jobs.delete(id);
-      job.process.stdin?.destroy();
-      job.process.kill('SIGTERM');
+      entry.process.stdin?.destroy();
+      entry.process.kill('SIGTERM');
     }
+  }
+
+  /** 앱 종료 시 모든 실행 중인 job 정리 */
+  destroyAll(): void {
+    for (const [id, entry] of this.jobs) {
+      clearTimeout(entry.timer);
+      entry.process.kill('SIGTERM');
+      logger.info(`AI job ${id} killed on shutdown`);
+    }
+    this.jobs.clear();
   }
 
   private send(channel: string, data: unknown): void {
