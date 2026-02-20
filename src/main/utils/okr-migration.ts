@@ -1,4 +1,4 @@
-import type { OKRData } from '../../renderer/types/jira.types';
+import type { OKRData } from '../schemas/storage.schema';
 
 interface LegacyRelation {
   id: string;

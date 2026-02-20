@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { NormalizedIssue } from '../../types/jira.types';
 import { useUIStore } from '../../store/uiStore';
 import { normalizeType, issueTypeColors, statusBadgeClass, getPriorityColor, getIssueTypeLabel, buildIssueUrl } from '../../utils/issue';
@@ -8,7 +9,7 @@ interface IssueRowProps {
   baseUrl?: string;
 }
 
-export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
+export default memo(function IssueRow({ issue, baseUrl }: IssueRowProps) {
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
   const statusColor = statusBadgeClass(issue.statusCategory);
   const priorityColor = getPriorityColor(issue.priority);
@@ -70,4 +71,4 @@ export default function IssueRow({ issue, baseUrl }: IssueRowProps) {
       </td>
     </tr>
   );
-}
+});

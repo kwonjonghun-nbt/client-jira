@@ -1,8 +1,10 @@
 import http from 'node:http';
-import { google } from 'googleapis';
-import { BrowserWindow, shell } from 'electron';
+import { OAuth2Client } from 'google-auth-library';
+import { gmail_v1 } from '@googleapis/gmail';
+import { shell } from 'electron';
 import type { CredentialsService } from './credentials';
-import { buildRawEmail } from '../utils/email';
+import type { StorageService } from './storage';
+import { buildRawEmail, buildReportEmailSubject, buildReportEmailHtml } from '../utils/email';
 import { logger } from '../utils/logger';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/userinfo.email'];
@@ -19,13 +21,11 @@ export class EmailService {
 
     try {
       const { code, port } = await new Promise<{ code: string; port: number }>((resolve, reject) => {
-        // 로컬 HTTP 서버를 랜덤 포트에 띄워 redirect 수신
         server = http.createServer((req, res) => {
           const url = new URL(req.url ?? '', `http://localhost`);
           const code = url.searchParams.get('code');
           const error = url.searchParams.get('error');
 
-          // 성공/실패 응답 HTML
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           if (error) {
             res.end('<html><body><h2>인증 실패</h2><p>창을 닫아주세요.</p></body></html>');
@@ -42,35 +42,30 @@ export class EmailService {
           const addr = server!.address() as { port: number };
           const redirectUri = `http://127.0.0.1:${addr.port}`;
 
-          const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+          const oauth2Client = new OAuth2Client(clientId, clientSecret, redirectUri);
           const authUrl = oauth2Client.generateAuthUrl({
             access_type: 'offline',
             scope: SCOPES,
             prompt: 'consent',
           });
 
-          // 시스템 브라우저로 OAuth 페이지 오픈
           shell.openExternal(authUrl);
         });
 
-        // 타임아웃: 3분 안에 인증하지 않으면 실패
         setTimeout(() => {
           reject(new Error('인증 시간이 초과되었습니다. 다시 시도해주세요.'));
         }, 180_000);
       });
 
-      // code → tokens 교환
       const redirectUri = `http://127.0.0.1:${port}`;
-      const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+      const oauth2Client = new OAuth2Client(clientId, clientSecret, redirectUri);
       const { tokens } = await oauth2Client.getToken(code);
       if (!tokens.refresh_token) {
         return { success: false, error: 'refresh_token을 받지 못했습니다. 다시 시도해주세요.' };
       }
 
-      // refresh_token 저장
       await this.credentials.saveGmailToken(tokens.refresh_token);
 
-      // 사용자 이메일 가져오기
       oauth2Client.setCredentials(tokens);
       const email = await this.fetchUserEmail(oauth2Client);
 
@@ -95,11 +90,9 @@ export class EmailService {
     if (!refreshToken) return { authenticated: false };
 
     try {
-      // redirect URI는 토큰 갱신에는 사용되지 않으므로 placeholder
-      const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, 'http://127.0.0.1');
+      const oauth2Client = new OAuth2Client(clientId, clientSecret, 'http://127.0.0.1');
       oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-      // 토큰 갱신 시도로 유효성 검증
       await oauth2Client.getAccessToken();
       const email = await this.fetchUserEmail(oauth2Client);
       return { authenticated: true, email };
@@ -126,10 +119,10 @@ export class EmailService {
         return { success: false, error: 'Gmail 인증이 필요합니다. 설정에서 Google 계정을 연결해주세요.' };
       }
 
-      const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, 'http://127.0.0.1');
+      const oauth2Client = new OAuth2Client(clientId, clientSecret, 'http://127.0.0.1');
       oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      const gmail = new gmail_v1.Gmail({ auth: oauth2Client });
       const raw = buildRawEmail(params);
 
       await gmail.users.messages.send({
@@ -143,7 +136,6 @@ export class EmailService {
       const message = error.message || '이메일 전송에 실패했습니다.';
       logger.warn(`Gmail API send failed: ${message}`);
 
-      // 토큰 만료/취소 시 재인증 유도
       if (error.code === 401 || error.code === 403) {
         return { success: false, error: '인증이 만료되었습니다. 설정에서 Google 계정을 다시 연결해주세요.' };
       }
@@ -151,9 +143,47 @@ export class EmailService {
     }
   }
 
-  private async fetchUserEmail(oauth2Client: InstanceType<typeof google.auth.OAuth2>): Promise<string> {
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-    const { data } = await oauth2.userinfo.get();
+  /** IPC에서 호출 — 리포트 로드→설정 검증→HTML 빌드→전송을 일괄 처리 */
+  async sendReportEmail(
+    storage: StorageService,
+    params: { to: string[]; reportFilename: string; assignee: string; startDate: string; endDate: string },
+  ): Promise<{ success: boolean; error?: string }> {
+    const markdown = await storage.getReport(params.reportFilename);
+    if (!markdown) {
+      return { success: false, error: '리포트를 찾을 수 없습니다.' };
+    }
+
+    const settings = await storage.loadSettings();
+    const emailSettings = settings.email;
+    if (!emailSettings.enabled) {
+      return { success: false, error: '이메일 기능이 비활성화되어 있습니다.' };
+    }
+
+    // clientSecret은 CredentialsService에서 가져옴
+    const clientSecret = await this.credentials.getGmailClientSecret();
+    if (!emailSettings.clientId || !clientSecret) {
+      return { success: false, error: 'OAuth Client ID/Secret이 설정되지 않았습니다.' };
+    }
+
+    const subject = buildReportEmailSubject(params.assignee, params.startDate, params.endDate);
+    const html = buildReportEmailHtml(markdown);
+
+    return this.sendReport(emailSettings.clientId, clientSecret, {
+      from: emailSettings.senderEmail,
+      to: params.to,
+      subject,
+      html,
+    });
+  }
+
+  private async fetchUserEmail(oauth2Client: OAuth2Client): Promise<string> {
+    const { token } = await oauth2Client.getAccessToken();
+    if (!token) return '';
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return '';
+    const data = await res.json() as { email?: string };
     return data.email ?? '';
   }
 }

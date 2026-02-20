@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import type { AppServices } from '../services/types';
-import { reinitializeJiraServices } from '../index';
+import { reinitializeJiraServices } from '../services/service-initializer';
 
 export function registerSyncHandlers(services: AppServices): void {
   ipcMain.handle('sync:trigger', async () => {

@@ -63,19 +63,19 @@
 
 ### 아키텍처 위반 수정
 
-- [ ] **Q2-1. IPC 핸들러 → 서비스 위임으로 정리**
+- [x] **Q2-1. IPC 핸들러 → 서비스 위임으로 정리**
   - 파일: `src/main/ipc/email.handlers.ts:36-68`, `src/main/ipc/slack.handlers.ts:10-21`
   - 문제: `email:send-report` 핸들러가 5단계 오케스트레이션(리포트 로드 → 설정 로드 → 검증 → HTML 빌드 → 전송)을 직접 수행. Slack 핸들러도 설정 로드/검증 포함
   - 해결: `EmailService.sendReportEmail(params)` 메서드로 추출. Slack 설정 검증은 스케줄러 내부로 이동
   - 영향: IPC 레이어가 순수 라우팅으로 복원
 
-- [ ] **Q2-2. `reinitializeJiraServices` 순환 의존 해소**
+- [x] **Q2-2. `reinitializeJiraServices` 순환 의존 해소**
   - 파일: `src/main/ipc/sync.handlers.ts:3`, `src/main/ipc/settings.handlers.ts:3`
   - 문제: IPC 핸들러가 앱 엔트리 포인트(`../index`)에서 import → IPC→index→IPC 순환 경로
   - 해결: `services/service-initializer.ts`로 추출
   - 영향: 모듈 경계 정상화
 
-- [ ] **Q2-3. Main↔Renderer 공유 타입 도입 (345줄 중복 제거)**
+- [x] **Q2-3. Main↔Renderer 공유 타입 도입 (345줄 중복 제거)**
   - 파일: `src/renderer/types/jira.types.ts` (269줄), `src/renderer/types/settings.types.ts` (76줄)
   - 문제: Renderer 타입이 Main 스키마의 수동 복사본. 자동 동기화 없어 drift 위험
   - 해결: `src/shared/types/`에서 `z.infer<typeof Schema>` export, 양쪽에서 import. Renderer 전용 타입(CanvasChange 등)은 `renderer/types/`에 유지
@@ -83,7 +83,7 @@
 
 ### 에러 처리
 
-- [ ] **Q2-4. `retry()` 에러 분류 추가**
+- [x] **Q2-4. `retry()` 에러 분류 추가**
   - 파일: `src/main/utils/retry.ts`
   - 문제: 401(인증 실패), 404(미존재) 등 4xx 에러도 지수 백오프로 3회 재시도. 7초 낭비 + Jira rate limit 트리거 위험
   - 해결: 4xx (429 제외)는 즉시 throw, 5xx/네트워크 오류만 재시도
@@ -91,25 +91,25 @@
 
 ### 렌더링 성능
 
-- [ ] **P2-5. Canvas 드래그 시 `recalcArrows` 분리**
+- [x] **P2-5. Canvas 드래그 시 `recalcArrows` 분리**
   - 파일: `src/renderer/hooks/okr/useCanvasDrag.ts:56-59`, `src/renderer/hooks/okr/useCanvasRelations.ts:42-71`
   - 문제: 드래그 중 매 rAF 프레임마다 `recalcArrows()` 호출 → 모든 카드에 `getBoundingClientRect()` → 20+ 강제 레이아웃/초
   - 해결: 드래그 중 `recalcArrows` 제거, 드롭 완료 후 1회만 실행
   - 영향: Canvas 카드 드래그 jank 해소
 
-- [ ] **P2-6. React.lazy + Suspense 전 페이지 적용**
+- [x] **P2-6. React.lazy + Suspense 전 페이지 적용**
   - 파일: `src/renderer/App.tsx:1-37`
   - 문제: 8개 페이지 모두 정적 import. `React.lazy()` 0건
   - 해결: 모든 페이지에 `React.lazy()` + `<Suspense fallback={<Spinner />}>` 적용
   - 영향: 초기 로드 -40~60%
 
-- [ ] **P2-7. IssueTable/IssueRow `React.memo` 적용**
+- [x] **P2-7. IssueTable/IssueRow `React.memo` 적용**
   - 파일: `src/renderer/components/issue/IssueRow.tsx`, `src/renderer/components/issue/IssueTable.tsx`
   - 문제: `memo()` 없음. 부모 상태 변경 시 전체 행 리렌더
   - 해결: `IssueRow`, `IssueTable` `memo()` 래핑, `openIssueDetail`를 부모에서 prop으로 전달
   - 영향: 이슈 목록 불필요한 리렌더 제거
 
-- [ ] **P2-8. TimelineChart 가상화(Virtualization)**
+- [x] **P2-8. TimelineChart 가상화(Virtualization)**
   - 파일: `src/renderer/components/timeline/TimelineChart.tsx:394-568`
   - 문제: `displayNodes` 전체를 DOM에 렌더링. 200+ 이슈 시 400+ DOM 노드
   - 해결: `@tanstack/react-virtual` 도입
@@ -117,18 +117,18 @@
 
 ### 번들 & 빌드
 
-- [ ] **P2-9. `googleapis` → `@googleapis/gmail` 교체**
+- [x] **P2-9. `googleapis` → `@googleapis/gmail` 교체**
   - 파일: `src/main/services/email.ts:2`, `package.json:58`
   - 문제: 500+ Google API 클라이언트 포함 (194MB). gmail.send 1개만 사용
   - 해결: `@googleapis/gmail` 단독 패키지로 교체 (~2-5MB)
   - 영향: 앱 패키지 크기 -180MB
 
-- [ ] **P2-10. Vite `manualChunks` + `build.target` 설정**
+- [x] **P2-10. Vite `manualChunks` + `build.target` 설정**
   - 파일: `vite.renderer.config.ts`
   - 해결: `manualChunks` (react, query, zustand, date-fns 분리), `build.target: 'chrome130'`
   - 영향: 캐싱 개선, 트랜스파일 비용 제거
 
-- [ ] **P2-11. 미사용 `@toss/utils` 의존성 제거**
+- [x] **P2-11. 미사용 `@toss/utils` 의존성 제거**
   - 파일: `package.json:52`
   - 문제: import 0건. 25MB 설치 크기
   - 해결: `npm uninstall @toss/utils`
@@ -526,6 +526,17 @@
 | 2026-02-21 | Q1-4 | `clientSecret` → `CredentialsService.saveGmailClientSecret()` (safeStorage) |
 | 2026-02-21 | Q1-5 | `botToken` → `CredentialsService.saveSlackBotToken()` (safeStorage) |
 | 2026-02-21 | Q1-6 | `validateReportPath()` 메서드 추가, path traversal 차단 |
+| 2026-02-21 | Q2-1 | `EmailService.sendReportEmail()` 추출, Slack `triggerManual()` 추출. IPC 핸들러 순수 라우팅 복원 |
+| 2026-02-21 | Q2-2 | `services/service-initializer.ts`로 추출, IPC→index 순환 의존 해소 |
+| 2026-02-21 | Q2-3 | `src/shared/types/` 도입, Main 스키마 re-export. Renderer 타입 345줄 중복 제거 |
+| 2026-02-21 | Q2-4 | `isNonRetryableError()` 추가, 4xx(429 제외) 즉시 throw |
+| 2026-02-21 | P2-5 | 드래그 중 `recalcArrows` 제거, 드롭 완료 시 1회만 호출 |
+| 2026-02-21 | P2-6 | 8개 페이지 `React.lazy()` + `<Suspense>` 적용 |
+| 2026-02-21 | P2-7 | `IssueRow`, `IssueTable` `memo()` 래핑 |
+| 2026-02-21 | P2-8 | `@tanstack/react-virtual` `useVirtualizer` 적용 (라벨+차트 패널) |
+| 2026-02-21 | P2-9 | `googleapis` → `@googleapis/gmail` + `google-auth-library` 교체 (-180MB) |
+| 2026-02-21 | P2-10 | `manualChunks` (react, zustand, date-fns, react-query), `build.target: 'chrome130'` |
+| 2026-02-21 | P2-11 | `npm uninstall @toss/utils` (-25MB) |
 
 ---
 

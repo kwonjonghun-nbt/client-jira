@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { subDays, addMonths, addDays, max, startOfMonth, startOfWeek, eachWeekOfInterval, parseISO, compareAsc } from 'date-fns';
 import { clamp } from 'es-toolkit';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { NormalizedIssue } from '../../types/jira.types';
 import { useUIStore } from '../../store/uiStore';
 import TimelineHeader from './TimelineHeader';
@@ -297,6 +298,14 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     });
   };
 
+  // 가상화: 좌측 라벨 패널을 스크롤 컨테이너로 사용
+  const rowVirtualizer = useVirtualizer({
+    count: displayNodes.length,
+    getScrollElement: () => labelRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+  });
+
   // Y축 스크롤 동기화
   const syncScroll = useCallback((source: 'label' | 'chart') => {
     if (isSyncing.current) return;
@@ -390,8 +399,10 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
         <div className={`sticky top-0 z-10 border-b border-gray-200 bg-gray-50 flex items-end px-3 pb-2 ${viewMode === 'month' ? 'h-10' : 'h-14'}`}>
           <span className="text-xs font-medium text-gray-500">이슈</span>
         </div>
-        <div>
-          {displayNodes.map((node, index) => {
+        <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const index = virtualRow.index;
+            const node = displayNodes[index];
             const normalized = normalizeType(node.issue.issueType);
             const rowStyle = issueTypeRowStyle[normalized];
             const badgeClass = issueTypeBadge[normalized] ?? 'bg-gray-100 text-gray-600';
@@ -403,10 +414,10 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             return (
               <div
                 key={node.issue.key}
-                className={`flex items-center border-b text-xs pr-4 ${
+                className={`absolute left-0 w-full flex items-center border-b text-xs pr-4 ${
                   isDropTarget ? 'border-t-2 border-t-blue-400 border-b-gray-100' : 'border-b-gray-100'
                 } ${rowStyle ?? zebra} ${isDragging ? 'opacity-40' : ''}`}
-                style={{ height: ROW_HEIGHT, paddingLeft: rowStyle ? 1 + node.depth * INDENT_PX : 4 + node.depth * INDENT_PX }}
+                style={{ height: ROW_HEIGHT, top: virtualRow.start, paddingLeft: rowStyle ? 1 + node.depth * INDENT_PX : 4 + node.depth * INDENT_PX }}
                 title={`${node.issue.key}: ${node.issue.summary}`}
                 draggable
                 onDragStart={(e) => {
@@ -498,13 +509,13 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             <TimelineHeader rangeStart={rangeStart} rangeEnd={rangeEnd} totalWidth={totalWidth} viewMode={viewMode} />
           </div>
 
-          <div className="relative">
+          <div className="relative" style={{ height: rowVirtualizer.getTotalSize() }}>
             {/* Today column highlight */}
             {todayHighlightColumns.map((col, i) => (
               <div
                 key={`today-col-${i}`}
                 className="absolute top-0 bg-blue-50/60 pointer-events-none"
-                style={{ left: col.left, width: col.width, height: displayNodes.length * ROW_HEIGHT }}
+                style={{ left: col.left, width: col.width, height: rowVirtualizer.getTotalSize() }}
               />
             ))}
 
@@ -513,7 +524,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
               <div
                 key={`week-border-${i}`}
                 className="absolute top-0 pointer-events-none"
-                style={{ left: offset, height: displayNodes.length * ROW_HEIGHT, borderLeft: '2px solid #cbd5e1' }}
+                style={{ left: offset, height: rowVirtualizer.getTotalSize(), borderLeft: '2px solid #cbd5e1' }}
               />
             ))}
 
@@ -521,12 +532,14 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             {showTodayLine && (
               <div
                 className="absolute top-0 w-px bg-red-400 z-10"
-                style={{ left: todayOffset, height: displayNodes.length * ROW_HEIGHT }}
+                style={{ left: todayOffset, height: rowVirtualizer.getTotalSize() }}
               />
             )}
 
-            {/* Grid rows + bars */}
-            {displayNodes.map((node, index) => {
+            {/* Grid rows + bars (virtualized) */}
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const index = virtualRow.index;
+              const node = displayNodes[index];
               const hasDueDate = !!node.issue.dueDate;
 
               // 날짜 시작(00:00)에 스냅 — startDate(스프린트 시작일) 우선, 없으면 created
@@ -552,8 +565,8 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
               return (
                 <div
                   key={node.issue.key}
-                  className={`relative border-b border-gray-100 ${chartRowStyle ?? zebra}`}
-                  style={{ height: ROW_HEIGHT }}
+                  className={`absolute left-0 w-full border-b border-gray-100 ${chartRowStyle ?? zebra}`}
+                  style={{ height: ROW_HEIGHT, top: virtualRow.start }}
                 >
                   {!isBarHidden && (
                     <TimelineBar
@@ -570,7 +583,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
             {/* Blocking relationship arrows */}
             <svg
               className="absolute top-0 left-0 pointer-events-none"
-              style={{ width: totalWidth, height: displayNodes.length * ROW_HEIGHT }}
+              style={{ width: totalWidth, height: rowVirtualizer.getTotalSize() }}
             >
               <defs>
                 <marker id="block-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { NormalizedIssue } from '../../types/jira.types';
 import IssueRow from './IssueRow';
 
@@ -6,7 +7,7 @@ interface IssueTableProps {
   baseUrl?: string;
 }
 
-export default function IssueTable({ issues, baseUrl }: IssueTableProps) {
+export default memo(function IssueTable({ issues, baseUrl }: IssueTableProps) {
   if (issues.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -39,4 +40,4 @@ export default function IssueTable({ issues, baseUrl }: IssueTableProps) {
       </table>
     </div>
   );
-}
+});

@@ -55,7 +55,6 @@ export function useCanvasDrag(
       dragRef.current = info;
       requestAnimationFrame(() => {
         setDragInfo(dragRef.current);
-        recalcArrows();
       });
     };
 
@@ -211,6 +210,7 @@ export function useCanvasDrag(
         setDragInfo(null);
       });
       if (didDrag) {
+        recalcArrows();
         wasDraggingRef.current = true;
         requestAnimationFrame(() => { wasDraggingRef.current = false; });
       }

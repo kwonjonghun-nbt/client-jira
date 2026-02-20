@@ -65,6 +65,17 @@ export class DailyReportScheduler {
     this.mainWindow = window;
   }
 
+  /** IPC에서 호출 — 설정 로드/검증을 내부에서 처리 */
+  async triggerManual(): Promise<{ success: boolean; error?: string }> {
+    const settings = await this.storage.loadSettings();
+    const hasWebhook = !!settings.slack.webhookUrl;
+    const hasThread = settings.slack.replyToThread && !!settings.slack.botToken && !!settings.slack.channelId && !!settings.slack.threadSearchText;
+    if (!hasWebhook && !hasThread) {
+      return { success: false, error: 'No delivery method configured' };
+    }
+    return this.generateAndSendReports(settings.slack);
+  }
+
   /** 담당자별 리포트 생성 → 슬랙 전송 (외부에서도 호출 가능 — 테스트용) */
   async generateAndSendReports(slackSettings: SlackSettings): Promise<{ success: boolean; error?: string }> {
     if (this.running) {

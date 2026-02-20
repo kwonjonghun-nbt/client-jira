@@ -8,16 +8,10 @@ export function registerSlackHandlers(services: AppServices): void {
   });
 
   ipcMain.handle('slack:trigger-daily-report', async () => {
-    if (!services.dailyReportScheduler || !services.storage) {
+    if (!services.dailyReportScheduler) {
       throw new Error('Daily report scheduler not available');
     }
-    const settings = await services.storage.loadSettings();
-    const hasWebhook = !!settings.slack.webhookUrl;
-    const hasThread = settings.slack.replyToThread && !!settings.slack.botToken && !!settings.slack.channelId && !!settings.slack.threadSearchText;
-    if (!hasWebhook && !hasThread) {
-      return { success: false, error: 'No delivery method configured' };
-    }
-    return services.dailyReportScheduler.generateAndSendReports(settings.slack);
+    return services.dailyReportScheduler.triggerManual();
   });
 
   ipcMain.handle('slack:test-bot-token', async (_event, botToken: string, channelId: string) => {
