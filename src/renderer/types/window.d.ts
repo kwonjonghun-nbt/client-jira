@@ -71,6 +71,12 @@ export interface ElectronAPI {
     testDM: (botToken: string, userId: string) => Promise<{ success: boolean; error?: string }>;
     triggerDMReminder: () => Promise<{ success: boolean; error?: string }>;
   };
+  email: {
+    startAuth: (clientId: string, clientSecret: string) => Promise<{ success: boolean; email?: string; error?: string }>;
+    getAuthStatus: (clientId: string, clientSecret: string) => Promise<{ authenticated: boolean; email?: string }>;
+    disconnect: () => Promise<{ success: boolean }>;
+    sendReport: (params: { to: string[]; reportFilename: string; assignee: string; startDate: string; endDate: string }) => Promise<{ success: boolean; error?: string }>;
+  };
 }
 
 declare global {

@@ -18,4 +18,5 @@ export interface AppServices {
   slack: any;
   dailyReportScheduler: any;
   dmReminderScheduler: any;
+  email: any;
 }

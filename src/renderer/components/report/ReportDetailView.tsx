@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Spinner from '../common/Spinner';
 import SectionPresenter from './SectionPresenter';
+import EmailSendModal from './EmailSendModal';
 import { renderMarkdown } from '../../utils/reports';
 
 interface Props {
@@ -8,10 +9,14 @@ interface Props {
   content: string | null;
   isLoading: boolean;
   onBack: () => void;
+  assignee?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
-export default function ReportDetailView({ filename, content, isLoading, onBack }: Props) {
+export default function ReportDetailView({ filename, content, isLoading, onBack, assignee, startDate, endDate }: Props) {
   const [focusMode, setFocusMode] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   return (
     <div className="h-full flex flex-col">
@@ -27,13 +32,22 @@ export default function ReportDetailView({ filename, content, isLoading, onBack 
           {filename.replace(/\.md$/, '')}
         </h1>
         {!isLoading && content && (
-          <button
-            type="button"
-            onClick={() => setFocusMode(true)}
-            className="px-3 py-1 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors cursor-pointer"
-          >
-            집중해서 보기
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setShowEmailModal(true)}
+              className="px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
+            >
+              이메일 전송
+            </button>
+            <button
+              type="button"
+              onClick={() => setFocusMode(true)}
+              className="px-3 py-1 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors cursor-pointer"
+            >
+              집중해서 보기
+            </button>
+          </>
         )}
       </div>
       <div className="flex-1 overflow-auto px-6 py-4">
@@ -52,6 +66,15 @@ export default function ReportDetailView({ filename, content, isLoading, onBack 
         <SectionPresenter
           markdown={content}
           onClose={() => setFocusMode(false)}
+        />
+      )}
+      {showEmailModal && (
+        <EmailSendModal
+          filename={filename}
+          assignee={assignee ?? '전체'}
+          startDate={startDate ?? ''}
+          endDate={endDate ?? ''}
+          onClose={() => setShowEmailModal(false)}
         />
       )}
     </div>

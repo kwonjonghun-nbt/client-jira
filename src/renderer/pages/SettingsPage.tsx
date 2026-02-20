@@ -6,6 +6,7 @@ import ScheduleConfig from '../components/settings/ScheduleConfig';
 import StorageConfig from '../components/settings/StorageConfig';
 import SlackConfig from '../components/settings/SlackConfig';
 import DMReminderConfig from '../components/settings/DMReminderConfig';
+import EmailConfig from '../components/settings/EmailConfig';
 import Button from '../components/common/Button';
 import Spinner from '../components/common/Spinner';
 import { useSettings } from '../hooks/useSettings';
@@ -155,6 +156,14 @@ export default function SettingsPage() {
             }
           />
         )}
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold text-gray-800 border-b pb-2">이메일 리포트</h2>
+        <EmailConfig
+          email={draft.email}
+          onChange={(email) => setDraft({ ...draft, email })}
+        />
       </section>
 
       <section className="space-y-4">

@@ -31,7 +31,7 @@ Data Layer        → schemas/, types/, ipc/  스키마·타입·외부 통신
 
 | 디렉토리 | 역할 |
 |----------|------|
-| `services/` | 비즈니스 로직 (sync, storage, ai-runner, terminal, scheduler, slack, daily-report-scheduler, dm-reminder-scheduler) |
+| `services/` | 비즈니스 로직 (sync, storage, ai-runner, terminal, scheduler, slack, daily-report-scheduler, dm-reminder-scheduler, email) |
 | `ipc/` | IPC 핸들러 (Main↔Renderer 통신) |
 | `schemas/` | Zod 스키마 (설정, 이슈 정규화) |
 | `utils/` | 순수 변환 함수 (normalize, diff) |
@@ -80,6 +80,7 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 | `ai` | ai.handlers | AI CLI 실행/중단 |
 | `updater` | updater.handlers | 앱 업데이트 확인/설치 |
 | `slack` | slack.handlers | 슬랙 웹훅 테스트, Bot Token 연결 테스트, 스레드 메시지 검색, 일일 리포트 수동 트리거, DM 테스트, DM 리마인더 수동 트리거 |
+| `email` | email.handlers | Gmail OAuth 인증 시작/상태확인/연결해제, 리포트 이메일 전송 (Gmail API) |
 
 ## 전역 상태
 

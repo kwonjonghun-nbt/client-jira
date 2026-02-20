@@ -43,6 +43,7 @@ Jira 이슈 기반 AI 리포트 생성, 프롬프트 관리, 리포트 저장·�
 
 - 마크다운 렌더링
 - 포커스 모드 (SectionPresenter) 전환
+- **이메일 전송** — 리포트를 HTML로 변환하여 Gmail API (OAuth 2.0)로 발송
 
 ## 모듈 구성
 
@@ -53,11 +54,13 @@ Jira 이슈 기반 AI 리포트 생성, 프롬프트 관리, 리포트 저장·�
 | UI | `ReportSaveForm` | 리포트 저장 폼 (자체 상태) |
 | UI | `ReportList` | 리포트 목록 |
 | UI | `ReportDetailView` | 리포트 상세 뷰 |
+| UI | `EmailSendModal` | 이메일 전송 모달 (수신자 입력, 전송) |
 | UI | `SectionPresenter` | 섹션별 프레젠테이션 뷰 |
 | UI Logic | `useReportFilter` | 담당자·기간 필터 |
 | UI Logic | `useReportPrompt` | 프롬프트 생성·복사 |
 | UI Logic | `useReportAI` | AI 리포트 생성 → 태스크 등록 |
 | UI Logic | `useReports` | React Query 기반 리포트 목록/상세 조회 |
+| UI Logic | `useEmailSend` | 이메일 전송 상태 관리 |
 | UI Logic | `useAIRunner` | AI CLI 실행 상태 관리 |
 | Business | `utils/reports` | buildReportPrompt, buildIssueExportData, renderMarkdown |
 | Business | `utils/status-transitions` | buildTransitionSummary, detectTransitionFlags |

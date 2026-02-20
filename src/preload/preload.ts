@@ -153,6 +153,16 @@ const api = {
     triggerDMReminder: () =>
       ipcRenderer.invoke('slack:trigger-dm-reminder'),
   },
+  email: {
+    startAuth: (clientId: string, clientSecret: string) =>
+      ipcRenderer.invoke('email:start-auth', clientId, clientSecret),
+    getAuthStatus: (clientId: string, clientSecret: string) =>
+      ipcRenderer.invoke('email:get-auth-status', clientId, clientSecret),
+    disconnect: () =>
+      ipcRenderer.invoke('email:disconnect'),
+    sendReport: (params: { to: string[]; reportFilename: string; assignee: string; startDate: string; endDate: string }) =>
+      ipcRenderer.invoke('email:send-report', params),
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);

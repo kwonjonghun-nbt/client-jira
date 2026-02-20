@@ -71,6 +71,9 @@ export default function ReportsPage() {
         content={content}
         isLoading={isLoadingContent}
         onBack={() => setSelectedFile(null)}
+        assignee={filter.assignee}
+        startDate={filter.startDate}
+        endDate={filter.endDate}
       />
     );
   }

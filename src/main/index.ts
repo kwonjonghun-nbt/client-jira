@@ -25,6 +25,7 @@ const services: AppServices = {
   slack: null,
   dailyReportScheduler: null,
   dmReminderScheduler: null,
+  email: null,
 };
 
 const createWindow = (): BrowserWindow => {
@@ -92,6 +93,10 @@ async function initializeNetworkServices(): Promise<void> {
         services.scheduler.start(settings.schedule);
       }
     }
+
+    // Initialize Email Service (independent of Jira connection)
+    const { EmailService } = await import('./services/email');
+    services.email = new EmailService(services.credentials);
 
     // Initialize Slack + Daily Report Scheduler (independent of Jira connection)
     const { SlackService } = await import('./services/slack');

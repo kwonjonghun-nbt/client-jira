@@ -51,3 +51,7 @@ export function getChangelogPath(): string {
 export function getOKRPath(): string {
   return path.join(app.getPath('userData'), 'okr.json');
 }
+
+export function getGmailTokenPath(): string {
+  return path.join(app.getPath('userData'), 'gmail-token.enc');
+}

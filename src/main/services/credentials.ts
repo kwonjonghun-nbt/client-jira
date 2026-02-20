@@ -1,6 +1,6 @@
 import { safeStorage } from 'electron';
 import fs from 'node:fs/promises';
-import { getTokenPath } from '../utils/paths';
+import { getTokenPath, getGmailTokenPath } from '../utils/paths';
 import { logger } from '../utils/logger';
 
 export class CredentialsService {
@@ -62,6 +62,46 @@ export class CredentialsService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async saveGmailToken(token: string): Promise<void> {
+    if (this.canUseSafeStorage) {
+      const encrypted = safeStorage.encryptString(token);
+      await fs.writeFile(getGmailTokenPath(), encrypted);
+      logger.info('Gmail OAuth token saved (encrypted via safeStorage)');
+    } else {
+      const encoded = Buffer.from(token, 'utf-8').toString('base64');
+      await fs.writeFile(getGmailTokenPath(), encoded, 'utf-8');
+      logger.warn('Gmail OAuth token saved (base64 fallback — safeStorage unavailable)');
+    }
+  }
+
+  async getGmailToken(): Promise<string | null> {
+    try {
+      const data = await fs.readFile(getGmailTokenPath());
+      if (this.canUseSafeStorage) {
+        try {
+          return safeStorage.decryptString(Buffer.from(data));
+        } catch {
+          const str = data.toString('utf-8');
+          return Buffer.from(str, 'base64').toString('utf-8');
+        }
+      } else {
+        const str = data.toString('utf-8');
+        return Buffer.from(str, 'base64').toString('utf-8');
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteGmailToken(): Promise<void> {
+    try {
+      await fs.unlink(getGmailTokenPath());
+      logger.info('Gmail OAuth token deleted');
+    } catch {
+      // Token doesn't exist, ignore
     }
   }
 }

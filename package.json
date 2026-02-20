@@ -1,7 +1,7 @@
 {
   "name": "client-jira",
   "productName": "Client Jira",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Jira 데이터 수집 및 시각화 대시보드",
   "main": ".vite/build/index.js",
   "private": true,
@@ -55,6 +55,7 @@
     "date-fns": "^4.1.0",
     "electron-squirrel-startup": "^1.0.1",
     "es-toolkit": "^1.44.0",
+    "googleapis": "^171.4.0",
     "node-cron": "^4.2.1",
     "node-pty": "^1.1.0",
     "pathfinding": "^0.4.18",
