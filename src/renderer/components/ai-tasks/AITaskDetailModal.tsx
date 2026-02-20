@@ -40,8 +40,9 @@ export default function AITaskDetailModal() {
   // Only show for non-running tasks with results
   if (!task || task.status === 'running') return null;
 
-  // Error state without result
-  if (task.status === 'error' && !task.result.trim()) {
+  // Error or empty result state
+  if (!task.result.trim()) {
+    const isError = task.status === 'error';
     return (
       <div
         className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6"
@@ -51,13 +52,23 @@ export default function AITaskDetailModal() {
           className="bg-white rounded-xl shadow-xl w-full max-w-lg p-8 flex flex-col items-center gap-4"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <div className={`w-12 h-12 ${isError ? 'bg-red-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center`}>
+            {isError ? (
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+              </svg>
+            )}
           </div>
           <p className="text-sm text-gray-800 font-medium">{task.title}</p>
-          <p className="text-sm text-red-500">오류: {task.error || '알 수 없는 오류'}</p>
+          <p className={`text-sm ${isError ? 'text-red-500' : 'text-yellow-600'}`}>
+            {isError
+              ? `오류: ${task.error || '알 수 없는 오류'}`
+              : 'AI 응답이 비어있습니다. 프롬프트를 확인하고 다시 시도해주세요.'}
+          </p>
           <button
             type="button"
             onClick={handleClose}

@@ -1,8 +1,10 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import type { BrowserWindow } from 'electron';
 import { logger } from '../utils/logger';
-
-type AIType = 'claude' | 'gemini';
+import { spawnAIProcess } from '../utils/process-spawner';
+import { claudeAgent } from './agents/claude';
+import { geminiAgent } from './agents/gemini';
+import type { AIType } from './agents/types';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60_000; // 10분
 
@@ -28,20 +30,9 @@ export class AIRunnerService {
   run(prompt: string, aiType: AIType = 'claude', model?: string, timeoutMs = DEFAULT_TIMEOUT_MS): string {
     const id = `ai-${++this.nextId}`;
 
-    const modelFlag = model ? ` --model ${model}` : '';
-    const shellCmd = aiType === 'claude'
-      ? `DISABLE_OMC=1 claude -p --output-format text --no-session-persistence --disallowedTools 'Edit,Write,Bash,NotebookEdit' --setting-sources ''${modelFlag}`
-      : `gemini -p "" -o text${modelFlag}`;
-
-    const child = spawn('/bin/zsh', ['-l', '-i', '-c', shellCmd], {
-      env: {
-        ...process.env,
-        DISABLE_AUTO_UPDATE: 'true',
-        DISABLE_UPDATE_PROMPT: 'true',
-        ZSH_DISABLE_AUTO_UPDATE: 'true',
-      } as Record<string, string>,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const agent = aiType === 'claude' ? claudeAgent : geminiAgent;
+    const { shellCmd } = agent.buildCommand({ model });
+    const { child } = spawnAIProcess({ shellCmd, prompt });
 
     const killOnTimeout = () => {
       if (this.jobs.has(id)) {
@@ -61,15 +52,6 @@ export class AIRunnerService {
 
     const timer = setTimeout(killOnTimeout, timeoutMs);
     this.jobs.set(id, { process: child, id, timer });
-
-    child.stdin?.on('error', (err) => {
-      if ((err as NodeJS.ErrnoException).code !== 'EPIPE') {
-        logger.warn(`AI ${id} stdin error: ${err.message}`);
-      }
-    });
-
-    child.stdin?.write(prompt);
-    child.stdin?.end();
 
     child.stdout?.on('data', (chunk: Buffer) => {
       resetTimer();

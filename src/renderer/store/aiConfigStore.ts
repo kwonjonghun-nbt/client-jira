@@ -15,7 +15,7 @@ export const GEMINI_MODELS: { value: GeminiModel; label: string }[] = [
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
 ];
 
-interface TerminalState {
+interface AIConfigState {
   aiType: AIType;
   claudeModel: ClaudeModel;
   geminiModel: GeminiModel;
@@ -24,7 +24,7 @@ interface TerminalState {
   setGeminiModel: (model: GeminiModel) => void;
 }
 
-export const useTerminalStore = create<TerminalState>((set) => ({
+export const useAIConfigStore = create<AIConfigState>((set) => ({
   aiType: 'claude',
   claudeModel: 'claude-sonnet-4-20250514',
   geminiModel: 'gemini-2.5-flash',

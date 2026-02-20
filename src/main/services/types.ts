@@ -1,4 +1,5 @@
 import type { BrowserWindow } from 'electron';
+import type { AIRunnerService } from './ai-runner';
 
 // 모든 서비스 인스턴스를 담는 컨테이너 타입
 // 서비스가 구현되면 import 추가
@@ -12,7 +13,7 @@ export interface AppServices {
   sync: any;
   scheduler: any;
   terminal: any;
-  aiRunner: any;
+  aiRunner: AIRunnerService | null;
   updater: any;
   slack: any;
   dailyReportScheduler: any;

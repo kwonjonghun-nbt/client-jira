@@ -14,7 +14,7 @@ import { useTestConnection } from '../hooks/useSettings';
 import { useUpdater } from '../hooks/useUpdater';
 import { DEFAULT_SETTINGS } from '../types/settings.types';
 import type { Settings } from '../types/settings.types';
-import { useTerminalStore, CLAUDE_MODELS, GEMINI_MODELS, type AIType, type ClaudeModel, type GeminiModel } from '../store/terminalStore';
+import { useAIConfigStore, CLAUDE_MODELS, GEMINI_MODELS, type AIType, type ClaudeModel, type GeminiModel } from '../store/aiConfigStore';
 
 export default function SettingsPage() {
   const { settings: saved, isLoading, saveSettings, isSaving } = useSettings();
@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const updater = useUpdater();
   const [draft, setDraft] = useState<Settings>(DEFAULT_SETTINGS);
   const [saveMessage, setSaveMessage] = useState('');
-  const { aiType, setAIType, claudeModel, setClaudeModel, geminiModel, setGeminiModel } = useTerminalStore();
+  const { aiType, setAIType, claudeModel, setClaudeModel, geminiModel, setGeminiModel } = useAIConfigStore();
 
   useEffect(() => {
     if (saved) setDraft(saved);

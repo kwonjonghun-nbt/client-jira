@@ -71,7 +71,7 @@ export default function TodayPanel({
               <button
                 type="button"
                 onClick={dailyShare.handleGenerate}
-                disabled={!dailyShare.assignee || dailyShare.totalCount === 0 || dailyShare.ai.status === 'running'}
+                disabled={!dailyShare.assignee || dailyShare.totalCount === 0 || dailyShare.isRunning}
                 className="flex-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-none"
               >
                 AI 생성

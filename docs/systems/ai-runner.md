@@ -41,19 +41,13 @@ Main 프로세스 서비스:
 | `ai:done` | Main → Renderer | 완료 (exitCode 포함) |
 | `ai:error` | Main → Renderer | 에러 (message 포함) |
 
-### useAIRunner (`hooks/useAIRunner.ts`)
+### useAIExecutor (`hooks/useAIExecutor.ts`)
 
-Renderer 상태 관리 훅:
+AI 실행 요청 전용 훅. IPC 호출만 담당하고 상태 관리는 하지 않는다.
 
-- 상태: `idle` → `running` (청크 누적) → `done` | `error`
-- `run(prompt, aiType, model?)` — IPC 호출, 이벤트 리스너 등록
-- `abort()` — 실행 취소
-- `reset()` — 상태 초기화
-- cleanup 시 이벤트 리스너 자동 해제
-
-### useMultiAIRunner (`hooks/useMultiAIRunner.ts`)
-
-여러 AI 작업을 동시 관리하는 확장 훅.
+- `execute(prompt)` — 단일 AI 실행 요청, jobId 반환. aiConfigStore에서 aiType/model을 자동으로 읽어 전달
+- `executeMulti(tasks)` — 여러 AI 작업을 순차 실행, `{ key, jobId }[]` 반환
+- `abort(jobId)` — 실행 취소
 
 ### AI 태스크 매니저
 
@@ -72,13 +66,13 @@ Zustand 전역 스토어:
 
 #### useAITaskListener (`hooks/useAITaskListener.ts`)
 
-App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`/`ai:error` 이벤트를 받아 aiTaskStore에 기록. 기존 useAIRunner/useMultiAIRunner의 로컬 리스너와 병렬 동작.
+App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`/`ai:error` 이벤트를 받아 aiTaskStore에 기록. 모든 AI 작업의 유일한 IPC 리스너.
 
 #### 비즈니스 로직 (`utils/ai-tasks.ts`)
 
 순수 함수 + 타입 정의:
 
-- `AITask`, `AITaskType` ('report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis'), `AITaskStatus`
+- `AITask`, `AITaskType` ('report' | 'daily-share' | 'daily-share-multi' | 'issue-analysis' | 'canvas'), `AITaskStatus`
 - `createTaskId()`, `generateTaskTitle()`, `countRunningTasks()`, `countCompletedTasks()`, `mergeSubJobResults()`, `formatElapsedTime()`
 
 #### UI 컴포넌트 (`components/ai-tasks/`)
@@ -87,7 +81,7 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 |----------|------|
 | `Sidebar` 🤖 버튼 | 사이드바 하단 버튼. 실행 중(빨간) / 완료(초록) 태스크 수 뱃지, 실행 중 pulse 애니메이션. 패널 토글 |
 | `AITaskPanel` | 사이드바 버튼 클릭 시 드롭다운 태스크 목록. 상태 아이콘, 경과 시간, 멀티 진행률, 실행 중 태스크 중단 버튼 |
-| `AITaskDetailModal` | 완료 태스크 클릭 시 SectionPresenter로 결과 표시 + 리포트 저장. canvas 타입은 CanvasResultModal로 위임 |
+| `AITaskDetailModal` | 완료 태스크 클릭 시 SectionPresenter로 결과 표시 + 리포트 저장. canvas 타입은 CanvasResultModal로 위임. 빈 응답 시 경고 모달 표시 |
 | `CanvasResultModal` | AI 캔버스 전용 완료 모달. 리포트 저장 없이 결과 확인 + "캔버스 열기"로 해당 KR 캔버스 이동 |
 
 ## 사용처
@@ -112,26 +106,22 @@ App.tsx에서 한 번 마운트되는 전역 IPC 리스너. `ai:chunk`/`ai:done`
 ## 상태 흐름
 
 ```
-idle
-  ↓ run()
 running (ai:chunk → result에 텍스트 누적)
   ↓ ai:done
 done (result에 전체 텍스트)
-  ↓ reset()
-idle
 
-running → abort() → idle (태스크 패널 중단 버튼 또는 훅에서 호출)
+running → abort() → 태스크 제거 (태스크 패널 중단 버튼)
 running → ai:error → error
-running → idle timeout (5분 무응답) → ai:error → error
+running → idle timeout (10분 무응답) → ai:error → error
 ```
 
 ### 태스크 흐름 (AI 태스크 매니저)
 
 ```
-useReportAI/useDailyShare/IssueDetailModal
-  ↓ ai.run() → jobId 반환
+useReportAI/useDailyShare/useIssueAnalysis/useCanvasAI
+  ↓ useAIExecutor.execute() → jobId 반환
 aiTaskStore.addTask({ jobIds: [jobId], status: 'running' })
-  ↓ useAITaskListener
+  ↓ useAITaskListener (전역 IPC 리스너)
 ai:chunk → appendChunk (result 누적)
 ai:done → markJobDone (status: 'done')
   ↓ 사용자가 사이드바 🤖 버튼 → AITaskPanel → 태스크 클릭

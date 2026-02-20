@@ -1,6 +1,5 @@
 import { schedule as cronSchedule } from 'node-cron';
 import type { ScheduledTask } from 'node-cron';
-import { spawn } from 'node:child_process';
 import type { BrowserWindow } from 'electron';
 import type { StorageService } from './storage';
 import type { SlackService } from './slack';
@@ -16,6 +15,8 @@ import {
 } from '../utils/daily-report';
 import { showTaskNotification } from '../utils/notification';
 import { logger } from '../utils/logger';
+import { spawnAIProcess } from '../utils/process-spawner';
+import { claudeAgent } from './agents/claude';
 
 export class DailyReportScheduler {
   private task: ScheduledTask | null = null;
@@ -194,18 +195,8 @@ export class DailyReportScheduler {
   /** AI CLI 실행 후 stdout 전체를 반환 */
   private runAI(prompt: string, timeoutMs = 120_000): Promise<string> {
     return new Promise((resolve, reject) => {
-      const shellCmd =
-        "claude -p --output-format text --no-session-persistence --disallowedTools 'Edit,Write,Bash,NotebookEdit'";
-
-      const child = spawn('/bin/zsh', ['-l', '-i', '-c', shellCmd], {
-        env: {
-          ...process.env,
-          DISABLE_AUTO_UPDATE: 'true',
-          DISABLE_UPDATE_PROMPT: 'true',
-          ZSH_DISABLE_AUTO_UPDATE: 'true',
-        } as Record<string, string>,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      const { shellCmd } = claudeAgent.buildCommand({});
+      const { child } = spawnAIProcess({ shellCmd, prompt });
 
       const chunks: string[] = [];
       let timedOut = false;
@@ -215,15 +206,6 @@ export class DailyReportScheduler {
         child.kill('SIGTERM');
         reject(new Error('AI process timed out'));
       }, timeoutMs);
-
-      child.stdin?.on('error', (err) => {
-        if ((err as NodeJS.ErrnoException).code !== 'EPIPE') {
-          logger.warn(`Daily report AI stdin error: ${err.message}`);
-        }
-      });
-
-      child.stdin?.write(prompt);
-      child.stdin?.end();
 
       child.stdout?.on('data', (chunk: Buffer) => {
         chunks.push(chunk.toString());

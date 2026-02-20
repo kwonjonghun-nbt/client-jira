@@ -43,7 +43,7 @@ Data Layer        → schemas/, types/, ipc/  스키마·타입·외부 통신
 | `pages/` | 페이지 컴포넌트 — 훅과 컴포넌트를 조합하는 지점 |
 | `components/` | 재사용 UI 컴포넌트 |
 | `hooks/` | 커스텀 훅 — 관심사별 분리 |
-| `store/` | Zustand 스토어 (uiStore, terminalStore, aiTaskStore) |
+| `store/` | Zustand 스토어 (uiStore, aiConfigStore, aiTaskStore) |
 | `utils/` | Renderer 순수 유틸 |
 | `types/` | TypeScript 인터페이스 |
 
@@ -89,7 +89,7 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 - `selectedIssue` — 이슈 상세 모달 대상
 - `setPage()`, `openIssueDetail()`, `closeIssueDetail()`
 
-### terminalStore (Zustand)
+### aiConfigStore (Zustand)
 
 - `aiType` — AI CLI 종류 (claude | gemini)
 - `claudeModel` — Claude 모델 (claude-sonnet-4-20250514 | claude-opus-4-20250115)

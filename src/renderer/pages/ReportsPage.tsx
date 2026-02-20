@@ -96,7 +96,7 @@ export default function ReportsPage() {
         onCopyPrompt={prompt.handleCopyPrompt}
         onDownloadJson={handleDownloadJson}
         onGenerateAI={aiReport.handleGenerateAI}
-        aiRunning={aiReport.ai.status === 'running'}
+        aiRunning={aiReport.isRunning}
       />
 
       <ReportSaveForm />

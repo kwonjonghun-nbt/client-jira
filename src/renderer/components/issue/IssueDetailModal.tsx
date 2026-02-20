@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useCopyToClipboard } from 'usehooks-ts';
 import { useUIStore } from '../../store/uiStore';
-import { useAITaskStore } from '../../store/aiTaskStore';
 import { statusBadgeClass, getPriorityColor, buildIssueUrl } from '../../utils/issue';
 import { formatDateSafe } from '../../utils/formatters';
 import { buildPrompt, downloadIssueJson } from '../../utils/issue-prompts';
-import { createTaskId, generateTaskTitle } from '../../utils/ai-tasks';
+import { useIssueAnalysis } from '../../hooks/useIssueAnalysis';
 import { useStatusTransitions } from '../../hooks/useStatusTransitions';
 import StatusTransitionTimeline from './StatusTransitionTimeline';
 import MarkdownRenderer from '../common/MarkdownRenderer';
@@ -18,8 +17,7 @@ export default function IssueDetailModal() {
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const addTask = useAITaskStore((s) => s.addTask);
-  const tasks = useAITaskStore((s) => s.tasks);
+  const { analyze, isAnalyzing } = useIssueAnalysis();
   const { data: transitionAnalysis, isLoading: transitionsLoading } = useStatusTransitions(issue?.key ?? null, issue?.status ?? '');
 
   useEffect(() => {
@@ -200,27 +198,8 @@ export default function IssueDetailModal() {
           <div className="relative flex" ref={menuRef}>
             <button
               type="button"
-              onClick={async () => {
-                const prompt = buildPrompt(issue);
-                try {
-                  const jobId = await window.electronAPI.ai.run(prompt);
-                  if (jobId) {
-                    addTask({
-                      id: createTaskId(),
-                      jobIds: [jobId],
-                      type: 'issue-analysis',
-                      title: generateTaskTitle('issue-analysis', { issueKey: issue.key }),
-                      status: 'running',
-                      result: '',
-                      error: null,
-                      createdAt: Date.now(),
-                    });
-                  }
-                } catch {
-                  // AI runner error handled by task listener
-                }
-              }}
-              disabled={tasks.some((t) => t.type === 'issue-analysis' && t.status === 'running' && t.title.includes(issue.key))}
+              onClick={() => analyze(issue)}
+              disabled={isAnalyzing(issue.key)}
               className="px-4 py-1.5 text-sm bg-purple-500 text-white rounded-l-lg hover:bg-purple-600 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               티켓 분석하기

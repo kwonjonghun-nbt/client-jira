@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAITaskStore } from '../../store/aiTaskStore';
+import { useAIExecutor } from '../useAIExecutor';
 import { createTaskId, generateTaskTitle } from '../../utils/ai-tasks';
 import { buildCanvasContext, buildCanvasPrompt, parseCanvasResponse, mergeCanvasChanges } from '../../utils/ai-canvas';
 import type { UpdateOKR } from './okr-canvas.types';
@@ -32,6 +33,7 @@ export function useCanvasAI(
   const [localStatus, setLocalStatus] = useState<CanvasAIStatus>('idle');
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
+  const { execute: executeAI, abort: abortAI } = useAIExecutor();
   const addTask = useAITaskStore((s) => s.addTask);
   const tasks = useAITaskStore((s) => s.tasks);
   const pendingCanvasApply = useAITaskStore((s) => s.pendingCanvasApply);
@@ -109,7 +111,7 @@ export function useCanvasAI(
     const fullPrompt = buildCanvasPrompt(prompt.trim(), context);
 
     try {
-      const jobId = await window.electronAPI.ai.run(fullPrompt);
+      const jobId = await executeAI(fullPrompt);
       const taskId = createTaskId();
       const title = generateTaskTitle('canvas', { krTitle: krRef.current.title });
 
@@ -134,7 +136,7 @@ export function useCanvasAI(
 
   const abort = useCallback(async () => {
     if (activeTask && activeTask.status === 'running' && activeTask.jobIds[0]) {
-      await window.electronAPI.ai.abort(activeTask.jobIds[0]);
+      await abortAI(activeTask.jobIds[0]);
     }
     setLocalStatus('idle');
     setActiveTaskId(null);
