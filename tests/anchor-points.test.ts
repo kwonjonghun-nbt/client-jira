@@ -176,9 +176,9 @@ describe('anchor-points utilities', () => {
 
   describe('isRelationInKR', () => {
     const links: OKRLink[] = [
-      { id: 'link-1', keyResultId: 'kr-alpha', type: 'jira', order: 0 },
-      { id: 'link-2', keyResultId: 'kr-alpha', type: 'jira', order: 1 },
-      { id: 'link-3', keyResultId: 'kr-beta', type: 'jira', order: 0 },
+      { id: 'link-1', keyResultId: 'kr-alpha', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
+      { id: 'link-2', keyResultId: 'kr-alpha', type: 'jira' as const, issueKey: 'PROJ-2', order: 1 },
+      { id: 'link-3', keyResultId: 'kr-beta', type: 'jira' as const, issueKey: 'PROJ-3', order: 0 },
     ];
 
     const groups: OKRGroup[] = [

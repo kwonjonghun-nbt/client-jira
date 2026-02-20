@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
 import { uniq } from 'es-toolkit';
 import type { NormalizedIssue } from '../types/jira.types';
-import { formatDateISO, filterDashboardIssues, computeDashboardStats } from '../utils/dashboard';
+import { filterDashboardIssues, computeDashboardStats } from '../utils/dashboard';
+import { computeDatePresetRange } from '../utils/date-presets';
 
 export function useDashboardStats(issues: NormalizedIssue[] | undefined) {
   const [activePreset, setActivePreset] = useState(30);
@@ -17,16 +18,9 @@ export function useDashboardStats(issues: NormalizedIssue[] | undefined) {
 
   const applyDatePreset = (days: number) => {
     setActivePreset(days);
-    if (days === 0) {
-      setDateStart('');
-      setDateEnd('');
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - days);
-      setDateStart(formatDateISO(start));
-      setDateEnd(formatDateISO(end));
-    }
+    const { start, end } = computeDatePresetRange(days);
+    setDateStart(start);
+    setDateEnd(end);
   };
 
   const filteredIssues = useMemo(() => {

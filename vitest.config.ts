@@ -7,6 +7,7 @@ export default defineConfig({
     alias: {
       '@main/': new URL('./src/main/', import.meta.url).pathname,
       '@renderer/': new URL('./src/renderer/', import.meta.url).pathname,
+      '@shared/': new URL('./src/shared/', import.meta.url).pathname,
     },
   },
 });

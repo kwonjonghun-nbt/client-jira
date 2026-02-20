@@ -1,6 +1,6 @@
 import { safeStorage } from 'electron';
 import fs from 'node:fs/promises';
-import { getTokenPath, getGmailTokenPath, getGmailClientSecretPath, getSlackBotTokenPath } from '../utils/paths';
+import { getTokenPath, getGmailTokenPath, getGmailClientSecretPath, getSlackBotTokenPath } from './paths';
 import { logger } from '../utils/logger';
 
 export class CredentialsService {

@@ -11,7 +11,20 @@ export function useOKR() {
 
   const mutation = useMutation({
     mutationFn: (data: OKRData) => window.electronAPI.storage.saveOKR(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['okr'] }),
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ['okr'] });
+      const previousData = queryClient.getQueryData<OKRData | null>(['okr']);
+      queryClient.setQueryData(['okr'], newData);
+      return { previousData };
+    },
+    onError: (_err, _newData, context) => {
+      if (context?.previousData !== undefined) {
+        queryClient.setQueryData(['okr'], context.previousData);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['okr'] });
+    },
   });
 
   return { ...query, save: mutation.mutate, isSaving: mutation.isPending };

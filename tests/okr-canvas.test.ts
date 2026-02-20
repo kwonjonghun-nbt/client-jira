@@ -268,8 +268,8 @@ describe('OKR 데이터 조작 로직', () => {
     it('연결된 관계(relation)도 함께 삭제한다', () => {
       const data = {
         links: [
-          { id: 'l1', keyResultId: 'kr1', type: 'jira' as const, order: 0 },
-          { id: 'l2', keyResultId: 'kr1', type: 'jira' as const, order: 1 },
+          { id: 'l1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 },
+          { id: 'l2', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-2', order: 1 },
         ],
         virtualTickets: [] as VirtualTicket[],
         relations: [
@@ -309,7 +309,7 @@ describe('OKR 데이터 조작 로직', () => {
 
     it('존재하지 않는 vtId면 변경 없다', () => {
       const data = {
-        links: [{ id: 'l1', keyResultId: 'kr1', type: 'jira' as const, order: 0 }],
+        links: [{ id: 'l1', keyResultId: 'kr1', type: 'jira' as const, issueKey: 'PROJ-1', order: 0 }],
         virtualTickets: [{ id: 'vt1', title: 'VT', issueType: 'Task', createdAt: '2025-01-01' }] as VirtualTicket[],
         relations: [] as OKRRelation[],
       };

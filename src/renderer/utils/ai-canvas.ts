@@ -124,7 +124,7 @@ export function buildCanvasContext(
     label: r.label,
   }));
 
-  const vtIds = new Set(krLinks.filter((l) => l.type === 'virtual').map((l) => l.virtualTicketId!));
+  const vtIds = new Set(krLinks.filter((l) => l.type === 'virtual').map((l) => l.virtualTicketId));
   const virtualTickets = okr.virtualTickets
     .filter((vt) => vtIds.has(vt.id))
     .map((vt) => ({
@@ -270,180 +270,197 @@ function isValidVirtualTicketChange(v: unknown): v is CanvasChangeVirtualTicket 
 
 // ─── Merge changes ──────────────────────────────────────────────────────────
 
+function applyGroupChanges(
+  result: OKRData,
+  krId: string,
+  changes: CanvasChangeGroup[],
+  tempIdMap: Map<string, string>,
+): OKRData {
+  let groups = [...result.groups];
+  const krGroups = groups.filter((g) => g.keyResultId === krId);
+
+  for (const change of changes) {
+    if (change.action === 'add' && change.title) {
+      const newId = crypto.randomUUID();
+      // Map temp ID if provided
+      if (change.id) tempIdMap.set(change.id, newId);
+
+      const resolvedParent = change.parentGroupId
+        ? (tempIdMap.get(change.parentGroupId) ?? change.parentGroupId)
+        : undefined;
+
+      const occupied: Rect[] = getOccupiedRects(groups, result.links, krId, resolvedParent);
+      const w = change.w ?? 320;
+      const h = change.h ?? 200;
+      const pos = (change.x != null && change.y != null)
+        ? { x: change.x, y: change.y }
+        : assignDefaultPosition(occupied, w, h, 800);
+
+      groups.push({
+        id: newId,
+        keyResultId: krId,
+        parentGroupId: resolvedParent,
+        title: change.title,
+        order: krGroups.length + groups.filter((g) => g.keyResultId === krId).length,
+        x: pos.x,
+        y: pos.y,
+        w,
+        h,
+      });
+    } else if (change.action === 'update' && change.id) {
+      groups = groups.map((g) => {
+        if (g.id !== change.id) return g;
+        return {
+          ...g,
+          ...(change.title != null && { title: change.title }),
+          ...(change.x != null && { x: change.x }),
+          ...(change.y != null && { y: change.y }),
+          ...(change.w != null && { w: change.w }),
+          ...(change.h != null && { h: change.h }),
+          ...(change.parentGroupId !== undefined && {
+            parentGroupId: tempIdMap.get(change.parentGroupId!) ?? change.parentGroupId ?? undefined,
+          }),
+        };
+      });
+    } else if (change.action === 'delete' && change.id) {
+      const deleteId = change.id;
+      groups = groups.filter((g) => g.id !== deleteId && g.parentGroupId !== deleteId);
+    }
+  }
+  return { ...result, groups };
+}
+
+function applyLinkChanges(
+  result: OKRData,
+  changes: CanvasChangeLink[],
+  tempIdMap: Map<string, string>,
+): OKRData {
+  let links = [...result.links];
+  for (const change of changes) {
+    if (change.action === 'update' && change.id) {
+      links = links.map((l) => {
+        if (l.id !== change.id) return l;
+        return {
+          ...l,
+          ...(change.x != null && { x: change.x }),
+          ...(change.y != null && { y: change.y }),
+          ...(change.groupId !== undefined && {
+            groupId: change.groupId === null
+              ? undefined
+              : (tempIdMap.get(change.groupId) ?? change.groupId),
+          }),
+        };
+      });
+    }
+  }
+  return { ...result, links };
+}
+
+function applyVirtualTicketChanges(
+  result: OKRData,
+  krId: string,
+  changes: CanvasChangeVirtualTicket[],
+  tempIdMap: Map<string, string>,
+): OKRData {
+  let virtualTickets = [...result.virtualTickets];
+  let links = [...result.links];
+
+  for (const change of changes) {
+    if (change.action === 'add') {
+      const vtId = crypto.randomUUID();
+      virtualTickets.push({
+        id: vtId,
+        title: change.title,
+        issueType: change.issueType || 'task',
+        assignee: change.assignee,
+        createdAt: new Date().toISOString(),
+      });
+
+      const resolvedGroupId = change.groupId
+        ? (tempIdMap.get(change.groupId) ?? change.groupId)
+        : undefined;
+
+      const krLinks = links.filter((l) => l.keyResultId === krId);
+      const krGroups = result.groups.filter((g) => g.keyResultId === krId);
+      const occupied: Rect[] = [
+        ...krLinks.map((l) => ({ x: l.x ?? 0, y: l.y ?? 0, w: CARD_W, h: CARD_H })),
+        ...krGroups.map((g) => ({ x: g.x ?? 0, y: g.y ?? 0, w: g.w ?? 320, h: g.h ?? 200 })),
+      ];
+      const pos = assignDefaultPosition(occupied, CARD_W, CARD_H, 800);
+
+      links.push({
+        id: crypto.randomUUID(),
+        keyResultId: krId,
+        type: 'virtual',
+        virtualTicketId: vtId,
+        groupId: resolvedGroupId,
+        order: krLinks.length,
+        x: pos.x,
+        y: pos.y,
+      });
+    }
+  }
+  return { ...result, virtualTickets, links };
+}
+
+function applyRelationChanges(
+  result: OKRData,
+  changes: CanvasChangeRelation[],
+  tempIdMap: Map<string, string>,
+): OKRData {
+  let relations = [...result.relations];
+  for (const change of changes) {
+    if (change.action === 'add' && change.fromId && change.toId) {
+      const resolvedFromId = tempIdMap.get(change.fromId) ?? change.fromId;
+      const resolvedToId = tempIdMap.get(change.toId) ?? change.toId;
+
+      // Determine endpoint types
+      const allLinkIds = new Set(result.links.map((l) => l.id));
+      const allGroupIds = new Set(result.groups.map((g) => g.id));
+      const fromType = allGroupIds.has(resolvedFromId) ? 'group' : 'link';
+      const toType = allGroupIds.has(resolvedToId) ? 'group' : 'link';
+
+      // Skip if neither endpoint exists
+      if (!allLinkIds.has(resolvedFromId) && !allGroupIds.has(resolvedFromId)) continue;
+      if (!allLinkIds.has(resolvedToId) && !allGroupIds.has(resolvedToId)) continue;
+
+      const validAnchors: AnchorPosition[] = ['top', 'bottom', 'left', 'right'];
+      const fromAnchor = validAnchors.includes(change.fromAnchor as AnchorPosition)
+        ? (change.fromAnchor as AnchorPosition)
+        : 'bottom';
+      const toAnchor = validAnchors.includes(change.toAnchor as AnchorPosition)
+        ? (change.toAnchor as AnchorPosition)
+        : 'top';
+
+      relations.push({
+        id: crypto.randomUUID(),
+        fromType,
+        fromId: resolvedFromId,
+        fromAnchor: fromAnchor,
+        toType,
+        toId: resolvedToId,
+        toAnchor: toAnchor,
+        label: change.label,
+      });
+    } else if (change.action === 'delete' && change.id) {
+      relations = relations.filter((r) => r.id !== change.id);
+    }
+  }
+  return { ...result, relations };
+}
+
 export function mergeCanvasChanges(
   okr: OKRData,
   krId: string,
   changes: CanvasChanges,
 ): OKRData {
+  const tempIdMap = new Map<string, string>();
   let result = { ...okr };
 
-  // Track temporary ID → real ID mapping for new groups
-  const tempIdMap = new Map<string, string>();
-
-  // 1. Process group changes
-  if (changes.groups) {
-    let groups = [...result.groups];
-    const krGroups = groups.filter((g) => g.keyResultId === krId);
-
-    for (const change of changes.groups) {
-      if (change.action === 'add' && change.title) {
-        const newId = crypto.randomUUID();
-        // Map temp ID if provided
-        if (change.id) tempIdMap.set(change.id, newId);
-
-        const resolvedParent = change.parentGroupId
-          ? (tempIdMap.get(change.parentGroupId) ?? change.parentGroupId)
-          : undefined;
-
-        const occupied: Rect[] = getOccupiedRects(groups, result.links, krId, resolvedParent);
-        const w = change.w ?? 320;
-        const h = change.h ?? 200;
-        const pos = (change.x != null && change.y != null)
-          ? { x: change.x, y: change.y }
-          : assignDefaultPosition(occupied, w, h, 800);
-
-        groups.push({
-          id: newId,
-          keyResultId: krId,
-          parentGroupId: resolvedParent,
-          title: change.title,
-          order: krGroups.length + groups.filter((g) => g.keyResultId === krId).length,
-          x: pos.x,
-          y: pos.y,
-          w,
-          h,
-        });
-      } else if (change.action === 'update' && change.id) {
-        groups = groups.map((g) => {
-          if (g.id !== change.id) return g;
-          return {
-            ...g,
-            ...(change.title != null && { title: change.title }),
-            ...(change.x != null && { x: change.x }),
-            ...(change.y != null && { y: change.y }),
-            ...(change.w != null && { w: change.w }),
-            ...(change.h != null && { h: change.h }),
-            ...(change.parentGroupId !== undefined && {
-              parentGroupId: tempIdMap.get(change.parentGroupId!) ?? change.parentGroupId ?? undefined,
-            }),
-          };
-        });
-      } else if (change.action === 'delete' && change.id) {
-        const deleteId = change.id;
-        groups = groups.filter((g) => g.id !== deleteId && g.parentGroupId !== deleteId);
-      }
-    }
-    result = { ...result, groups };
-  }
-
-  // 2. Process link changes (position, groupId)
-  if (changes.links) {
-    let links = [...result.links];
-    for (const change of changes.links) {
-      if (change.action === 'update' && change.id) {
-        links = links.map((l) => {
-          if (l.id !== change.id) return l;
-          return {
-            ...l,
-            ...(change.x != null && { x: change.x }),
-            ...(change.y != null && { y: change.y }),
-            ...(change.groupId !== undefined && {
-              groupId: change.groupId === null
-                ? undefined
-                : (tempIdMap.get(change.groupId) ?? change.groupId),
-            }),
-          };
-        });
-      }
-    }
-    result = { ...result, links };
-  }
-
-  // 3. Process virtualTicket additions
-  if (changes.virtualTickets) {
-    let virtualTickets = [...result.virtualTickets];
-    let links = [...result.links];
-
-    for (const change of changes.virtualTickets) {
-      if (change.action === 'add') {
-        const vtId = crypto.randomUUID();
-        virtualTickets.push({
-          id: vtId,
-          title: change.title,
-          issueType: change.issueType || 'task',
-          assignee: change.assignee,
-          createdAt: new Date().toISOString(),
-        });
-
-        const resolvedGroupId = change.groupId
-          ? (tempIdMap.get(change.groupId) ?? change.groupId)
-          : undefined;
-
-        const krLinks = links.filter((l) => l.keyResultId === krId);
-        const krGroups = result.groups.filter((g) => g.keyResultId === krId);
-        const occupied: Rect[] = [
-          ...krLinks.map((l) => ({ x: l.x ?? 0, y: l.y ?? 0, w: CARD_W, h: CARD_H })),
-          ...krGroups.map((g) => ({ x: g.x ?? 0, y: g.y ?? 0, w: g.w ?? 320, h: g.h ?? 200 })),
-        ];
-        const pos = assignDefaultPosition(occupied, CARD_W, CARD_H, 800);
-
-        links.push({
-          id: crypto.randomUUID(),
-          keyResultId: krId,
-          type: 'virtual',
-          virtualTicketId: vtId,
-          groupId: resolvedGroupId,
-          order: krLinks.length,
-          x: pos.x,
-          y: pos.y,
-        });
-      }
-    }
-    result = { ...result, virtualTickets, links };
-  }
-
-  // 4. Process relation changes
-  if (changes.relations) {
-    let relations = [...result.relations];
-    for (const change of changes.relations) {
-      if (change.action === 'add' && change.fromId && change.toId) {
-        const resolvedFromId = tempIdMap.get(change.fromId) ?? change.fromId;
-        const resolvedToId = tempIdMap.get(change.toId) ?? change.toId;
-
-        // Determine endpoint types
-        const allLinkIds = new Set(result.links.map((l) => l.id));
-        const allGroupIds = new Set(result.groups.map((g) => g.id));
-        const fromType = allGroupIds.has(resolvedFromId) ? 'group' : 'link';
-        const toType = allGroupIds.has(resolvedToId) ? 'group' : 'link';
-
-        // Skip if neither endpoint exists
-        if (!allLinkIds.has(resolvedFromId) && !allGroupIds.has(resolvedFromId)) continue;
-        if (!allLinkIds.has(resolvedToId) && !allGroupIds.has(resolvedToId)) continue;
-
-        const validAnchors: AnchorPosition[] = ['top', 'bottom', 'left', 'right'];
-        const fromAnchor = validAnchors.includes(change.fromAnchor as AnchorPosition)
-          ? (change.fromAnchor as AnchorPosition)
-          : 'bottom';
-        const toAnchor = validAnchors.includes(change.toAnchor as AnchorPosition)
-          ? (change.toAnchor as AnchorPosition)
-          : 'top';
-
-        relations.push({
-          id: crypto.randomUUID(),
-          fromType,
-          fromId: resolvedFromId,
-          fromAnchor: fromAnchor,
-          toType,
-          toId: resolvedToId,
-          toAnchor: toAnchor,
-          label: change.label,
-        });
-      } else if (change.action === 'delete' && change.id) {
-        relations = relations.filter((r) => r.id !== change.id);
-      }
-    }
-    result = { ...result, relations };
-  }
+  if (changes.groups) result = applyGroupChanges(result, krId, changes.groups, tempIdMap);
+  if (changes.links) result = applyLinkChanges(result, changes.links, tempIdMap);
+  if (changes.virtualTickets) result = applyVirtualTicketChanges(result, krId, changes.virtualTickets, tempIdMap);
+  if (changes.relations) result = applyRelationChanges(result, changes.relations, tempIdMap);
 
   result.updatedAt = new Date().toISOString();
   return result;

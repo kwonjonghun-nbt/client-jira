@@ -41,7 +41,7 @@ export default memo(function IssueRow({ issue, baseUrl }: IssueRowProps) {
       <td className="px-4 py-2.5">
         <button
           type="button"
-          onClick={() => openIssueDetail(issue, baseUrl)}
+          onClick={() => openIssueDetail(issue.key, baseUrl)}
           className="text-gray-900 line-clamp-1 hover:text-blue-600 cursor-pointer bg-transparent border-none p-0 text-left text-sm"
         >
           {issue.summary}

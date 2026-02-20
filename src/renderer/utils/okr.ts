@@ -1,6 +1,7 @@
 import { mean } from 'es-toolkit/math';
 import type {
   OKRData,
+  OKRJiraLink,
   OKRKeyResult,
   OKRLink,
   NormalizedIssue,
@@ -8,15 +9,19 @@ import type {
 
 // ─── Progress helpers ─────────────────────────────────────────────────────────
 
+function isJiraLink(l: OKRLink): l is OKRJiraLink {
+  return l.type === 'jira';
+}
+
 export function calcKRProgress(
   krId: string,
   links: OKRLink[],
   issueMap: Map<string, NormalizedIssue>,
 ): number {
-  const krLinks = links.filter((l) => l.keyResultId === krId && l.type === 'jira');
+  const krLinks = links.filter((l) => l.keyResultId === krId).filter(isJiraLink);
   if (krLinks.length === 0) return 0;
   const doneCount = krLinks.filter((l) => {
-    const issue = issueMap.get(l.issueKey!);
+    const issue = issueMap.get(l.issueKey);
     return issue?.statusCategory === 'done';
   }).length;
   return Math.round((doneCount / krLinks.length) * 100);

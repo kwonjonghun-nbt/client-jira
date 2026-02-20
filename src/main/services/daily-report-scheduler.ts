@@ -4,6 +4,7 @@ import type { BrowserWindow } from 'electron';
 import type { StorageService } from './storage';
 import type { SlackService } from './slack';
 import type { SlackSettings } from '../schemas/settings.schema';
+import type { NormalizedIssue } from '../schemas/storage.schema';
 import {
   filterIssuesToday,
   groupByAssignee,
@@ -13,7 +14,7 @@ import {
   buildStructuredReport,
   getTodayDateStr,
 } from '../utils/daily-report';
-import { showTaskNotification } from '../utils/notification';
+import { showTaskNotification } from './notification';
 import { logger } from '../utils/logger';
 import { spawnAIProcess } from '../utils/process-spawner';
 import type { AIAgent } from './agents/types';
@@ -120,81 +121,14 @@ export class DailyReportScheduler {
 
       let sentCount = 0;
 
-      // 스레드 모드: 전체 이슈에서 진행중 작업 기반 구조화 리포트 (오늘 업데이트 필터 불필요)
       if (useThread && threadTs) {
-        const settings = await this.storage.loadSettings();
-        const baseUrl = settings.jira.baseUrl;
-        const assignees = [...new Set(latestData.issues.map((i) => i.assignee).filter(Boolean))] as string[];
-
-        for (const assignee of assignees) {
-          try {
-            const structuredMessage = buildStructuredReport(assignee, latestData.issues, baseUrl);
-
-            if (structuredMessage) {
-              await this.slack.postThreadReply(
-                slackSettings.botToken,
-                slackSettings.channelId,
-                threadTs,
-                structuredMessage,
-              );
-
-              sentCount++;
-              logger.info(`Structured report sent for ${assignee}`);
-            }
-          } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
-            logger.warn(`Failed to send structured report for ${assignee}: ${message}`);
-          }
-        }
-
-        if (sentCount === 0) {
-          logger.info('No in-progress tasks found for any assignee');
-        }
+        sentCount = await this.sendStructuredThreadReports(slackSettings, latestData, threadTs);
       } else {
-        // Webhook 모드: 오늘 업데이트된 이슈만 대상, AI 리포트 생성
-        const dateStr = getTodayDateStr();
-        const todayIssues = filterIssuesToday(latestData.issues, dateStr);
-
-        if (todayIssues.length === 0) {
-          logger.info('No issues updated today, skipping daily report');
+        const result = await this.sendAIWebhookReports(slackSettings, latestData);
+        if (result === -1) {
           return { success: true };
         }
-
-        const assigneeGroups = groupByAssignee(todayIssues);
-
-        // P3-21: 담당자별 AI 호출 병렬화
-        const results = await Promise.allSettled(
-          [...assigneeGroups].map(async ([assignee, issues]) => {
-            const prompt = buildDailyReportPrompt(assignee, dateStr);
-            const issueData = buildIssueDataForPrompt(issues);
-            const fullPrompt = `${prompt}\n\n## 이슈 데이터 (JSON)\n\n${issueData}`;
-
-            const reportMarkdown = await this.runAI(fullPrompt);
-
-            if (reportMarkdown) {
-              const slackMessage = formatReportForSlack(reportMarkdown, assignee, dateStr);
-
-              if (slackSettings.webhookUrl) {
-                await this.slack.send(slackSettings.webhookUrl, slackMessage);
-              }
-
-              const filename = `daily-${dateStr}-${assignee}`;
-              await this.storage.saveReport(filename, reportMarkdown);
-
-              logger.info(`Daily report sent for ${assignee}`);
-              return true;
-            }
-            return false;
-          }),
-        );
-
-        for (const r of results) {
-          if (r.status === 'fulfilled' && r.value) sentCount++;
-          if (r.status === 'rejected') {
-            const message = r.reason instanceof Error ? r.reason.message : String(r.reason);
-            logger.warn(`Failed to generate/send report: ${message}`);
-          }
-        }
+        sentCount = result;
       }
 
       showTaskNotification({
@@ -215,6 +149,99 @@ export class DailyReportScheduler {
     } finally {
       this.running = false;
     }
+  }
+
+  /** 스레드 댓글 모드: 구조화 리포트 전송 */
+  private async sendStructuredThreadReports(
+    slackSettings: SlackSettings,
+    latestData: { issues: NormalizedIssue[] },
+    threadTs: string,
+  ): Promise<number> {
+    const settings = await this.storage.loadSettings();
+    const baseUrl = settings.jira.baseUrl;
+    const assignees = [...new Set(latestData.issues.map((i) => i.assignee).filter(Boolean))] as string[];
+
+    let sentCount = 0;
+
+    for (const assignee of assignees) {
+      try {
+        const structuredMessage = buildStructuredReport(assignee, latestData.issues, baseUrl);
+
+        if (structuredMessage) {
+          await this.slack.postThreadReply(
+            slackSettings.botToken,
+            slackSettings.channelId,
+            threadTs,
+            structuredMessage,
+          );
+
+          sentCount++;
+          logger.info(`Structured report sent for ${assignee}`);
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`Failed to send structured report for ${assignee}: ${message}`);
+      }
+    }
+
+    if (sentCount === 0) {
+      logger.info('No in-progress tasks found for any assignee');
+    }
+
+    return sentCount;
+  }
+
+  /** 웹훅 모드: AI 리포트 생성 → 전송. 오늘 이슈가 없으면 -1 반환 */
+  private async sendAIWebhookReports(
+    slackSettings: SlackSettings,
+    latestData: { issues: NormalizedIssue[] },
+  ): Promise<number> {
+    const dateStr = getTodayDateStr();
+    const todayIssues = filterIssuesToday(latestData.issues, dateStr);
+
+    if (todayIssues.length === 0) {
+      logger.info('No issues updated today, skipping daily report');
+      return -1;
+    }
+
+    const assigneeGroups = groupByAssignee(todayIssues);
+
+    // P3-21: 담당자별 AI 호출 병렬화
+    const results = await Promise.allSettled(
+      [...assigneeGroups].map(async ([assignee, issues]) => {
+        const prompt = buildDailyReportPrompt(assignee, dateStr);
+        const issueData = buildIssueDataForPrompt(issues);
+        const fullPrompt = `${prompt}\n\n## 이슈 데이터 (JSON)\n\n${issueData}`;
+
+        const reportMarkdown = await this.runAI(fullPrompt);
+
+        if (reportMarkdown) {
+          const slackMessage = formatReportForSlack(reportMarkdown, assignee, dateStr);
+
+          if (slackSettings.webhookUrl) {
+            await this.slack.send(slackSettings.webhookUrl, slackMessage);
+          }
+
+          const filename = `daily-${dateStr}-${assignee}`;
+          await this.storage.saveReport(filename, reportMarkdown);
+
+          logger.info(`Daily report sent for ${assignee}`);
+          return true;
+        }
+        return false;
+      }),
+    );
+
+    let sentCount = 0;
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) sentCount++;
+      if (r.status === 'rejected') {
+        const message = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        logger.warn(`Failed to generate/send report: ${message}`);
+      }
+    }
+
+    return sentCount;
   }
 
   /** AI CLI 실행 후 stdout 전체를 반환 */

@@ -9,6 +9,8 @@ import { PlusIcon, DownloadIcon } from '../components/common/Icons';
 import LinkModal from '../components/okr/LinkModal';
 import KRCanvasModal from '../components/okr/KRCanvasModal';
 import ObjectiveCard from '../components/okr/ObjectiveCard';
+import AddObjectiveForm from '../components/okr/AddObjectiveForm';
+import OKREmptyState from '../components/okr/OKREmptyState';
 import { useAITaskStore } from '../store/aiTaskStore';
 import type { NormalizedIssue } from '../types/jira.types';
 
@@ -96,68 +98,22 @@ export default function OKRPage() {
 
       {/* ── Add objective form ─────────────────────────────────────────── */}
       {actions.addingObjective && (
-        <div className="bg-white rounded-xl shadow-sm border border-blue-200 p-5 mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">새 목표 추가</h3>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={actions.newObjectiveTitle}
-              onChange={(e) => actions.setNewObjectiveTitle(e.target.value)}
-              placeholder="목표 제목을 입력하세요"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') actions.addObjective();
-                if (e.key === 'Escape') actions.setAddingObjective(false);
-              }}
-            />
-            <button
-              type="button"
-              onClick={actions.addObjective}
-              disabled={!actions.newObjectiveTitle.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              추가
-            </button>
-            <button
-              type="button"
-              onClick={() => actions.setAddingObjective(false)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-            >
-              취소
-            </button>
-          </div>
-        </div>
+        <AddObjectiveForm
+          title={actions.newObjectiveTitle}
+          onTitleChange={actions.setNewObjectiveTitle}
+          onSubmit={actions.addObjective}
+          onCancel={() => actions.setAddingObjective(false)}
+        />
       )}
 
       {/* ── Empty state ────────────────────────────────────────────────── */}
       {okr.objectives.length === 0 && !actions.addingObjective && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-          <svg
-            className="w-16 h-16 text-gray-300 mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-            />
-          </svg>
-          <p className="text-base mb-4">아직 등록된 목표가 없습니다</p>
-          <button
-            type="button"
-            onClick={() => {
-              actions.setAddingObjective(true);
-              actions.setNewObjectiveTitle('');
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            첫 번째 목표 추가하기
-          </button>
-        </div>
+        <OKREmptyState
+          onAddObjective={() => {
+            actions.setAddingObjective(true);
+            actions.setNewObjectiveTitle('');
+          }}
+        />
       )}
 
       {/* ── Objective cards ────────────────────────────────────────────── */}

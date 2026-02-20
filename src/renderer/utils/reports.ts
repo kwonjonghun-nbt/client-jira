@@ -2,117 +2,62 @@ import { uniq } from 'es-toolkit';
 import type { NormalizedIssue } from '../types/jira.types';
 import { format, parseISO, subDays } from 'date-fns';
 import { formatDateISO } from './dashboard';
+import { parseMarkdown, type MarkdownStyleStrategy } from '@shared/utils/markdown-parser';
 
 /** Format ISO date string to display format (YYYY-MM-DD HH:MM) */
 export function formatReportDate(iso: string): string {
   return format(parseISO(iso), 'yyyy-MM-dd HH:mm');
 }
 
-/** Inline markdown formatting (bold, code) */
+/** Inline markdown formatting (bold, code) — 테스트 및 외부 호환용 export */
 export function inlineFormat(text: string): string {
   return text
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-    .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 bg-gray-100 text-red-600 rounded text-xs">$1</code>');
+    .replace(
+      /`(.+?)`/g,
+      '<code class="px-1 py-0.5 bg-gray-100 text-red-600 rounded text-xs">$1</code>',
+    );
 }
+
+/** 렌더러용 Tailwind 클래스 전략 */
+const rendererStyle: MarkdownStyleStrategy = {
+  wrapper: { open: '', close: '' },
+  inlineFormat,
+  emptyLine: () => '<br/>',
+  horizontalRule: () => '<hr class="my-3 border-gray-200"/>',
+  heading: (level, text) => {
+    const classes: Record<number, string> = {
+      1: 'text-xl font-bold text-gray-900 mt-6 mb-3',
+      2: 'text-lg font-bold text-gray-800 mt-5 mb-2',
+      3: 'text-base font-semibold text-gray-700 mt-4 mb-2',
+      4: 'text-sm font-semibold text-gray-600 mt-3 mb-1',
+    };
+    return `<h${level} class="${classes[level] ?? ''}">${text}</h${level}>`;
+  },
+  blockquote: {
+    open: () =>
+      '<blockquote class="border-l-4 border-blue-300 pl-4 py-1 my-2 text-sm text-gray-600 bg-blue-50 rounded-r">',
+    close: () => '</blockquote>',
+    line: (text) => `<p>${text}</p>`,
+  },
+  table: {
+    open: () => '<table class="w-full text-sm my-2 border-collapse">',
+    close: () => '</tbody></table>',
+    headerRow: (cells) =>
+      `<thead><tr class="border-b border-gray-200 bg-gray-50">${cells.map((c) => `<th class="text-left px-3 py-1.5 text-xs font-medium text-gray-500">${c}</th>`).join('')}</tr></thead><tbody>`,
+    bodyRow: (cells) =>
+      `<tr class="border-b border-gray-100">${cells.map((c) => `<td class="px-3 py-1.5 text-gray-700">${c}</td>`).join('')}</tr>`,
+  },
+  list: (text, indent) => {
+    const ml = Math.min(indent * 4, 12);
+    return `<div class="flex gap-2 text-sm text-gray-700 ml-${ml}"><span class="text-gray-400">•</span><span>${text}</span></div>`;
+  },
+  paragraph: (text) => `<p class="text-sm text-gray-700 leading-relaxed">${text}</p>`,
+};
 
 /** Simple markdown to HTML converter */
 export function renderMarkdown(md: string): string {
-  const lines = md.split('\n');
-  const html: string[] = [];
-  let inTable = false;
-  let inBlockquote = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-
-    // frontmatter 스킵
-    if (i === 0 && line.trim() === '---') {
-      while (++i < lines.length && lines[i].trim() !== '---') {
-        // skip
-      }
-      continue;
-    }
-
-    // blockquote 끝
-    if (inBlockquote && !line.startsWith('>')) {
-      html.push('</blockquote>');
-      inBlockquote = false;
-    }
-
-    // 테이블 끝
-    if (inTable && !line.startsWith('|')) {
-      html.push('</tbody></table>');
-      inTable = false;
-    }
-
-    // 빈 줄
-    if (line.trim() === '') {
-      html.push('<br/>');
-      continue;
-    }
-
-    // 수평선
-    if (/^---+$/.test(line.trim())) {
-      html.push('<hr class="my-3 border-gray-200"/>');
-      continue;
-    }
-
-    // 헤딩
-    const headingMatch = line.match(/^(#{1,4})\s+(.+)/);
-    if (headingMatch) {
-      const level = headingMatch[1].length;
-      const text = inlineFormat(headingMatch[2]);
-      const classes: Record<number, string> = {
-        1: 'text-xl font-bold text-gray-900 mt-6 mb-3',
-        2: 'text-lg font-bold text-gray-800 mt-5 mb-2',
-        3: 'text-base font-semibold text-gray-700 mt-4 mb-2',
-        4: 'text-sm font-semibold text-gray-600 mt-3 mb-1',
-      };
-      html.push(`<h${level} class="${classes[level] ?? ''}">${text}</h${level}>`);
-      continue;
-    }
-
-    // blockquote
-    if (line.startsWith('>')) {
-      if (!inBlockquote) {
-        html.push('<blockquote class="border-l-4 border-blue-300 pl-4 py-1 my-2 text-sm text-gray-600 bg-blue-50 rounded-r">');
-        inBlockquote = true;
-      }
-      html.push(`<p>${inlineFormat(line.slice(1).trim())}</p>`);
-      continue;
-    }
-
-    // 테이블
-    if (line.startsWith('|')) {
-      const cells = line.split('|').slice(1, -1).map((c) => c.trim());
-      // 구분선 행 (|---|---|) 스킵
-      if (cells.every((c) => /^[-:]+$/.test(c))) continue;
-
-      if (!inTable) {
-        inTable = true;
-        html.push('<table class="w-full text-sm my-2 border-collapse">');
-        html.push(`<thead><tr class="border-b border-gray-200 bg-gray-50">${cells.map((c) => `<th class="text-left px-3 py-1.5 text-xs font-medium text-gray-500">${inlineFormat(c)}</th>`).join('')}</tr></thead><tbody>`);
-      } else {
-        html.push(`<tr class="border-b border-gray-100">${cells.map((c) => `<td class="px-3 py-1.5 text-gray-700">${inlineFormat(c)}</td>`).join('')}</tr>`);
-      }
-      continue;
-    }
-
-    // 리스트
-    const listMatch = line.match(/^(\s*)[-*]\s+(.+)/);
-    if (listMatch) {
-      html.push(`<div class="flex gap-2 text-sm text-gray-700 ml-${Math.min(Math.floor(listMatch[1].length / 2) * 4, 12)}"><span class="text-gray-400">•</span><span>${inlineFormat(listMatch[2])}</span></div>`);
-      continue;
-    }
-
-    // 일반 텍스트
-    html.push(`<p class="text-sm text-gray-700 leading-relaxed">${inlineFormat(line)}</p>`);
-  }
-
-  if (inTable) html.push('</tbody></table>');
-  if (inBlockquote) html.push('</blockquote>');
-
-  return html.join('\n');
+  return parseMarkdown(md, rendererStyle);
 }
 
 /** Build the AI report generation prompt */

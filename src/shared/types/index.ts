@@ -16,6 +16,8 @@ export type {
   OKRKeyResult,
   VirtualTicket,
   OKRLink,
+  OKRJiraLink,
+  OKRVirtualLink,
   OKRGroup,
   OKRRelation,
   OKRData,

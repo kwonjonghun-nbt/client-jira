@@ -2,6 +2,7 @@ import { format, subDays } from 'date-fns';
 import { useMemo, useState } from 'react';
 import type { NormalizedIssue } from '../types/jira.types';
 import { computeLabelStats, computeLabelStatsSummary, matchPresetDays } from '../utils/stats';
+import { computeDatePresetRange } from '../utils/date-presets';
 
 export type StatsViewMode = 'table' | 'chart';
 
@@ -11,13 +12,9 @@ export function useStatsPage(filteredIssues: NormalizedIssue[]) {
   const [viewMode, setViewMode] = useState<StatsViewMode>('table');
 
   const applyPreset = (days: number) => {
-    if (days === 0) {
-      setStartDate('');
-      setEndDate('');
-    } else {
-      setStartDate(format(subDays(new Date(), days), 'yyyy-MM-dd'));
-      setEndDate(format(new Date(), 'yyyy-MM-dd'));
-    }
+    const { start, end } = computeDatePresetRange(days);
+    setStartDate(start);
+    setEndDate(end);
   };
 
   const activePresetDays = matchPresetDays(startDate, endDate);

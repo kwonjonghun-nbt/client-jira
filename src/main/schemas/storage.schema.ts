@@ -123,17 +123,28 @@ export const VirtualTicketSchema = z.object({
   createdAt: z.string(),
 });
 
-export const OKRLinkSchema = z.object({
+const OKRLinkBaseSchema = z.object({
   id: z.string(),
   keyResultId: z.string(),
-  type: z.enum(['jira', 'virtual']),
-  issueKey: z.string().optional(),
-  virtualTicketId: z.string().optional(),
   groupId: z.string().optional(),
   order: z.number(),
   x: z.number().optional(),
   y: z.number().optional(),
 });
+
+const OKRJiraLinkSchema = OKRLinkBaseSchema.extend({
+  type: z.literal('jira'),
+  issueKey: z.string(),
+  virtualTicketId: z.string().optional(), // 하위호환: 기존 데이터에 이 필드가 있을 수 있음
+});
+
+const OKRVirtualLinkSchema = OKRLinkBaseSchema.extend({
+  type: z.literal('virtual'),
+  virtualTicketId: z.string(),
+  issueKey: z.string().optional(), // 하위호환
+});
+
+export const OKRLinkSchema = z.discriminatedUnion('type', [OKRJiraLinkSchema, OKRVirtualLinkSchema]);
 
 export const OKRGroupSchema = z.object({
   id: z.string(),
@@ -186,6 +197,8 @@ export type OKRObjective = z.infer<typeof OKRObjectiveSchema>;
 export type OKRKeyResult = z.infer<typeof OKRKeyResultSchema>;
 export type VirtualTicket = z.infer<typeof VirtualTicketSchema>;
 export type OKRLink = z.infer<typeof OKRLinkSchema>;
+export type OKRJiraLink = z.infer<typeof OKRJiraLinkSchema>;
+export type OKRVirtualLink = z.infer<typeof OKRVirtualLinkSchema>;
 export type OKRGroup = z.infer<typeof OKRGroupSchema>;
 export type OKRRelation = z.infer<typeof OKRRelationSchema>;
 export type OKRData = z.infer<typeof OKRDataSchema>;

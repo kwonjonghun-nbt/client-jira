@@ -135,7 +135,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <RecentUpdates
           issues={stats.recentlyUpdated}
-          onIssueClick={(issue) => openIssueDetail(issue, baseUrl)}
+          onIssueClick={(issue) => openIssueDetail(issue.key, baseUrl)}
         />
         <TypeDistribution distribution={stats.typeDistribution} />
       </div>

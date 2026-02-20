@@ -142,19 +142,19 @@
 
 ### 응집도/결합도 개선
 
-- [ ] **Q3-1. `useOKRActions` 훅 분리 (302줄, 반환값 30개)**
+- [x] **Q3-1. `useOKRActions` 훅 분리 (302줄, 반환값 30개)**
   - 파일: `src/renderer/hooks/useOKRActions.ts`
   - 문제: collapse 상태, 인라인 편집, 추가 폼, CRUD, 모달 상태가 하나의 훅에 혼재
   - 해결: `useOKRCrud`, `useOKRInlineEdit`, `useOKRCollapse`, `useOKRLinking`으로 분리
   - 영향: 단일 책임 원칙 복원, 테스트 용이성
 
-- [ ] **Q3-2. `TimelineChart` 메가 컴포넌트 분해 (620줄)**
+- [x] **Q3-2. `TimelineChart` 메가 컴포넌트 분해 (620줄)**
   - 파일: `src/renderer/components/timeline/TimelineChart.tsx`
   - 문제: `buildTree`, `computeRange`, localStorage 영속화, 스크롤 동기화, 패널 리사이즈, 드래그 재정렬이 모두 컴포넌트 내부
   - 해결: `buildTree`/`computeRange` → `utils/timeline.ts`, 스크롤/리사이즈 → 커스텀 훅, 컴포넌트는 조합만
   - 영향: 620줄 → ~150줄, 유지보수성 대폭 향상
 
-- [ ] **Q3-3. `useTimelineControls` 훅 분리 (반환값 27개)**
+- [x] **Q3-3. `useTimelineControls` 훅 분리 (반환값 27개)**
   - 파일: `src/renderer/hooks/useTimelineControls.ts`
   - 문제: 뷰 모드, 줌, 날짜 필터, 이슈 타입 필터, 설정 드롭다운, 패널 토글 등 혼재
   - 해결: `useTimelineFilters(issues)` + `useTimelineViewport()`로 분리
@@ -166,7 +166,7 @@
   - 해결: `utils/ai-tasks.ts`에 `resolveTaskStatus()` 순수 함수로 추출
   - 영향: 스토어 레이어 정합성 복원
 
-- [ ] **Q3-5. `uiStore`에서 전체 `NormalizedIssue` 저장 제거**
+- [x] **Q3-5. `uiStore`에서 전체 `NormalizedIssue` 저장 제거**
   - 파일: `src/renderer/store/uiStore.ts:19`
   - 문제: 전체 도메인 객체를 UI 스토어에 저장 → 싱크 후 stale 데이터 위험
   - 해결: `selectedIssueKey: string | null`만 저장, React Query 캐시에서 resolve
@@ -174,19 +174,19 @@
 
 ### God Function 분해
 
-- [ ] **Q3-6. `mergeCanvasChanges` 분해 (170줄)**
+- [x] **Q3-6. `mergeCanvasChanges` 분해 (170줄)**
   - 파일: `src/renderer/utils/ai-canvas.ts:273-450`
   - 문제: 그룹/링크/가상티켓/관계 변경을 하나의 함수에서 처리
   - 해결: `applyGroupChanges`, `applyLinkChanges`, `applyVirtualTicketChanges`, `applyRelationChanges`로 분리 후 조합
   - 영향: 단일 책임, 독립 테스트 가능
 
-- [ ] **Q3-7. `buildReportEmailHtml` 분해 (110줄)**
+- [x] **Q3-7. `buildReportEmailHtml` 분해 (110줄)**
   - 파일: `src/main/utils/email.ts:23-141`
   - 문제: 7가지 마크다운 구문 변환을 하나의 for 루프에서 처리
   - 해결: `parseHeading`, `parseTable`, `parseBlockquote` 등 개별 핸들러로 추출
   - 영향: 각 변환 규칙 독립 테스트 가능
 
-- [ ] **Q3-8. `DailyReportScheduler.generateAndSendReports` 분리 (125줄)**
+- [x] **Q3-8. `DailyReportScheduler.generateAndSendReports` 분리 (125줄)**
   - 파일: `src/main/services/daily-report-scheduler.ts:69-193`
   - 문제: 구조화 리포트(thread 모드)와 AI 리포트(webhook 모드) 두 경로가 하나의 메서드에 혼재
   - 해결: `sendStructuredThreadReports()` + `sendAIWebhookReports()`로 분리
@@ -194,7 +194,7 @@
 
 ### 순수성 복원
 
-- [ ] **Q3-9. Utils 레이어에서 Electron/DOM API 사용 제거**
+- [x] **Q3-9. Utils 레이어에서 Electron/DOM API 사용 제거**
   - 파일: `src/main/utils/notification.ts`, `src/main/utils/paths.ts`, `src/renderer/utils/issue-prompts.ts:210-219`
   - 문제: `notification.ts`에 Electron `Notification` import, `paths.ts`에 `app.getPath()`, `issue-prompts.ts`에 `document.createElement`
   - 해결: 사이드이펙트 함수는 서비스/훅으로 이동, 순수 변환 로직만 utils에 유지
@@ -208,13 +208,13 @@
 
 ### DRY 위반 수정
 
-- [ ] **Q3-11. 마크다운→HTML 변환 로직 통합**
+- [x] **Q3-11. 마크다운→HTML 변환 로직 통합**
   - 파일: `src/main/utils/email.ts:23-141`, `src/renderer/utils/reports.ts:19-116`
   - 문제: 거의 동일한 마크다운 파서가 두 곳에 존재 (inline styles vs Tailwind classes만 다름)
   - 해결: 공유 파서 + 스타일 전략(strategy) 패턴
   - 영향: 마크다운 파싱 변경 시 한 곳만 수정
 
-- [ ] **Q3-12. 날짜 프리셋 로직 통합**
+- [x] **Q3-12. 날짜 프리셋 로직 통합**
   - 파일: `useDashboardStats.ts`, `useStatsPage.ts`, `useTimelineControls.ts`
   - 문제: 동일한 `applyDatePreset` / `applyPreset` 로직이 3개 훅에 중복
   - 해결: `useDatePreset()` 훅 또는 `computeDatePresetRange()` 유틸로 통합
@@ -230,7 +230,7 @@
 
 ### 인터페이스 명확성
 
-- [ ] **Q3-14. `OKRLink` flat optional → discriminated union**
+- [x] **Q3-14. `OKRLink` flat optional → discriminated union**
   - 파일: `src/renderer/types/jira.types.ts:134-144`
   - 문제: `type: 'jira'`일 때 `issueKey`가 required여야 하지만 optional. 소비자가 `l.issueKey!` 비-null 단언 남발
   - 해결: `OKRJiraLink | OKRVirtualLink` discriminated union
@@ -258,7 +258,7 @@
 
 ### 확장성
 
-- [ ] **Q3-18. OKR 변경 시 낙관적 업데이트 + debounced save**
+- [x] **Q3-18. OKR 변경 시 낙관적 업데이트 + debounced save**
   - 파일: `src/renderer/hooks/useOKRActions.ts:48-56`, `src/renderer/hooks/useOKR.ts:12-15`
   - 문제: 카드 드래그 한 번에 전체 OKR 트리 JSON 직렬화→IPC→Zod 검증→fs.writeFile→refetch 전체 사이클
   - 해결: `queryClient.setQueryData`로 즉시 UI 업데이트 + debounced save (500ms). refetch 제거
@@ -297,7 +297,7 @@
   - 해결: `unknown` + `instanceof Error` narrowing
   - 영향: 에러 처리 타입 안전성
 
-- [ ] **Q3-24. `OKRPage` 인라인 JSX 컴포넌트 추출 (480줄)**
+- [x] **Q3-24. `OKRPage` 인라인 JSX 컴포넌트 추출 (480줄)**
   - 파일: `src/renderer/pages/OKRPage.tsx:170-445`
   - 해결: `ObjectiveCard`, `KRCard` 컴포넌트 추출
   - 영향: 페이지가 조합 지점 역할에 충실
@@ -537,6 +537,19 @@
 | 2026-02-21 | P2-9 | `googleapis` → `@googleapis/gmail` + `google-auth-library` 교체 (-180MB) |
 | 2026-02-21 | P2-10 | `manualChunks` (react, zustand, date-fns, react-query), `build.target: 'chrome130'` |
 | 2026-02-21 | P2-11 | `npm uninstall @toss/utils` (-25MB) |
+| 2026-02-21 | Q3-1 | `useOKRActions` → `useOKRCollapse` + `useOKRInlineEdit` + `useOKRCrud` 분리, 원본은 조합 훅 |
+| 2026-02-21 | Q3-2 | `TimelineChart` 635→425줄. `utils/timeline.ts` + `useScrollSync`/`usePanelResize`/`useTimelineDragSort` 추출 |
+| 2026-02-21 | Q3-3 | `useTimelineControls` → `useTimelineFilters` + `useTimelineViewport` 분리 |
+| 2026-02-21 | Q3-5 | `selectedIssue: NormalizedIssue` → `selectedIssueKey: string`, React Query 캐시에서 resolve |
+| 2026-02-21 | Q3-6 | `mergeCanvasChanges` → 4개 private 함수로 분해 (group/link/vt/relation) |
+| 2026-02-21 | Q3-7 | `buildReportEmailHtml` → shared `parseMarkdown` + handler chain 패턴 (Q3-11과 통합) |
+| 2026-02-21 | Q3-8 | `generateAndSendReports` → `sendStructuredThreadReports` + `sendAIWebhookReports` 분리 |
+| 2026-02-21 | Q3-9 | `notification.ts`/`paths.ts` → services 이동, `downloadIssueJson` → `utils/download.ts` 분리 |
+| 2026-02-21 | Q3-11 | `src/shared/utils/markdown-parser.ts` 공유 파서 + `MarkdownStyleStrategy` 전략 패턴 |
+| 2026-02-21 | Q3-12 | `computeDatePresetRange()` 유틸 추출, 3개 훅 중복 제거 |
+| 2026-02-21 | Q3-14 | `OKRLinkSchema` → `z.discriminatedUnion('type', [...])`, `isJiraLink` 타입 가드 추가 |
+| 2026-02-21 | Q3-18 | `useOKR` 낙관적 업데이트 (onMutate/onError/onSettled) + `useOKRActions` debounced save (500ms) |
+| 2026-02-21 | Q3-24 | `ObjectiveCard`, `AddObjectiveForm`, `OKREmptyState` 컴포넌트 추출, OKRPage 480→183줄 |
 
 ---
 

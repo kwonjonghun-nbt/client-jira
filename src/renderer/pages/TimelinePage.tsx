@@ -303,7 +303,7 @@ export default function TimelinePage() {
             dateFilteredIssues={dateFilteredIssues}
             allIssues={data?.issues}
             dailyShare={dailyShare}
-            onIssueClick={(issue) => openIssueDetail(issue, data.source.baseUrl)}
+            onIssueClick={(issue) => openIssueDetail(issue.key, data.source.baseUrl)}
             onClose={() => setShowTodayPanel(false)}
           />
         )}

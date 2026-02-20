@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import Layout from './components/layout/Layout';
 import SyncProgress from './components/sync/SyncProgress';
 import IssueDetailModal from './components/issue/IssueDetailModal';
@@ -6,6 +6,7 @@ import AITaskPanel from './components/ai-tasks/AITaskPanel';
 import AITaskDetailModal from './components/ai-tasks/AITaskDetailModal';
 import { useUIStore } from './store/uiStore';
 import { useAITaskListener } from './hooks/useAITaskListener';
+import { useJiraIssues } from './hooks/useJiraIssues';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const MainPage = lazy(() => import('./pages/MainPage'));
@@ -18,10 +19,16 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 export default function App() {
   const currentPage = useUIStore((s) => s.currentPage);
-  const selectedIssue = useUIStore((s) => s.selectedIssue);
+  const selectedIssueKey = useUIStore((s) => s.selectedIssueKey);
   const issueBaseUrl = useUIStore((s) => s.issueBaseUrl);
   const closeIssueDetail = useUIStore((s) => s.closeIssueDetail);
+  const { data } = useJiraIssues();
   useAITaskListener();
+
+  const selectedIssue = useMemo(() => {
+    if (!selectedIssueKey || !data?.issues) return null;
+    return data.issues.find((i) => i.key === selectedIssueKey) ?? null;
+  }, [selectedIssueKey, data?.issues]);
 
   return (
     <Layout>

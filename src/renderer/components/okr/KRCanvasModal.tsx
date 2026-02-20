@@ -37,7 +37,7 @@ export interface KRCanvasModalProps {
   baseUrl?: string;
   onClose: () => void;
   updateOKR: (updater: (draft: OKRData) => OKRData) => void;
-  openIssueDetail: (issue: NormalizedIssue, baseUrl?: string) => void;
+  openIssueDetail: (issueKey: string, baseUrl?: string) => void;
 }
 
 export default function KRCanvasModal({
@@ -97,7 +97,7 @@ export default function KRCanvasModal({
   const ungroupedLinks = useMemo(() => krLinks.filter((l) => !l.groupId), [krLinks]);
   const krProgress = calcKRProgress(kr.id, okr.links, issueMap);
   const existingIssueKeys = useMemo(
-    () => new Set(krLinks.filter((l) => l.type === 'jira' && l.issueKey).map((l) => l.issueKey!)),
+    () => new Set(krLinks.filter((l) => l.type === 'jira').map((l) => l.issueKey)),
     [krLinks],
   );
 
@@ -129,19 +129,19 @@ export default function KRCanvasModal({
   }, [tickets]);
 
   // ── ESC to close (skip if a higher modal is open) ───────────────────
-  const selectedIssue = useUIStore((s) => s.selectedIssue);
+  const selectedIssueKey = useUIStore((s) => s.selectedIssueKey);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (canvasAI.isOpen) return; // AI panel handles its own ESC
         if (linkModalOpen) return;
-        if (selectedIssue) return; // issue detail modal handles its own ESC
+        if (selectedIssueKey) return; // issue detail modal handles its own ESC
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, linkModalOpen, selectedIssue]);
+  }, [onClose, linkModalOpen, selectedIssueKey]);
 
   // ── Fit to view ───────────────────────────────────────────────────────
   const handleFitToView = useCallback(() => {
@@ -167,7 +167,7 @@ export default function KRCanvasModal({
           onCardClick={() => {
             if (drag.wasDraggingRef.current) return;
             if (!relations.connectMode && issue) {
-              openIssueDetail(issue, baseUrl);
+              openIssueDetail(issue.key, baseUrl);
             }
           }}
           onUnlink={() => tickets.unlinkWork(link.id)}

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import type { NormalizedIssue } from '../types/jira.types';
 
 interface Filters {
   project: string;
@@ -16,7 +15,7 @@ interface UIState {
   currentPage: Page;
   sidebarExpanded: boolean;
   filters: Filters;
-  selectedIssue: NormalizedIssue | null;
+  selectedIssueKey: string | null;
   issueBaseUrl: string | null;
   settingsSection: SettingsSection;
   toggleSidebar: () => void;
@@ -24,7 +23,7 @@ interface UIState {
   setFilter: (key: 'project' | 'assignee' | 'search', value: string) => void;
   toggleStatus: (status: string) => void;
   clearFilters: () => void;
-  openIssueDetail: (issue: NormalizedIssue, baseUrl?: string) => void;
+  openIssueDetail: (issueKey: string, baseUrl?: string) => void;
   closeIssueDetail: () => void;
   setSettingsSection: (section: SettingsSection) => void;
 }
@@ -40,7 +39,7 @@ export const useUIStore = create<UIState>((set) => ({
   currentPage: 'dashboard',
   sidebarExpanded: false,
   filters: DEFAULT_FILTERS,
-  selectedIssue: null,
+  selectedIssueKey: null,
   issueBaseUrl: null,
   toggleSidebar: () => set((state) => ({ sidebarExpanded: !state.sidebarExpanded })),
   settingsSection: null,
@@ -57,6 +56,6 @@ export const useUIStore = create<UIState>((set) => ({
       return { filters: { ...state.filters, statuses: next } };
     }),
   clearFilters: () => set({ filters: DEFAULT_FILTERS }),
-  openIssueDetail: (issue, baseUrl) => set({ selectedIssue: issue, issueBaseUrl: baseUrl ?? null }),
-  closeIssueDetail: () => set({ selectedIssue: null, issueBaseUrl: null }),
+  openIssueDetail: (issueKey, baseUrl) => set({ selectedIssueKey: issueKey, issueBaseUrl: baseUrl ?? null }),
+  closeIssueDetail: () => set({ selectedIssueKey: null, issueBaseUrl: null }),
 }));

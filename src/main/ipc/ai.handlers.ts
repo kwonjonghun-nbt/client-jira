@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import type { AppServices } from '../services/types';
-import { showTaskNotification } from '../utils/notification';
+import { showTaskNotification } from '../services/notification';
 
 export function registerAIHandlers(services: AppServices): void {
   ipcMain.handle('ai:run', (_event, prompt: string, aiType?: string, model?: string) => {

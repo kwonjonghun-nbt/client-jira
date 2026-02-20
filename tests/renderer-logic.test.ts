@@ -3,7 +3,8 @@ import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
 import { normalizeType, getIssueTypeLabel, buildIssueUrl } from '../src/renderer/utils/issue';
 import { formatRelativeTime, formatDateSafe, formatDateShort, formatDate, formatDateTime, formatDuration } from '../src/renderer/utils/formatters';
 import { applyFilters, extractFilterOptions } from '../src/renderer/utils/issue-filters';
-import { getDescriptionTemplate, buildPrompt, downloadIssueJson } from '../src/renderer/utils/issue-prompts';
+import { getDescriptionTemplate, buildPrompt } from '../src/renderer/utils/issue-prompts';
+import { downloadIssueJson } from '../src/renderer/utils/download';
 import { calcKRProgress, calcObjectiveProgress, buildOKRExportData } from '../src/renderer/utils/okr';
 import { filterByDateRange, filterByRowTypes, extractIssueTypeOptions } from '../src/renderer/utils/timeline';
 

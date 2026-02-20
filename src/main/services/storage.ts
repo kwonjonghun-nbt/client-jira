@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { subDays, compareDesc, parseISO } from 'date-fns';
-import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir, getChangelogPath, getOKRPath } from '../utils/paths';
+import { getDataDir, getRawDir, getLatestPath, getMetaPath, getSettingsPath, getSnapshotDir, getSnapshotPath, getLabelNotesPath, getReportsDir, getChangelogPath, getOKRPath } from './paths';
 import { StoredDataSchema, MetaDataSchema, LabelNotesDataSchema, ChangelogDataSchema, OKRDataSchema } from '../schemas/storage.schema';
 import { SettingsSchema, DEFAULT_SETTINGS } from '../schemas/settings.schema';
 import { logger } from '../utils/logger';
