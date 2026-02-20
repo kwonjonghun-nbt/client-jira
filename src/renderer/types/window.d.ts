@@ -48,7 +48,7 @@ export interface ElectronAPI {
     onError: (callback: (error: { message: string }) => void) => () => void;
   };
   ai: {
-    run: (prompt: string, aiType?: string) => Promise<string>;
+    run: (prompt: string, aiType?: string, model?: string) => Promise<string>;
     abort: (id: string) => Promise<void>;
     onChunk: (callback: (id: string, text: string) => void) => () => void;
     onDone: (callback: (id: string, exitCode: number) => void) => () => void;

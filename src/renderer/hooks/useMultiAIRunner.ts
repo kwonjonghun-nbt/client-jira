@@ -90,7 +90,7 @@ export function useMultiAIRunner() {
    * @param tasks Array of { assignee, prompt } pairs
    * @param aiType 'claude' | 'gemini'
    */
-  const runAll = useCallback(async (tasks: { assignee: string; prompt: string }[], aiType?: string): Promise<{ assignee: string; jobId: string }[]> => {
+  const runAll = useCallback(async (tasks: { assignee: string; prompt: string }[], aiType?: string, model?: string): Promise<{ assignee: string; jobId: string }[]> => {
     jobMapRef.current.clear();
     const initialJobs: JobState[] = [];
 
@@ -98,7 +98,7 @@ export function useMultiAIRunner() {
 
     for (const task of tasks) {
       try {
-        const id = await window.electronAPI.ai.run(task.prompt, aiType);
+        const id = await window.electronAPI.ai.run(task.prompt, aiType, model);
         jobMapRef.current.set(id, task.assignee);
         initialJobs.push({
           assignee: task.assignee,

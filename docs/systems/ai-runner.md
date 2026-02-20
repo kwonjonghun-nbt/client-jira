@@ -10,7 +10,7 @@ Claude/Gemini CLI를 백그라운드에서 비대화형 모드(`-p`)로 실행�
 
 Main 프로세스 서비스:
 
-- `run(prompt, aiType, timeoutMs?)` — CLI 프로세스 생성, 결과 스트리밍. idle 타임아웃 내장 (기본 5분)
+- `run(prompt, aiType, model?, timeoutMs?)` — CLI 프로세스 생성, 결과 스트리밍. idle 타임아웃 내장 (기본 5분). `model` 지정 시 `--model` 플래그로 전달
 - `abort(id)` — 실행 중인 작업 종료 (stdin destroy → SIGTERM 순서로 안전 종료)
 - `updateWindow(win)` — BrowserWindow 재생성 시 IPC 대상 윈도우 갱신
 - `destroyAll()` — 앱 종료 시 모든 실행 중인 job 정리 (타이머 해제 + SIGTERM)
@@ -24,8 +24,8 @@ Main 프로세스 서비스:
 
 | AI 타입 | 명령 |
 |---------|------|
-| Claude | `claude -p --output-format text --no-session-persistence --disallowedTools 'Edit,Write,Bash,NotebookEdit'` |
-| Gemini | `gemini -p -o text` |
+| Claude | `claude -p --output-format text --no-session-persistence --disallowedTools 'Edit,Write,Bash,NotebookEdit' [--model <model>]` |
+| Gemini | `gemini -p "" -o text [--model <model>]` |
 
 ### IPC 핸들러 (`ipc/ai.handlers.ts`)
 
@@ -46,7 +46,7 @@ Main 프로세스 서비스:
 Renderer 상태 관리 훅:
 
 - 상태: `idle` → `running` (청크 누적) → `done` | `error`
-- `run(prompt, aiType)` — IPC 호출, 이벤트 리스너 등록
+- `run(prompt, aiType, model?)` — IPC 호출, 이벤트 리스너 등록
 - `abort()` — 실행 취소
 - `reset()` — 상태 초기화
 - cleanup 시 이벤트 리스너 자동 해제

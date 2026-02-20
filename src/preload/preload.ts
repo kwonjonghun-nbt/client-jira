@@ -84,7 +84,7 @@ const api = {
     },
   },
   ai: {
-    run: (prompt: string, aiType?: string) => ipcRenderer.invoke('ai:run', prompt, aiType),
+    run: (prompt: string, aiType?: string, model?: string) => ipcRenderer.invoke('ai:run', prompt, aiType, model),
     abort: (id: string) => ipcRenderer.invoke('ai:abort', id),
     onChunk: (callback: (id: string, text: string) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, data: { id: string; text: string }) =>

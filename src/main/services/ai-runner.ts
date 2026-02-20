@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 
 type AIType = 'claude' | 'gemini';
 
-const DEFAULT_TIMEOUT_MS = 5 * 60_000; // 5분
+const DEFAULT_TIMEOUT_MS = 10 * 60_000; // 10분
 
 interface RunningJobEntry {
   process: ChildProcess;
@@ -25,12 +25,13 @@ export class AIRunnerService {
     this.win = win;
   }
 
-  run(prompt: string, aiType: AIType = 'claude', timeoutMs = DEFAULT_TIMEOUT_MS): string {
+  run(prompt: string, aiType: AIType = 'claude', model?: string, timeoutMs = DEFAULT_TIMEOUT_MS): string {
     const id = `ai-${++this.nextId}`;
 
+    const modelFlag = model ? ` --model ${model}` : '';
     const shellCmd = aiType === 'claude'
-      ? "claude -p --output-format text --no-session-persistence --disallowedTools 'Edit,Write,Bash,NotebookEdit'"
-      : 'gemini -p -o text';
+      ? `DISABLE_OMC=1 claude -p --output-format text --no-session-persistence --disallowedTools 'Edit,Write,Bash,NotebookEdit' --setting-sources ''${modelFlag}`
+      : `gemini -p "" -o text${modelFlag}`;
 
     const child = spawn('/bin/zsh', ['-l', '-i', '-c', shellCmd], {
       env: {
@@ -42,29 +43,23 @@ export class AIRunnerService {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    const resetTimer = () => {
-      const entry = this.jobs.get(id);
-      if (!entry) return;
-      clearTimeout(entry.timer);
-      entry.timer = setTimeout(() => {
-        if (this.jobs.has(id)) {
-          logger.warn(`AI job ${id} (${aiType}) timed out (no output for ${timeoutMs / 1000}s)`);
-          this.jobs.delete(id);
-          child.kill('SIGTERM');
-          this.send('ai:error', { id, message: `No output for ${timeoutMs / 1000}s — process killed` });
-        }
-      }, timeoutMs);
-    };
-
-    const timer = setTimeout(() => {
+    const killOnTimeout = () => {
       if (this.jobs.has(id)) {
         logger.warn(`AI job ${id} (${aiType}) timed out (no output for ${timeoutMs / 1000}s)`);
         this.jobs.delete(id);
         child.kill('SIGTERM');
         this.send('ai:error', { id, message: `No output for ${timeoutMs / 1000}s — process killed` });
       }
-    }, timeoutMs);
+    };
 
+    const resetTimer = () => {
+      const entry = this.jobs.get(id);
+      if (!entry) return;
+      clearTimeout(entry.timer);
+      entry.timer = setTimeout(killOnTimeout, timeoutMs);
+    };
+
+    const timer = setTimeout(killOnTimeout, timeoutMs);
     this.jobs.set(id, { process: child, id, timer });
 
     child.stdin?.on('error', (err) => {

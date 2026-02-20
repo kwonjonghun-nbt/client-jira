@@ -18,6 +18,8 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
   const singleAI = useAIRunner();
   const multiAI = useMultiAIRunner();
   const aiType = useTerminalStore((s) => s.aiType);
+  const claudeModel = useTerminalStore((s) => s.claudeModel);
+  const geminiModel = useTerminalStore((s) => s.geminiModel);
   const addTask = useAITaskStore((s) => s.addTask);
   const selectTask = useAITaskStore((s) => s.selectTask);
   const [assignee, setAssignee] = useState<string>('전체');
@@ -83,7 +85,8 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
 
       if (tasks.length === 0) return;
       setIsMultiMode(true);
-      const jobMapping = await multiAI.runAll(tasks, aiType);
+      const model = aiType === 'claude' ? claudeModel : geminiModel;
+      const jobMapping = await multiAI.runAll(tasks, aiType, model);
 
       if (jobMapping && jobMapping.length > 0) {
         const subJobs: Record<string, { assignee: string; status: 'running'; result: string }> = {};
@@ -106,7 +109,8 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
       if (!categories || totalCount === 0) return;
       setIsMultiMode(false);
       const prompt = buildDailySharePrompt(assignee, categories);
-      const jobId = await singleAI.run(prompt, aiType);
+      const singleModel = aiType === 'claude' ? claudeModel : geminiModel;
+      const jobId = await singleAI.run(prompt, aiType, singleModel);
 
       if (jobId) {
         addTask({
@@ -121,7 +125,7 @@ export function useDailyShare(issues: NormalizedIssue[] | undefined) {
         });
       }
     }
-  }, [issues, assignee, assignees, categories, totalCount, singleAI, multiAI, aiType, addTask]);
+  }, [issues, assignee, assignees, categories, totalCount, singleAI, multiAI, aiType, claudeModel, geminiModel, addTask]);
 
   const handleGenerateFromData = useCallback(() => {
     if (!issues) return;

@@ -92,7 +92,9 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 ### terminalStore (Zustand)
 
 - `aiType` — AI CLI 종류 (claude | gemini)
-- `setAIType()`
+- `claudeModel` — Claude 모델 (claude-sonnet-4-20250514 | claude-opus-4-20250115)
+- `geminiModel` — Gemini 모델 (gemini-2.5-pro | gemini-2.5-flash)
+- `setAIType()`, `setClaudeModel()`, `setGeminiModel()`
 
 ### aiTaskStore (Zustand)
 

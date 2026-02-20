@@ -14,7 +14,7 @@ import { useTestConnection } from '../hooks/useSettings';
 import { useUpdater } from '../hooks/useUpdater';
 import { DEFAULT_SETTINGS } from '../types/settings.types';
 import type { Settings } from '../types/settings.types';
-import { useTerminalStore, type AIType } from '../store/terminalStore';
+import { useTerminalStore, CLAUDE_MODELS, GEMINI_MODELS, type AIType, type ClaudeModel, type GeminiModel } from '../store/terminalStore';
 
 export default function SettingsPage() {
   const { settings: saved, isLoading, saveSettings, isSaving } = useSettings();
@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const updater = useUpdater();
   const [draft, setDraft] = useState<Settings>(DEFAULT_SETTINGS);
   const [saveMessage, setSaveMessage] = useState('');
-  const { aiType, setAIType } = useTerminalStore();
+  const { aiType, setAIType, claudeModel, setClaudeModel, geminiModel, setGeminiModel } = useTerminalStore();
 
   useEffect(() => {
     if (saved) setDraft(saved);
@@ -176,6 +176,30 @@ export default function SettingsPage() {
                 {type === 'claude' ? 'Claude' : 'Gemini'}
               </button>
             ))}
+          </div>
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">모델</label>
+            {aiType === 'claude' ? (
+              <select
+                value={claudeModel}
+                onChange={(e) => setClaudeModel(e.target.value as ClaudeModel)}
+                className="w-full max-w-xs px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                {CLAUDE_MODELS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={geminiModel}
+                onChange={(e) => setGeminiModel(e.target.value as GeminiModel)}
+                className="w-full max-w-xs px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                {GEMINI_MODELS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
       </section>

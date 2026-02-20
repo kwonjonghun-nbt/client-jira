@@ -59,7 +59,11 @@ Jira 연결, 데이터 수집, 스케줄, AI, 앱 업데이트 설정을 관리�
 ### AI 에이전트
 
 - CLI 에이전트 선택 (Claude / Gemini)
-- `terminalStore`에 `aiType` 저장
+- 에이전트별 모델 선택 드롭다운
+  - Claude: Sonnet 4, Opus 4
+  - Gemini: 2.5 Pro, 2.5 Flash
+- `terminalStore`에 `aiType`, `claudeModel`, `geminiModel` 저장
+- 선택한 모델은 CLI 실행 시 `--model` 플래그로 전달
 
 ### 앱 업데이트
 
