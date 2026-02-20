@@ -12,33 +12,31 @@ export class CredentialsService {
     }
   }
 
-  async saveToken(token: string): Promise<void> {
+  // ─── Generic encrypted storage helpers ──────────────────────────────────────
+
+  private async saveEncrypted(filePath: string, value: string, label: string): Promise<void> {
     if (this.canUseSafeStorage) {
-      const encrypted = safeStorage.encryptString(token);
-      await fs.writeFile(getTokenPath(), encrypted);
-      logger.info('API token saved (encrypted via safeStorage)');
+      const encrypted = safeStorage.encryptString(value);
+      await fs.writeFile(filePath, encrypted);
+      logger.info(`${label} saved (encrypted via safeStorage)`);
     } else {
-      // Fallback: base64 encoding (not secure, but functional)
-      const encoded = Buffer.from(token, 'utf-8').toString('base64');
-      await fs.writeFile(getTokenPath(), encoded, 'utf-8');
-      logger.warn('API token saved (base64 fallback — safeStorage unavailable)');
+      const encoded = Buffer.from(value, 'utf-8').toString('base64');
+      await fs.writeFile(filePath, encoded, 'utf-8');
+      logger.warn(`${label} saved (base64 fallback — safeStorage unavailable)`);
     }
   }
 
-  async getToken(): Promise<string | null> {
+  private async readEncrypted(filePath: string): Promise<string | null> {
     try {
-      const data = await fs.readFile(getTokenPath());
-
+      const data = await fs.readFile(filePath);
       if (this.canUseSafeStorage) {
         try {
           return safeStorage.decryptString(Buffer.from(data));
         } catch {
-          // Might be base64 fallback data, try that
           const str = data.toString('utf-8');
           return Buffer.from(str, 'base64').toString('utf-8');
         }
       } else {
-        // Try base64 fallback
         const str = data.toString('utf-8');
         return Buffer.from(str, 'base64').toString('utf-8');
       }
@@ -47,13 +45,27 @@ export class CredentialsService {
     }
   }
 
-  async deleteToken(): Promise<void> {
+  private async deleteEncrypted(filePath: string, label: string): Promise<void> {
     try {
-      await fs.unlink(getTokenPath());
-      logger.info('API token deleted');
+      await fs.unlink(filePath);
+      logger.info(`${label} deleted`);
     } catch {
-      // Token doesn't exist, ignore
+      // File doesn't exist, ignore
     }
+  }
+
+  // ─── API Token ──────────────────────────────────────────────────────────────
+
+  async saveToken(token: string): Promise<void> {
+    return this.saveEncrypted(getTokenPath(), token, 'API token');
+  }
+
+  async getToken(): Promise<string | null> {
+    return this.readEncrypted(getTokenPath());
+  }
+
+  async deleteToken(): Promise<void> {
+    return this.deleteEncrypted(getTokenPath(), 'API token');
   }
 
   async hasToken(): Promise<boolean> {
@@ -65,123 +77,45 @@ export class CredentialsService {
     }
   }
 
+  // ─── Gmail OAuth Token ──────────────────────────────────────────────────────
+
   async saveGmailToken(token: string): Promise<void> {
-    if (this.canUseSafeStorage) {
-      const encrypted = safeStorage.encryptString(token);
-      await fs.writeFile(getGmailTokenPath(), encrypted);
-      logger.info('Gmail OAuth token saved (encrypted via safeStorage)');
-    } else {
-      const encoded = Buffer.from(token, 'utf-8').toString('base64');
-      await fs.writeFile(getGmailTokenPath(), encoded, 'utf-8');
-      logger.warn('Gmail OAuth token saved (base64 fallback — safeStorage unavailable)');
-    }
+    return this.saveEncrypted(getGmailTokenPath(), token, 'Gmail OAuth token');
   }
 
   async getGmailToken(): Promise<string | null> {
-    try {
-      const data = await fs.readFile(getGmailTokenPath());
-      if (this.canUseSafeStorage) {
-        try {
-          return safeStorage.decryptString(Buffer.from(data));
-        } catch {
-          const str = data.toString('utf-8');
-          return Buffer.from(str, 'base64').toString('utf-8');
-        }
-      } else {
-        const str = data.toString('utf-8');
-        return Buffer.from(str, 'base64').toString('utf-8');
-      }
-    } catch {
-      return null;
-    }
+    return this.readEncrypted(getGmailTokenPath());
   }
 
   async deleteGmailToken(): Promise<void> {
-    try {
-      await fs.unlink(getGmailTokenPath());
-      logger.info('Gmail OAuth token deleted');
-    } catch {
-      // Token doesn't exist, ignore
-    }
+    return this.deleteEncrypted(getGmailTokenPath(), 'Gmail OAuth token');
   }
 
+  // ─── Gmail Client Secret ────────────────────────────────────────────────────
+
   async saveGmailClientSecret(secret: string): Promise<void> {
-    if (this.canUseSafeStorage) {
-      const encrypted = safeStorage.encryptString(secret);
-      await fs.writeFile(getGmailClientSecretPath(), encrypted);
-      logger.info('Gmail client secret saved (encrypted via safeStorage)');
-    } else {
-      const encoded = Buffer.from(secret, 'utf-8').toString('base64');
-      await fs.writeFile(getGmailClientSecretPath(), encoded, 'utf-8');
-      logger.warn('Gmail client secret saved (base64 fallback — safeStorage unavailable)');
-    }
+    return this.saveEncrypted(getGmailClientSecretPath(), secret, 'Gmail client secret');
   }
 
   async getGmailClientSecret(): Promise<string | null> {
-    try {
-      const data = await fs.readFile(getGmailClientSecretPath());
-      if (this.canUseSafeStorage) {
-        try {
-          return safeStorage.decryptString(Buffer.from(data));
-        } catch {
-          const str = data.toString('utf-8');
-          return Buffer.from(str, 'base64').toString('utf-8');
-        }
-      } else {
-        const str = data.toString('utf-8');
-        return Buffer.from(str, 'base64').toString('utf-8');
-      }
-    } catch {
-      return null;
-    }
+    return this.readEncrypted(getGmailClientSecretPath());
   }
 
   async deleteGmailClientSecret(): Promise<void> {
-    try {
-      await fs.unlink(getGmailClientSecretPath());
-      logger.info('Gmail client secret deleted');
-    } catch {
-      // Secret doesn't exist, ignore
-    }
+    return this.deleteEncrypted(getGmailClientSecretPath(), 'Gmail client secret');
   }
 
+  // ─── Slack Bot Token ────────────────────────────────────────────────────────
+
   async saveSlackBotToken(token: string): Promise<void> {
-    if (this.canUseSafeStorage) {
-      const encrypted = safeStorage.encryptString(token);
-      await fs.writeFile(getSlackBotTokenPath(), encrypted);
-      logger.info('Slack bot token saved (encrypted via safeStorage)');
-    } else {
-      const encoded = Buffer.from(token, 'utf-8').toString('base64');
-      await fs.writeFile(getSlackBotTokenPath(), encoded, 'utf-8');
-      logger.warn('Slack bot token saved (base64 fallback — safeStorage unavailable)');
-    }
+    return this.saveEncrypted(getSlackBotTokenPath(), token, 'Slack bot token');
   }
 
   async getSlackBotToken(): Promise<string | null> {
-    try {
-      const data = await fs.readFile(getSlackBotTokenPath());
-      if (this.canUseSafeStorage) {
-        try {
-          return safeStorage.decryptString(Buffer.from(data));
-        } catch {
-          const str = data.toString('utf-8');
-          return Buffer.from(str, 'base64').toString('utf-8');
-        }
-      } else {
-        const str = data.toString('utf-8');
-        return Buffer.from(str, 'base64').toString('utf-8');
-      }
-    } catch {
-      return null;
-    }
+    return this.readEncrypted(getSlackBotTokenPath());
   }
 
   async deleteSlackBotToken(): Promise<void> {
-    try {
-      await fs.unlink(getSlackBotTokenPath());
-      logger.info('Slack bot token deleted');
-    } catch {
-      // Token doesn't exist, ignore
-    }
+    return this.deleteEncrypted(getSlackBotTokenPath(), 'Slack bot token');
   }
 }

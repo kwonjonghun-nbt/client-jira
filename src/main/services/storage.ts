@@ -10,6 +10,18 @@ import type { Settings } from '../schemas/settings.schema';
 import { migrateOKRRelations } from '../utils/okr-migration';
 
 export class StorageService {
+  private writeQueue = Promise.resolve();
+
+  /** Atomic write: write to temp file then rename. Serialized via queue to prevent concurrent writes. */
+  private async atomicWrite(filePath: string, content: string): Promise<void> {
+    this.writeQueue = this.writeQueue.then(async () => {
+      const tmpPath = filePath + `.tmp-${Date.now()}`;
+      await fs.writeFile(tmpPath, content, 'utf-8');
+      await fs.rename(tmpPath, filePath);
+    });
+    return this.writeQueue;
+  }
+
   async ensureDirectories(): Promise<void> {
     await fs.mkdir(getDataDir(), { recursive: true });
     await fs.mkdir(getRawDir(), { recursive: true });
@@ -36,8 +48,9 @@ export class StorageService {
       }
       logger.info(`[Settings] Loaded successfully: baseUrl=${result.data.jira.baseUrl}`);
       return result.data;
-    } catch (error: any) {
-      logger.warn(`[Settings] Load failed from ${settingsPath}:`, error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`[Settings] Load failed from ${settingsPath}:`, message);
       return DEFAULT_SETTINGS;
     }
   }
@@ -49,13 +62,14 @@ export class StorageService {
     if (!result.success) {
       throw new Error('Settings validation failed: ' + result.error.message);
     }
-    await fs.writeFile(settingsPath, JSON.stringify(result.data, null, 2), 'utf-8');
+    await this.atomicWrite(settingsPath, JSON.stringify(result.data, null, 2));
     // 저장 후 파일 존재 확인
     try {
       const stat = await fs.stat(settingsPath);
       logger.info(`[Settings] Saved successfully: ${stat.size} bytes at ${settingsPath}`);
-    } catch (e: any) {
-      logger.error(`[Settings] File not found after save: ${e.message}`);
+    } catch (e: unknown) {
+      const eMsg = e instanceof Error ? e.message : String(e);
+      logger.error(`[Settings] File not found after save: ${eMsg}`);
     }
   }
 
@@ -63,7 +77,7 @@ export class StorageService {
 
   async saveLatest(data: StoredData): Promise<void> {
     const validated = StoredDataSchema.parse(data);
-    await fs.writeFile(getLatestPath(), JSON.stringify(validated, null, 2), 'utf-8');
+    await this.atomicWrite(getLatestPath(), JSON.stringify(validated, null, 2));
     logger.info(`Latest data saved: ${validated.totalCount} issues`);
   }
 
@@ -102,7 +116,7 @@ export class StorageService {
 
   async saveMeta(meta: MetaData): Promise<void> {
     const validated = MetaDataSchema.parse(meta);
-    await fs.writeFile(getMetaPath(), JSON.stringify(validated, null, 2), 'utf-8');
+    await this.atomicWrite(getMetaPath(), JSON.stringify(validated, null, 2));
   }
 
   // --- Label Notes ---
@@ -118,7 +132,7 @@ export class StorageService {
 
   async saveLabelNotes(notes: unknown): Promise<void> {
     const validated = LabelNotesDataSchema.parse(notes);
-    await fs.writeFile(getLabelNotesPath(), JSON.stringify(validated, null, 2), 'utf-8');
+    await this.atomicWrite(getLabelNotesPath(), JSON.stringify(validated, null, 2));
     logger.info(`Label notes saved: ${validated.length} entries`);
   }
 
@@ -135,7 +149,7 @@ export class StorageService {
 
   async saveChangelog(data: ChangelogData): Promise<void> {
     const validated = ChangelogDataSchema.parse(data);
-    await fs.writeFile(getChangelogPath(), JSON.stringify(validated, null, 2), 'utf-8');
+    await this.atomicWrite(getChangelogPath(), JSON.stringify(validated, null, 2));
   }
 
   async appendChangelog(entries: ChangelogEntry[], syncedAt: string): Promise<void> {
@@ -160,7 +174,7 @@ export class StorageService {
 
   async saveOKR(data: unknown): Promise<void> {
     const validated = OKRDataSchema.parse(data);
-    await fs.writeFile(getOKRPath(), JSON.stringify(validated, null, 2), 'utf-8');
+    await this.atomicWrite(getOKRPath(), JSON.stringify(validated, null, 2));
     logger.info(`OKR data saved: ${validated.objectives.length} objectives`);
   }
 
@@ -212,7 +226,7 @@ export class StorageService {
     // 파일명에 사용할 수 없는 문자 치환
     const sanitized = filename.replace(/[/\\:*?"<>|]/g, '_');
     const safeName = sanitized.endsWith('.md') ? sanitized : `${sanitized}.md`;
-    await fs.writeFile(path.join(dir, safeName), content, 'utf-8');
+    await this.atomicWrite(path.join(dir, safeName), content);
     logger.info(`Report saved: ${safeName}`);
   }
 
@@ -237,8 +251,9 @@ export class StorageService {
           logger.info(`Cleaned up old data: ${entry}`);
         }
       }
-    } catch (error: any) {
-      logger.warn('Cleanup failed:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn('Cleanup failed:', message);
     }
   }
 }

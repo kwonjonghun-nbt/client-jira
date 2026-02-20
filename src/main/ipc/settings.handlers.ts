@@ -22,8 +22,9 @@ export function registerSettingsHandlers(services: AppServices): void {
         }
       }
       return result;
-    } catch (error: any) {
-      console.error('settings:load - error:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('settings:load - error:', message);
       return null;
     }
   });
@@ -54,8 +55,9 @@ export function registerSettingsHandlers(services: AppServices): void {
       await services.storage.saveSettings(settings);
       // Re-initialize Jira services with updated settings
       await reinitializeJiraServices(services);
-    } catch (error: any) {
-      console.error('settings:save - error:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('settings:save - error:', message);
       throw error;
     }
   });
@@ -66,8 +68,9 @@ export function registerSettingsHandlers(services: AppServices): void {
       await services.credentials.saveToken(token);
       // Re-initialize with new token
       await reinitializeJiraServices(services);
-    } catch (error: any) {
-      console.error('Failed to save token:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to save token:', message);
       throw error;
     }
   });
@@ -76,8 +79,9 @@ export function registerSettingsHandlers(services: AppServices): void {
     try {
       if (!services.credentials) return null;
       return await services.credentials.getToken();
-    } catch (error: any) {
-      console.error('Failed to get token:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get token:', message);
       return null;
     }
   });

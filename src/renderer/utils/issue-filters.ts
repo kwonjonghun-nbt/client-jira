@@ -1,4 +1,3 @@
-import { uniq } from 'es-toolkit';
 import type { NormalizedIssue } from '../types/jira.types';
 
 export interface Filters {
@@ -15,43 +14,45 @@ export interface FilterOptions {
 }
 
 /**
- * Apply filters to a list of issues.
+ * Apply filters to a list of issues. Single-pass combined predicate.
  * Pure function - no side effects.
  */
 export function applyFilters(issues: NormalizedIssue[], filters: Filters): NormalizedIssue[] {
-  let result = issues;
+  const hasProject = !!filters.project;
+  const hasStatuses = filters.statuses.length > 0;
+  const statusSet = hasStatuses ? new Set(filters.statuses) : null;
+  const hasAssignee = !!filters.assignee;
+  const hasSearch = !!filters.search;
+  const searchLower = hasSearch ? filters.search.toLowerCase() : '';
+  const projectPrefix = hasProject ? filters.project + '-' : '';
 
-  if (filters.project) {
-    result = result.filter((issue) => issue.key.startsWith(filters.project + '-'));
-  }
-
-  if (filters.statuses.length > 0) {
-    result = result.filter((issue) => filters.statuses.includes(issue.status));
-  }
-
-  if (filters.assignee) {
-    result = result.filter((issue) => issue.assignee === filters.assignee);
-  }
-
-  if (filters.search) {
-    const search = filters.search.toLowerCase();
-    result = result.filter(
-      (issue) =>
-        issue.key.toLowerCase().includes(search) ||
-        issue.summary.toLowerCase().includes(search),
-    );
-  }
-
-  return result;
+  return issues.filter((issue) => {
+    if (hasProject && !issue.key.startsWith(projectPrefix)) return false;
+    if (statusSet && !statusSet.has(issue.status)) return false;
+    if (hasAssignee && issue.assignee !== filters.assignee) return false;
+    if (hasSearch && !issue.key.toLowerCase().includes(searchLower) && !issue.summary.toLowerCase().includes(searchLower)) return false;
+    return true;
+  });
 }
 
 /**
- * Extract unique filter options from a list of issues.
+ * Extract unique filter options from a list of issues. Single-pass Set accumulation.
  * Pure function - no side effects.
  */
 export function extractFilterOptions(issues: NormalizedIssue[]): FilterOptions {
-  const projects = uniq(issues.map((i) => i.key.split('-')[0])).sort();
-  const statuses = uniq(issues.map((i) => i.status)).sort();
-  const assignees = uniq(issues.map((i) => i.assignee).filter((a): a is string => a != null)).sort();
-  return { projects, statuses, assignees };
+  const projectSet = new Set<string>();
+  const statusSet = new Set<string>();
+  const assigneeSet = new Set<string>();
+
+  for (const i of issues) {
+    projectSet.add(i.key.split('-')[0]);
+    statusSet.add(i.status);
+    if (i.assignee != null) assigneeSet.add(i.assignee);
+  }
+
+  return {
+    projects: [...projectSet].sort(),
+    statuses: [...statusSet].sort(),
+    assignees: [...assigneeSet].sort(),
+  };
 }

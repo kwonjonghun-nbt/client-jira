@@ -63,8 +63,9 @@ export class DMReminderScheduler {
       try {
         await this.slack.sendDM(botToken, user.slackUserId, message);
         sentCount++;
-      } catch (error: any) {
-        logger.warn(`Failed to send DM reminder to ${user.assignee} (${user.slackUserId}): ${error.message}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`Failed to send DM reminder to ${user.assignee} (${user.slackUserId}): ${message}`);
       }
     }
 
@@ -97,8 +98,9 @@ export class DMReminderScheduler {
       }
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
     }
   }
 }

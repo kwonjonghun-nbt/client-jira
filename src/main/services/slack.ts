@@ -35,8 +35,9 @@ export class SlackService {
     try {
       await this.send(webhookUrl, '🔔 Client Jira 슬랙 연동 테스트 메시지입니다.');
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
     }
   }
 
@@ -53,8 +54,9 @@ export class SlackService {
         return { success: false, error: data.error ?? 'Unknown error' };
       }
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
     }
   }
 
@@ -126,8 +128,9 @@ export class SlackService {
     try {
       await this.sendDM(botToken, userId, '🔔 Client Jira DM 연동 테스트 메시지입니다.');
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
     }
   }
 

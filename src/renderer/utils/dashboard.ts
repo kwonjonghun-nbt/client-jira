@@ -1,6 +1,5 @@
 import type { ChangelogEntry, NormalizedIssue } from '../types/jira.types';
 import { format, parseISO, startOfWeek, endOfWeek, compareAsc, compareDesc, differenceInCalendarDays } from 'date-fns';
-import { groupBy } from 'es-toolkit';
 import { normalizeType } from './issue';
 
 export const DATE_PRESETS = [
@@ -19,9 +18,9 @@ export const changeTypeConfig: Record<ChangelogEntry['changeType'], { label: str
   resolved: { label: '해결됨', color: 'bg-emerald-100 text-emerald-700' },
 };
 
-export function getWeekRange(): [Date, Date] {
-  const now = new Date();
-  return [startOfWeek(now, { weekStartsOn: 1 }), endOfWeek(now, { weekStartsOn: 1 })];
+export function getWeekRange(now?: Date): [Date, Date] {
+  const ref = now ?? new Date();
+  return [startOfWeek(ref, { weekStartsOn: 1 }), endOfWeek(ref, { weekStartsOn: 1 })];
 }
 
 export function formatDateISO(d: Date): string {
@@ -112,26 +111,55 @@ export function computeTodayFocus(issues: NormalizedIssue[], today?: Date, limit
     .slice(0, limit);
 }
 
-/** Compute all dashboard stats from filtered issues. Pure function. */
-export function computeDashboardStats(filteredIssues: NormalizedIssue[]): DashboardStats {
+/** Compute all dashboard stats from filtered issues. Pure function. Single-pass accumulation. */
+export function computeDashboardStats(filteredIssues: NormalizedIssue[], now?: Date): DashboardStats {
   const totalCount = filteredIssues.length;
-  const inProgressCount = filteredIssues.filter((i) => i.statusCategory === 'indeterminate').length;
-  const doneCount = filteredIssues.filter((i) => i.statusCategory === 'done').length;
-  const newCount = filteredIssues.filter((i) => i.statusCategory === 'new').length;
+  let inProgressCount = 0;
+  let doneCount = 0;
+  let newCount = 0;
 
-  const [weekStart, weekEnd] = getWeekRange();
-  const dueThisWeek = filteredIssues
-    .filter((i) => {
-      if (!i.dueDate) return false;
-      const due = new Date(i.dueDate);
-      return due >= weekStart && due <= weekEnd;
-    })
+  const [weekStart, weekEnd] = getWeekRange(now);
+  const weekStartMs = weekStart.getTime();
+  const weekEndMs = weekEnd.getTime();
+  const dueThisWeekRaw: NormalizedIssue[] = [];
+
+  const workloadMap = new Map<string, number>();
+  const typeMap = new Map<string, number>();
+
+  // Single pass: accumulate status counts, due-this-week, workload, type distribution
+  for (const issue of filteredIssues) {
+    // Status counts
+    switch (issue.statusCategory) {
+      case 'indeterminate': inProgressCount++; break;
+      case 'done': doneCount++; break;
+      case 'new': newCount++; break;
+    }
+
+    // Due this week
+    if (issue.dueDate) {
+      const dueMs = new Date(issue.dueDate).getTime();
+      if (dueMs >= weekStartMs && dueMs <= weekEndMs) {
+        dueThisWeekRaw.push(issue);
+      }
+    }
+
+    // Workload (exclude done)
+    if (issue.statusCategory !== 'done') {
+      const name = issue.assignee || '(미할당)';
+      workloadMap.set(name, (workloadMap.get(name) ?? 0) + 1);
+    }
+
+    // Type distribution
+    const type = normalizeType(issue.issueType);
+    typeMap.set(type, (typeMap.get(type) ?? 0) + 1);
+  }
+
+  const dueThisWeek = dueThisWeekRaw
     .sort((a, b) => compareAsc(parseISO(a.dueDate!), parseISO(b.dueDate!)))
     .slice(0, 10);
 
-  const grouped = groupBy(filteredIssues.filter((i) => i.statusCategory !== 'done'), (i) => i.assignee || '(미할당)');
-  const workload = Object.entries(grouped)
-    .map(([name, items]) => ({ name, count: items.length }))
+  const workload = [...workloadMap.entries()]
+    .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
   const maxWorkload = Math.max(...workload.map((w) => w.count), 1);
@@ -140,10 +168,9 @@ export function computeDashboardStats(filteredIssues: NormalizedIssue[]): Dashbo
     .sort((a, b) => compareDesc(parseISO(a.updated), parseISO(b.updated)))
     .slice(0, 8);
 
-  const typeGrouped = groupBy(filteredIssues, (i) => normalizeType(i.issueType));
-  const typeDistribution = Object.entries(typeGrouped).map(([type, items]) => ({ type, count: items.length }));
+  const typeDistribution = [...typeMap.entries()].map(([type, count]) => ({ type, count }));
 
-  const todayFocus = computeTodayFocus(filteredIssues);
+  const todayFocus = computeTodayFocus(filteredIssues, now);
 
   return {
     totalCount,

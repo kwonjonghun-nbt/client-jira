@@ -18,6 +18,9 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 export default function App() {
   const currentPage = useUIStore((s) => s.currentPage);
+  const selectedIssue = useUIStore((s) => s.selectedIssue);
+  const issueBaseUrl = useUIStore((s) => s.issueBaseUrl);
+  const closeIssueDetail = useUIStore((s) => s.closeIssueDetail);
   useAITaskListener();
 
   return (
@@ -33,7 +36,13 @@ export default function App() {
         {currentPage === 'settings' && <SettingsPage />}
       </Suspense>
       <SyncProgress />
-      <IssueDetailModal />
+      {selectedIssue && (
+        <IssueDetailModal
+          issue={selectedIssue}
+          baseUrl={issueBaseUrl}
+          onClose={closeIssueDetail}
+        />
+      )}
       <AITaskPanel />
       <AITaskDetailModal />
     </Layout>

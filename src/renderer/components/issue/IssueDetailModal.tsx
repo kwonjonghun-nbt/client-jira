@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { useCopyToClipboard } from 'usehooks-ts';
-import { useUIStore } from '../../store/uiStore';
 import { statusBadgeClass, getPriorityColor, buildIssueUrl } from '../../utils/issue';
 import { formatDateSafe } from '../../utils/formatters';
 import { buildPrompt, downloadIssueJson } from '../../utils/issue-prompts';
@@ -8,26 +7,29 @@ import { useIssueAnalysis } from '../../hooks/useIssueAnalysis';
 import { useStatusTransitions } from '../../hooks/useStatusTransitions';
 import StatusTransitionTimeline from './StatusTransitionTimeline';
 import MarkdownRenderer from '../common/MarkdownRenderer';
+import type { NormalizedIssue } from '../../types/jira.types';
 
-export default function IssueDetailModal() {
-  const issue = useUIStore((s) => s.selectedIssue);
-  const baseUrl = useUIStore((s) => s.issueBaseUrl);
-  const close = useUIStore((s) => s.closeIssueDetail);
+interface IssueDetailModalProps {
+  issue: NormalizedIssue;
+  baseUrl: string | null;
+  onClose: () => void;
+}
+
+export default function IssueDetailModal({ issue, baseUrl, onClose }: IssueDetailModalProps) {
   const [, copy] = useCopyToClipboard();
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { analyze, isAnalyzing } = useIssueAnalysis();
-  const { data: transitionAnalysis, isLoading: transitionsLoading } = useStatusTransitions(issue?.key ?? null, issue?.status ?? '');
+  const { data: transitionAnalysis, isLoading: transitionsLoading } = useStatusTransitions(issue.key, issue.status);
 
   useEffect(() => {
-    if (!issue) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [issue, close]);
+  }, [onClose]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -40,8 +42,6 @@ export default function IssueDetailModal() {
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpen]);
 
-  if (!issue) return null;
-
   const statusColor = statusBadgeClass(issue.statusCategory);
   const priorityColor = getPriorityColor(issue.priority);
   const issueUrl = buildIssueUrl(baseUrl, issue.key);
@@ -49,7 +49,7 @@ export default function IssueDetailModal() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={close}
+      onClick={onClose}
     >
       <div
         className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
@@ -73,7 +73,7 @@ export default function IssueDetailModal() {
           </div>
           <button
             type="button"
-            onClick={close}
+            onClick={onClose}
             className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 cursor-pointer bg-transparent border-none text-lg"
           >
             ×

@@ -8,16 +8,17 @@ export function formatDateTime(dateStr: string): string {
   return format(parseISO(dateStr), 'yyyy. MM. dd. HH:mm');
 }
 
-export function formatRelativeTime(dateStr: string): string {
+export function formatRelativeTime(dateStr: string, now?: Date): string {
   const date = parseISO(dateStr);
-  const minutes = differenceInMinutes(new Date(), date);
+  const ref = now ?? new Date();
+  const minutes = differenceInMinutes(ref, date);
   if (minutes < 1) return '방금 전';
   if (minutes < 60) return `${minutes}분 전`;
-  const hours = differenceInHours(new Date(), date);
+  const hours = differenceInHours(ref, date);
   if (hours < 24) return `${hours}시간 전`;
-  const days = differenceInDays(new Date(), date);
+  const days = differenceInDays(ref, date);
   if (days < 30) return `${days}일 전`;
-  return `${differenceInMonths(new Date(), date)}개월 전`;
+  return `${differenceInMonths(ref, date)}개월 전`;
 }
 
 export function formatDuration(ms: number): string {

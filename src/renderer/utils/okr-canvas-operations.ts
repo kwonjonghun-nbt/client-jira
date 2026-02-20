@@ -122,9 +122,15 @@ export function hitTestGroup(
   const centerX = canvasX + cardW / 2;
   const centerY = canvasY + cardH / 2;
 
+  // P3-15: depth를 사전 계산하여 정렬 시 반복 재귀 호출 제거
+  const depthMap = new Map<string, number>();
+  for (const g of groups) {
+    depthMap.set(g.id, getGroupDepth(g.id, groups));
+  }
+
   // Sort by depth descending (deepest first) for proper nesting priority
   const sorted = [...groups].sort(
-    (a, b) => getGroupDepth(b.id, groups) - getGroupDepth(a.id, groups),
+    (a, b) => (depthMap.get(b.id) ?? 0) - (depthMap.get(a.id) ?? 0),
   );
 
   for (const g of sorted) {

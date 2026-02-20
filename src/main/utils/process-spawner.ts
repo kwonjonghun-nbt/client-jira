@@ -27,7 +27,8 @@ const DEFAULT_ENV: Record<string, string> = {
 export function spawnAIProcess(options: SpawnOptions): SpawnedProcess {
   const { shellCmd, prompt, env } = options;
 
-  const child = spawn('/bin/zsh', ['-l', '-i', '-c', shellCmd], {
+  const shell = process.env.SHELL || '/bin/sh';
+  const child = spawn(shell, ['-l', '-c', shellCmd], {
     env: {
       ...process.env,
       ...DEFAULT_ENV,

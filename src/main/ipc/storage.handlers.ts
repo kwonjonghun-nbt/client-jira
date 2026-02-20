@@ -6,8 +6,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return null;
       return await services.storage.getLatest();
-    } catch (error: any) {
-      console.error('Failed to get latest data:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get latest data:', message);
       return null;
     }
   });
@@ -16,8 +17,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return [];
       return await services.storage.loadLabelNotes();
-    } catch (error: any) {
-      console.error('Failed to get label notes:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get label notes:', message);
       return [];
     }
   });
@@ -26,8 +28,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return;
       await services.storage.saveLabelNotes(data);
-    } catch (error: any) {
-      console.error('Failed to save label notes:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to save label notes:', message);
     }
   });
 
@@ -35,8 +38,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return [];
       return await services.storage.listReports();
-    } catch (error: any) {
-      console.error('Failed to list reports:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to list reports:', message);
       return [];
     }
   });
@@ -45,8 +49,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return null;
       return await services.storage.getReport(filename);
-    } catch (error: any) {
-      console.error('Failed to get report:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get report:', message);
       return null;
     }
   });
@@ -55,8 +60,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return;
       await services.storage.saveReport(filename, content);
-    } catch (error: any) {
-      console.error('Failed to save report:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to save report:', message);
     }
   });
 
@@ -64,8 +70,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return;
       await services.storage.deleteReport(filename);
-    } catch (error: any) {
-      console.error('Failed to delete report:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to delete report:', message);
     }
   });
 
@@ -75,8 +82,9 @@ export function registerStorageHandlers(services: AppServices): void {
         return { lastSync: null, syncHistory: [] };
       }
       return await services.storage.getMeta();
-    } catch (error: any) {
-      console.error('Failed to get meta:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get meta:', message);
       return { lastSync: null, syncHistory: [] };
     }
   });
@@ -85,8 +93,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return null;
       return await services.storage.getChangelog();
-    } catch (error: any) {
-      console.error('Failed to get changelog:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get changelog:', message);
       return null;
     }
   });
@@ -95,8 +104,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return null;
       return await services.storage.getOKR();
-    } catch (error: any) {
-      console.error('Failed to get OKR data:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get OKR data:', message);
       return null;
     }
   });
@@ -105,8 +115,9 @@ export function registerStorageHandlers(services: AppServices): void {
     try {
       if (!services.storage) return;
       await services.storage.saveOKR(data);
-    } catch (error: any) {
-      console.error('Failed to save OKR data:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to save OKR data:', message);
     }
   });
 }

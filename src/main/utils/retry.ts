@@ -16,12 +16,12 @@ export async function retry<T>(
   maxRetries = 3,
   baseDelay = 1000,
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: unknown;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
 
       // 4xx (429 제외)는 즉시 throw — 재시도 무의미
@@ -31,11 +31,15 @@ export async function retry<T>(
 
       if (attempt < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, attempt);
-        logger.warn(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms:`, error.message, error.response?.data ? JSON.stringify(error.response.data) : '');
+        const message = error instanceof Error ? error.message : String(error);
+        const responseData = (error instanceof Error && 'response' in error)
+          ? (error as { response?: { data?: unknown } }).response?.data
+          : undefined;
+        logger.warn(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms:`, message, responseData ? JSON.stringify(responseData) : '');
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
 
-  throw lastError!;
+  throw lastError;
 }

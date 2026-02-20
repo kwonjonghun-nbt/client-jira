@@ -69,8 +69,9 @@ export default function DMReminderConfig({
     try {
       const result = await window.electronAPI.slack.testDM(botToken, userId);
       setDmTestResult((prev) => ({ ...prev, [userId]: result }));
-    } catch (error: any) {
-      setDmTestResult((prev) => ({ ...prev, [userId]: { success: false, error: error.message } }));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDmTestResult((prev) => ({ ...prev, [userId]: { success: false, error: message } }));
     } finally {
       setTestingDM(null);
     }
@@ -82,8 +83,9 @@ export default function DMReminderConfig({
     try {
       const result = await window.electronAPI.slack.triggerDMReminder();
       setTriggerResult(result);
-    } catch (error: any) {
-      setTriggerResult({ success: false, error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setTriggerResult({ success: false, error: message });
     } finally {
       setTriggering(false);
     }

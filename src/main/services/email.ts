@@ -71,9 +71,10 @@ export class EmailService {
 
       logger.info(`Gmail OAuth connected: ${email}`);
       return { success: true, email };
-    } catch (error: any) {
-      logger.warn(`Gmail OAuth failed: ${error.message}`);
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`Gmail OAuth failed: ${message}`);
+      return { success: false, error: message };
     } finally {
       if (server) {
         (server as http.Server).close();
@@ -132,11 +133,12 @@ export class EmailService {
 
       logger.info(`Report email sent via Gmail API to ${params.to.join(', ')}`);
       return { success: true };
-    } catch (error: any) {
-      const message = error.message || '이메일 전송에 실패했습니다.';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? (error.message || '이메일 전송에 실패했습니다.') : '이메일 전송에 실패했습니다.';
       logger.warn(`Gmail API send failed: ${message}`);
 
-      if (error.code === 401 || error.code === 403) {
+      const errCode = (error instanceof Error && 'code' in error) ? (error as { code?: number }).code : undefined;
+      if (errCode === 401 || errCode === 403) {
         return { success: false, error: '인증이 만료되었습니다. 설정에서 Google 계정을 다시 연결해주세요.' };
       }
       return { success: false, error: message };

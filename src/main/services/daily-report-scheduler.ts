@@ -16,6 +16,7 @@ import {
 import { showTaskNotification } from '../utils/notification';
 import { logger } from '../utils/logger';
 import { spawnAIProcess } from '../utils/process-spawner';
+import type { AIAgent } from './agents/types';
 import { claudeAgent } from './agents/claude';
 
 export class DailyReportScheduler {
@@ -24,11 +25,13 @@ export class DailyReportScheduler {
   private slack: SlackService;
   private mainWindow: BrowserWindow | null;
   private running = false;
+  private agent: AIAgent;
 
-  constructor(storage: StorageService, slack: SlackService, mainWindow: BrowserWindow | null) {
+  constructor(storage: StorageService, slack: SlackService, mainWindow: BrowserWindow | null, agent: AIAgent = claudeAgent) {
     this.storage = storage;
     this.slack = slack;
     this.mainWindow = mainWindow;
+    this.agent = agent;
   }
 
   start(settings: SlackSettings): void {
@@ -109,8 +112,9 @@ export class DailyReportScheduler {
           } else {
             logger.warn(`Thread target message not found for search text: "${slackSettings.threadSearchText}"`);
           }
-        } catch (error: any) {
-          logger.warn(`Failed to find thread target: ${error.message}`);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          logger.warn(`Failed to find thread target: ${message}`);
         }
       }
 
@@ -137,8 +141,9 @@ export class DailyReportScheduler {
               sentCount++;
               logger.info(`Structured report sent for ${assignee}`);
             }
-          } catch (error: any) {
-            logger.warn(`Failed to send structured report for ${assignee}: ${error.message}`);
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            logger.warn(`Failed to send structured report for ${assignee}: ${message}`);
           }
         }
 
@@ -157,8 +162,9 @@ export class DailyReportScheduler {
 
         const assigneeGroups = groupByAssignee(todayIssues);
 
-        for (const [assignee, issues] of assigneeGroups) {
-          try {
+        // P3-21: 담당자별 AI 호출 병렬화
+        const results = await Promise.allSettled(
+          [...assigneeGroups].map(async ([assignee, issues]) => {
             const prompt = buildDailyReportPrompt(assignee, dateStr);
             const issueData = buildIssueDataForPrompt(issues);
             const fullPrompt = `${prompt}\n\n## 이슈 데이터 (JSON)\n\n${issueData}`;
@@ -175,11 +181,18 @@ export class DailyReportScheduler {
               const filename = `daily-${dateStr}-${assignee}`;
               await this.storage.saveReport(filename, reportMarkdown);
 
-              sentCount++;
               logger.info(`Daily report sent for ${assignee}`);
+              return true;
             }
-          } catch (error: any) {
-            logger.warn(`Failed to generate/send report for ${assignee}: ${error.message}`);
+            return false;
+          }),
+        );
+
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value) sentCount++;
+          if (r.status === 'rejected') {
+            const message = r.reason instanceof Error ? r.reason.message : String(r.reason);
+            logger.warn(`Failed to generate/send report: ${message}`);
           }
         }
       }
@@ -191,13 +204,14 @@ export class DailyReportScheduler {
 
       logger.info(`Daily reports completed: ${sentCount} sent`);
       return { success: true };
-    } catch (error: any) {
-      logger.warn(`Daily report generation failed: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`Daily report generation failed: ${message}`);
       showTaskNotification({
         title: '일일 공유 리포트',
         status: 'error',
       });
-      return { success: false, error: error.message };
+      return { success: false, error: message };
     } finally {
       this.running = false;
     }
@@ -206,7 +220,7 @@ export class DailyReportScheduler {
   /** AI CLI 실행 후 stdout 전체를 반환 */
   private runAI(prompt: string, timeoutMs = 120_000): Promise<string> {
     return new Promise((resolve, reject) => {
-      const { shellCmd } = claudeAgent.buildCommand({});
+      const { shellCmd } = this.agent.buildCommand({});
       const { child } = spawnAIProcess({ shellCmd, prompt });
 
       const chunks: string[] = [];

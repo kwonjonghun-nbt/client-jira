@@ -89,10 +89,12 @@ function isInReviewOrQA(status: string): boolean {
  */
 export function categorizeDailyIssues(
   issues: NormalizedIssue[],
-  assignee: string
+  assignee: string,
+  now?: Date,
 ): DailyShareCategories {
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  const ref = now ?? new Date();
+  const today = format(ref, 'yyyy-MM-dd');
+  const tomorrow = format(addDays(ref, 1), 'yyyy-MM-dd');
 
   const assignedIssues = assignee === '전체'
     ? issues
@@ -144,9 +146,10 @@ export function categorizeDailyIssues(
  */
 export function buildDailySharePrompt(
   assignee: string,
-  categories: DailyShareCategories
+  categories: DailyShareCategories,
+  now?: Date,
 ): string {
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = format(now ?? new Date(), 'yyyy-MM-dd');
 
   const formatIssues = (issues: NormalizedIssue[]) =>
     issues.map((issue) => ({
@@ -194,9 +197,10 @@ ${JSON.stringify(formatIssues(categories.atRisk), null, 2)}
  */
 export function buildDailyShareMarkdown(
   assignee: string,
-  categories: DailyShareCategories
+  categories: DailyShareCategories,
+  now?: Date,
 ): string {
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = format(now ?? new Date(), 'yyyy-MM-dd');
   const target = assignee === '전체' ? '전체 팀원' : assignee;
   const lines: string[] = [];
 
@@ -317,9 +321,10 @@ export function buildMultiAssigneeDailyShareMarkdown(
 export function buildDailyShareSlides(
   assignee: string,
   categories: DailyShareCategories,
+  now?: Date,
 ): DailyShareSlide[] {
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const todayDate = new Date();
+  const todayDate = now ?? new Date();
+  const today = format(todayDate, 'yyyy-MM-dd');
   const target = assignee === '전체' ? '전체 팀원' : assignee;
 
   const counts = {

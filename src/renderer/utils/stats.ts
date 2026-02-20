@@ -60,13 +60,14 @@ export function computeLabelStats(
 }
 
 /** Match current date range to a preset. Returns matching days value or null. Pure function. */
-export function matchPresetDays(startDate: string, endDate: string): number | null {
-  const today = format(new Date(), 'yyyy-MM-dd');
+export function matchPresetDays(startDate: string, endDate: string, now?: Date): number | null {
+  const ref = now ?? new Date();
+  const today = format(ref, 'yyyy-MM-dd');
   for (const preset of DATE_PRESETS) {
     if (preset.days === 0) {
       if (!startDate && !endDate) return 0;
     } else {
-      const expectedStart = format(subDays(new Date(), preset.days), 'yyyy-MM-dd');
+      const expectedStart = format(subDays(ref, preset.days), 'yyyy-MM-dd');
       if (startDate === expectedStart && endDate === today) return preset.days;
     }
   }

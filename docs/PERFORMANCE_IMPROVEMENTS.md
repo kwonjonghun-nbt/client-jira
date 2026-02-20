@@ -160,7 +160,7 @@
   - 해결: `useTimelineFilters(issues)` + `useTimelineViewport()`로 분리
   - 영향: 관심사 분리
 
-- [ ] **Q3-4. `aiTaskStore` 비즈니스 로직 추출**
+- [x] **Q3-4. `aiTaskStore` 비즈니스 로직 추출**
   - 파일: `src/renderer/store/aiTaskStore.ts:84-148`
   - 문제: 멀티잡 완료 판정, 결과 머지 로직이 스토어에 존재. 아키텍처 규칙("스토어는 상태 저장/구독만") 위반
   - 해결: `utils/ai-tasks.ts`에 `resolveTaskStatus()` 순수 함수로 추출
@@ -200,7 +200,7 @@
   - 해결: 사이드이펙트 함수는 서비스/훅으로 이동, 순수 변환 로직만 utils에 유지
   - 영향: 비즈니스 로직 레이어 순수성 보장
 
-- [ ] **Q3-10. `new Date()` 내부 호출로 인한 불순 함수 수정**
+- [x] **Q3-10. `new Date()` 내부 호출로 인한 불순 함수 수정**
   - 파일: `src/renderer/utils/daily-share.ts`, `src/renderer/utils/formatters.ts`, `src/renderer/utils/dashboard.ts`, `src/renderer/utils/stats.ts`
   - 문제: 같은 입력에 다른 결과를 반환하여 테스트 신뢰도 저하
   - 해결: `now?: Date` 파라미터로 주입 가능하게 변경 (기본값 `new Date()`)
@@ -222,7 +222,7 @@
 
 ### 결합도
 
-- [ ] **Q3-13. `DailyReportScheduler`의 `claudeAgent` 하드코딩 제거**
+- [x] **Q3-13. `DailyReportScheduler`의 `claudeAgent` 하드코딩 제거**
   - 파일: `src/main/services/daily-report-scheduler.ts:196-199`
   - 문제: 사용자가 Gemini를 설정해도 데일리 리포트는 항상 Claude로 생성
   - 해결: 생성자에 `AIAgent` 주입 또는 사용자 설정 참조
@@ -238,19 +238,19 @@
 
 ### 알고리즘 최적화
 
-- [ ] **P3-15. OKR O(n²) 패턴 → Map/Set 사전 구축**
+- [x] **P3-15. OKR O(n²) 패턴 → Map/Set 사전 구축**
   - 파일: `src/renderer/utils/okr.ts:88`, `src/renderer/utils/okr-canvas-operations.ts:126`
   - 문제: `buildOKRExportData` O(O×KR×L) 중첩 filter/find, `hitTestGroup` O(n² log n)
   - 해결: 루프 전에 Map/Set 사전 구축 → O(1) 조회
   - 영향: 캔버스 데이터 처리 5-10x 개선
 
-- [ ] **P3-16. `computeDashboardStats` 단일 패스 통합**
+- [x] **P3-16. `computeDashboardStats` 단일 패스 통합**
   - 파일: `src/renderer/utils/dashboard.ts:116-159`
   - 문제: 9회 배열 순회 + 9개 중간 배열 할당
   - 해결: 단일 패스 누적기 + Schwartzian transform
   - 영향: 배열 순회 9→1회
 
-- [ ] **P3-17. `applyFilters`/`extractFilterOptions` 단일 패스 + Set**
+- [x] **P3-17. `applyFilters`/`extractFilterOptions` 단일 패스 + Set**
   - 파일: `src/renderer/utils/issue-filters.ts:21-57`
   - 문제: 4회 체인 filter + `includes()` 사용
   - 해결: 단일 패스 combined predicate + Set 기반 조회
@@ -264,7 +264,7 @@
   - 해결: `queryClient.setQueryData`로 즉시 UI 업데이트 + debounced save (500ms). refetch 제거
   - 영향: 캔버스 조작 반응성 대폭 개선
 
-- [ ] **Q3-19. AI 청크 스트리밍 상태 갱신 버퍼링**
+- [x] **Q3-19. AI 청크 스트리밍 상태 갱신 버퍼링**
   - 파일: `src/renderer/store/aiTaskStore.ts:65-82`
   - 문제: 매 청크마다 Zustand 상태 갱신 → 초당 수백 리렌더
   - 해결: requestAnimationFrame 버퍼링 또는 ref 사용, Zustand는 done/error 시만 갱신
@@ -272,19 +272,19 @@
 
 ### Electron 최적화
 
-- [ ] **Q3-20. AI 프로세스 스폰 방식 개선**
+- [x] **Q3-20. AI 프로세스 스폰 방식 개선**
   - 파일: `src/main/utils/process-spawner.ts:30`
   - 문제: (1) `-l -i` 인터랙티브 로그인 셸로 `.zshrc` 전체 로딩 (500ms-2s 오버헤드). (2) 셸 커맨드 문자열 연결 → 잠재적 커맨드 인젝션. (3) `/bin/zsh` 하드코딩 → macOS 종속
   - 해결: `-i` 제거, spawn 인자 배열로 변경, `process.env.SHELL || '/bin/sh'` 사용
   - 영향: AI 실행당 500ms-2s 절약 + 보안 강화 + 크로스플랫폼
 
-- [ ] **P3-21. 데일리 리포트 AI 호출 병렬화**
+- [x] **P3-21. 데일리 리포트 AI 호출 병렬화**
   - 파일: `src/main/services/daily-report-scheduler.ts:149-173`
   - 문제: N명 담당자에 대해 순차 `await` → 최대 N × 120초
   - 해결: `Promise.allSettled`로 병렬 실행
   - 영향: 리포트 생성 시간 N배 → 1배
 
-- [ ] **Q3-22. 동시 파일 쓰기 보호 추가**
+- [x] **Q3-22. 동시 파일 쓰기 보호 추가**
   - 파일: `src/main/services/storage.ts`
   - 문제: 싱크 중 설정 저장이 일어나면 JSON 파일 손상 가능
   - 해결: atomic write (temp→rename) + 설정 파일 쓰기 큐
@@ -292,7 +292,7 @@
 
 ### 기타 코드 품질
 
-- [ ] **Q3-23. `catch (error: any)` → `error: unknown` + narrowing**
+- [x] **Q3-23. `catch (error: any)` → `error: unknown` + narrowing**
   - 파일: 서비스 레이어 전반 (40+ 곳)
   - 해결: `unknown` + `instanceof Error` narrowing
   - 영향: 에러 처리 타입 안전성
@@ -302,13 +302,13 @@
   - 해결: `ObjectiveCard`, `KRCard` 컴포넌트 추출
   - 영향: 페이지가 조합 지점 역할에 충실
 
-- [ ] **Q3-25. `IssueDetailModal` props 기반으로 전환**
+- [x] **Q3-25. `IssueDetailModal` props 기반으로 전환**
   - 파일: `src/renderer/components/issue/IssueDetailModal.tsx:12-16`
   - 문제: props 0개, 전역 스토어에서 직접 구독 → 단독 테스트 불가
   - 해결: `issue`, `baseUrl`, `onClose`를 props로 받기
   - 영향: 컴포넌트 순수성, 테스트 가능성
 
-- [ ] **Q3-26. `CredentialsService` save/get 중복 로직 통합**
+- [x] **Q3-26. `CredentialsService` save/get 중복 로직 통합**
   - 파일: `src/main/services/credentials.ts:15-106`
   - 문제: `saveToken`/`getToken`과 `saveGmailToken`/`getGmailToken`이 파일 경로만 다른 동일 로직
   - 해결: `saveEncrypted(path, value)`, `readEncrypted(path)` private 헬퍼 추출

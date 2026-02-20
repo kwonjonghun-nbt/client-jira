@@ -41,6 +41,30 @@ export function buildOKRExportData(
 ): Record<string, unknown> {
   const vtMap = new Map(okr.virtualTickets.map((vt) => [vt.id, vt]));
 
+  // P3-15: O(1) 조회를 위한 Map 사전 구축
+  const groupMap = new Map(okr.groups.map((g) => [g.id, g]));
+
+  const krsByObjective = new Map<string, typeof okr.keyResults>();
+  for (const kr of okr.keyResults) {
+    const list = krsByObjective.get(kr.objectiveId) ?? [];
+    list.push(kr);
+    krsByObjective.set(kr.objectiveId, list);
+  }
+
+  const linksByKR = new Map<string, typeof okr.links>();
+  for (const l of okr.links) {
+    const list = linksByKR.get(l.keyResultId) ?? [];
+    list.push(l);
+    linksByKR.set(l.keyResultId, list);
+  }
+
+  const groupsByKR = new Map<string, typeof okr.groups>();
+  for (const g of okr.groups) {
+    const list = groupsByKR.get(g.keyResultId) ?? [];
+    list.push(g);
+    groupsByKR.set(g.keyResultId, list);
+  }
+
   const enrichLink = (link: OKRLink) => {
     const base: Record<string, unknown> = {
       id: link.id,
@@ -48,7 +72,7 @@ export function buildOKRExportData(
       order: link.order,
     };
     if (link.groupId) {
-      const group = okr.groups.find((g) => g.id === link.groupId);
+      const group = groupMap.get(link.groupId);
       base.group = group ? { id: group.id, title: group.title } : link.groupId;
     }
     if (link.type === 'jira' && link.issueKey) {
@@ -90,15 +114,13 @@ export function buildOKRExportData(
       id: obj.id,
       title: obj.title,
       description: obj.description ?? null,
-      keyResults: okr.keyResults
-        .filter((kr) => kr.objectiveId === obj.id)
-        .map((kr) => ({
-          id: kr.id,
-          title: kr.title,
-          description: kr.description ?? null,
-          links: okr.links.filter((l) => l.keyResultId === kr.id).map(enrichLink),
-          groups: okr.groups.filter((g) => g.keyResultId === kr.id).map(enrichGroup),
-        })),
+      keyResults: (krsByObjective.get(obj.id) ?? []).map((kr) => ({
+        id: kr.id,
+        title: kr.title,
+        description: kr.description ?? null,
+        links: (linksByKR.get(kr.id) ?? []).map(enrichLink),
+        groups: (groupsByKR.get(kr.id) ?? []).map(enrichGroup),
+      })),
     })),
     relations: okr.relations,
   };

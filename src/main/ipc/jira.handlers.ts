@@ -7,8 +7,9 @@ export function registerJiraHandlers(services: AppServices): void {
       const { JiraClient } = await import('../services/jira-client');
       const client = new JiraClient(params.url, params.email, params.token);
       return await client.testConnection();
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
     }
   });
 
@@ -18,8 +19,9 @@ export function registerJiraHandlers(services: AppServices): void {
         return [];
       }
       return await services.jiraClient.getProjects();
-    } catch (error: any) {
-      console.error('Failed to get projects:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get projects:', message);
       return [];
     }
   });
@@ -30,8 +32,9 @@ export function registerJiraHandlers(services: AppServices): void {
         return [];
       }
       return await services.jiraClient.fetchIssueChangelog(issueKey);
-    } catch (error: any) {
-      console.error('Failed to get issue changelog:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get issue changelog:', message);
       return [];
     }
   });

@@ -13,8 +13,9 @@ export function registerSyncHandlers(services: AppServices): void {
         return { success: false, issueCount: 0, duration: 0, error: 'Jira 설정을 먼저 완료해주세요' };
       }
       return await services.sync.performSync('manual', services.mainWindow);
-    } catch (error: any) {
-      return { success: false, issueCount: 0, duration: 0, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, issueCount: 0, duration: 0, error: message };
     }
   });
 
@@ -24,8 +25,9 @@ export function registerSyncHandlers(services: AppServices): void {
         return { isRunning: false, lastSync: null, lastResult: null };
       }
       return services.sync.getStatus();
-    } catch (error: any) {
-      console.error('Failed to get sync status:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to get sync status:', message);
       return { isRunning: false, lastSync: null, lastResult: null };
     }
   });

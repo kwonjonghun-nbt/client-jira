@@ -50,8 +50,9 @@ export default function SlackConfig({
     try {
       const result = await window.electronAPI.slack.testWebhook(webhookUrl);
       setTestResult(result);
-    } catch (error: any) {
-      setTestResult({ success: false, error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setTestResult({ success: false, error: message });
     } finally {
       setTesting(false);
     }
@@ -63,8 +64,9 @@ export default function SlackConfig({
     try {
       const result = await window.electronAPI.slack.triggerDailyReport();
       setTriggerResult(result);
-    } catch (error: any) {
-      setTriggerResult({ success: false, error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setTriggerResult({ success: false, error: message });
     } finally {
       setTriggering(false);
     }
@@ -77,8 +79,9 @@ export default function SlackConfig({
     try {
       const result = await window.electronAPI.slack.testBotToken(botToken, channelId);
       setBotTestResult(result);
-    } catch (error: any) {
-      setBotTestResult({ success: false, error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setBotTestResult({ success: false, error: message });
     } finally {
       setTestingBot(false);
     }
@@ -91,8 +94,9 @@ export default function SlackConfig({
     try {
       const result = await window.electronAPI.slack.findThreadMessage(botToken, channelId, threadSearchText);
       setSearchResult(result);
-    } catch (error: any) {
-      setSearchResult({ success: false, error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setSearchResult({ success: false, error: message });
     } finally {
       setSearching(false);
     }

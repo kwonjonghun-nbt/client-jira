@@ -25,8 +25,9 @@ export function registerSlackHandlers(services: AppServices): void {
       const found = await services.slack.findTodayMessage(botToken, channelId, searchText);
       if (!found) return { success: true, found: false };
       return { success: true, found: true, text: found.text };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: message };
     }
   });
 

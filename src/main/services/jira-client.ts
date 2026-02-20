@@ -38,11 +38,13 @@ export class JiraClient {
         success: true,
         displayName: response.data.displayName,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errObj = error instanceof Error ? error : null;
+      const resp = (errObj && 'response' in errObj) ? (errObj as { response?: { data?: { errorMessages?: string[]; message?: string } } }).response : undefined;
       const message =
-        error.response?.data?.errorMessages?.[0] ||
-        error.response?.data?.message ||
-        error.message;
+        resp?.data?.errorMessages?.[0] ||
+        resp?.data?.message ||
+        (errObj?.message ?? String(error));
       return { success: false, error: message };
     }
   }

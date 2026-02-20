@@ -111,9 +111,10 @@ export class SyncService {
       mainWindow?.webContents.send('sync:complete');
 
       return { success: true, issueCount: issues.length, duration };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const duration = Date.now() - startTime;
-      logger.error(`Sync failed:`, error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`Sync failed:`, message);
 
       const meta = await this.storage.getMeta();
       const historyEntry: SyncHistoryEntry = {
@@ -122,7 +123,7 @@ export class SyncService {
         issueCount: 0,
         duration,
         success: false,
-        error: error.message,
+        error: message,
       };
       meta.syncHistory.unshift(historyEntry);
       meta.syncHistory = meta.syncHistory.slice(0, 100);
@@ -130,7 +131,7 @@ export class SyncService {
 
       this.lastResult = historyEntry;
 
-      return { success: false, issueCount: 0, duration, error: error.message };
+      return { success: false, issueCount: 0, duration, error: message };
     } finally {
       this.isRunning = false;
     }

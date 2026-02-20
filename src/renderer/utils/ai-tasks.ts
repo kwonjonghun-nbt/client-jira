@@ -69,3 +69,65 @@ export function formatElapsedTime(createdAt: number): string {
   const hours = Math.floor(minutes / 60);
   return `${hours}시간 전 시작`;
 }
+
+/** Resolve a single job completion for a task. Pure function. */
+export function resolveJobDone(task: AITask, jobId: string): AITask {
+  if (!task.jobIds.includes(jobId)) return task;
+
+  // Multi-job task
+  if (task.subJobs && task.subJobs[jobId]) {
+    const updatedSubJobs = {
+      ...task.subJobs,
+      [jobId]: { ...task.subJobs[jobId], status: 'done' as AITaskStatus },
+    };
+    const allDone = Object.values(updatedSubJobs).every(
+      (j) => j.status === 'done' || j.status === 'error',
+    );
+    if (allDone) {
+      return {
+        ...task,
+        subJobs: updatedSubJobs,
+        status: 'done' as AITaskStatus,
+        result: mergeSubJobResults(updatedSubJobs),
+      };
+    }
+    return { ...task, subJobs: updatedSubJobs };
+  }
+
+  // Single-job task
+  return { ...task, status: 'done' as AITaskStatus };
+}
+
+/** Resolve a single job error for a task. Pure function. */
+export function resolveJobError(task: AITask, jobId: string, message: string): AITask {
+  if (!task.jobIds.includes(jobId)) return task;
+
+  // Multi-job task
+  if (task.subJobs && task.subJobs[jobId]) {
+    const updatedSubJobs = {
+      ...task.subJobs,
+      [jobId]: { ...task.subJobs[jobId], status: 'error' as AITaskStatus },
+    };
+    const allDone = Object.values(updatedSubJobs).every(
+      (j) => j.status === 'done' || j.status === 'error',
+    );
+    if (allDone) {
+      const finalStatus: 'done' | 'error' = Object.values(updatedSubJobs).some(
+        (j) => j.status === 'done',
+      )
+        ? 'done'
+        : 'error';
+      return {
+        ...task,
+        subJobs: updatedSubJobs,
+        status: finalStatus,
+        result: mergeSubJobResults(updatedSubJobs),
+        error: message,
+      };
+    }
+    return { ...task, subJobs: updatedSubJobs };
+  }
+
+  // Single-job task
+  return { ...task, status: 'error' as AITaskStatus, error: message };
+}

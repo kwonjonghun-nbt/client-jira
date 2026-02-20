@@ -1,9 +1,46 @@
 import { create } from 'zustand';
 
-import type { AITask, AITaskStatus } from '../utils/ai-tasks';
-import { mergeSubJobResults } from '../utils/ai-tasks';
+import type { AITask } from '../utils/ai-tasks';
+import { resolveJobDone, resolveJobError } from '../utils/ai-tasks';
 
 const MAX_TASKS = 20;
+
+// Q3-19: rAF buffering for chunk appends — reduces Zustand updates from per-chunk to per-frame
+const chunkBuffer = new Map<string, string>();
+let rafScheduled = false;
+
+function flushChunkBuffer(set: (fn: (state: AITaskState) => Partial<AITaskState>) => void) {
+  if (chunkBuffer.size === 0) return;
+  const buffered = new Map(chunkBuffer);
+  chunkBuffer.clear();
+  rafScheduled = false;
+
+  set((state) => ({
+    tasks: state.tasks.map((task) => {
+      let modified = false;
+      let updatedTask = task;
+
+      for (const [jobId, text] of buffered) {
+        if (!task.jobIds.includes(jobId)) continue;
+        modified = true;
+
+        if (updatedTask.subJobs && updatedTask.subJobs[jobId]) {
+          updatedTask = {
+            ...updatedTask,
+            subJobs: {
+              ...updatedTask.subJobs,
+              [jobId]: { ...updatedTask.subJobs[jobId], result: updatedTask.subJobs[jobId].result + text },
+            },
+          };
+        } else {
+          updatedTask = { ...updatedTask, result: updatedTask.result + text };
+        }
+      }
+
+      return modified ? updatedTask : task;
+    }),
+  }));
+}
 
 interface PendingCanvasApply {
   krId: string;
@@ -62,89 +99,22 @@ export const useAITaskStore = create<AITaskState>((set) => ({
   clearCompleted: () =>
     set((state) => ({ tasks: state.tasks.filter((t) => t.status === 'running') })),
 
-  appendChunk: (jobId, text) =>
-    set((state) => ({
-      tasks: state.tasks.map((task) => {
-        if (!task.jobIds.includes(jobId)) return task;
-        // Multi-job: append to subJob
-        if (task.subJobs && task.subJobs[jobId]) {
-          return {
-            ...task,
-            subJobs: {
-              ...task.subJobs,
-              [jobId]: { ...task.subJobs[jobId], result: task.subJobs[jobId].result + text },
-            },
-          };
-        }
-        // Single-job: append to result
-        return { ...task, result: task.result + text };
-      }),
-    })),
+  appendChunk: (jobId, text) => {
+    chunkBuffer.set(jobId, (chunkBuffer.get(jobId) ?? '') + text);
+    if (!rafScheduled) {
+      rafScheduled = true;
+      requestAnimationFrame(() => flushChunkBuffer(set));
+    }
+  },
 
   markJobDone: (jobId) =>
     set((state) => ({
-      tasks: state.tasks.map((task) => {
-        if (!task.jobIds.includes(jobId)) return task;
-
-        // Multi-job task
-        if (task.subJobs && task.subJobs[jobId]) {
-          const updatedSubJobs = {
-            ...task.subJobs,
-            [jobId]: { ...task.subJobs[jobId], status: 'done' as AITaskStatus },
-          };
-          const allDone = Object.values(updatedSubJobs).every(
-            (j) => j.status === 'done' || j.status === 'error',
-          );
-          if (allDone) {
-            return {
-              ...task,
-              subJobs: updatedSubJobs,
-              status: 'done' as AITaskStatus,
-              result: mergeSubJobResults(updatedSubJobs),
-            };
-          }
-          return { ...task, subJobs: updatedSubJobs };
-        }
-
-        // Single-job task
-        return { ...task, status: 'done' as AITaskStatus };
-      }),
+      tasks: state.tasks.map((task) => resolveJobDone(task, jobId)),
     })),
 
   markJobError: (jobId, message) =>
     set((state) => ({
-      tasks: state.tasks.map((task) => {
-        if (!task.jobIds.includes(jobId)) return task;
-
-        // Multi-job task
-        if (task.subJobs && task.subJobs[jobId]) {
-          const updatedSubJobs = {
-            ...task.subJobs,
-            [jobId]: { ...task.subJobs[jobId], status: 'error' as AITaskStatus },
-          };
-          const allDone = Object.values(updatedSubJobs).every(
-            (j) => j.status === 'done' || j.status === 'error',
-          );
-          if (allDone) {
-            const finalStatus: 'done' | 'error' = Object.values(updatedSubJobs).some(
-              (j) => j.status === 'done',
-            )
-              ? 'done'
-              : 'error';
-            return {
-              ...task,
-              subJobs: updatedSubJobs,
-              status: finalStatus,
-              result: mergeSubJobResults(updatedSubJobs),
-              error: message,
-            };
-          }
-          return { ...task, subJobs: updatedSubJobs };
-        }
-
-        // Single-job task
-        return { ...task, status: 'error' as AITaskStatus, error: message };
-      }),
+      tasks: state.tasks.map((task) => resolveJobError(task, jobId, message)),
     })),
 
   togglePanel: () => set((state) => ({ panelOpen: !state.panelOpen })),

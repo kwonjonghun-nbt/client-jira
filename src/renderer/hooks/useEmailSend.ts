@@ -30,9 +30,10 @@ export function useEmailSend() {
           setState({ isSending: false, error: result.error ?? '전송에 실패했습니다.', success: false });
         }
         return result;
-      } catch (error: any) {
-        setState({ isSending: false, error: error.message, success: false });
-        return { success: false, error: error.message };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        setState({ isSending: false, error: message, success: false });
+        return { success: false, error: message };
       }
     },
     [],
