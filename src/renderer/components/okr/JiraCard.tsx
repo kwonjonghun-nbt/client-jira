@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { OKRLink, NormalizedIssue, AnchorPosition, ConnectionEndpointType } from '../../types/jira.types';
 import type { ConnectFrom } from '../../hooks/okr/useCanvasRelations';
 import { statusBadgeClass } from '../../utils/issue';
@@ -15,7 +16,7 @@ interface JiraCardProps {
   setRef: (el: HTMLDivElement | null) => void;
 }
 
-export default function JiraCard({
+function JiraCard({
   link,
   issue,
   isDragging,
@@ -79,3 +80,5 @@ export default function JiraCard({
     </div>
   );
 }
+
+export default memo(JiraCard);

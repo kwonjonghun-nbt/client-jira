@@ -100,6 +100,20 @@ export default function KRCanvasModal({
     () => new Set(krLinks.filter((l) => l.type === 'jira').map((l) => l.issueKey)),
     [krLinks],
   );
+  const canvasSize = useMemo(() => {
+    const PAD = 500;
+    let maxX = 2000;
+    let maxY = 2000;
+    for (const link of ungroupedLinks) {
+      maxX = Math.max(maxX, (link.x ?? 0) + CARD_W);
+      maxY = Math.max(maxY, (link.y ?? 0) + CARD_H);
+    }
+    for (const group of allKRGroups) {
+      maxX = Math.max(maxX, (group.x ?? 0) + (group.w ?? 320));
+      maxY = Math.max(maxY, (group.y ?? 0) + (group.h ?? 200));
+    }
+    return { width: maxX + PAD, height: maxY + PAD };
+  }, [ungroupedLinks, allKRGroups]);
 
   // ── VT editing ────────────────────────────────────────────────────────
   const saveVTEditing = useCallback(() => {
@@ -160,7 +174,7 @@ export default function KRCanvasModal({
         <JiraCard
           link={link}
           issue={issue}
-          isDragging={drag.dragInfo?.id === link.id}
+          isDragging={false}
           connectMode={relations.connectMode}
           connectFrom={relations.connectFrom}
           onAnchorClick={relations.handleAnchorClick}
@@ -183,7 +197,7 @@ export default function KRCanvasModal({
         <VirtualCard
           link={link}
           vt={vt}
-          isDragging={drag.dragInfo?.id === link.id}
+          isDragging={false}
           connectMode={relations.connectMode}
           connectFrom={relations.connectFrom}
           isEditing={editingVTId === vt.id}
@@ -202,7 +216,7 @@ export default function KRCanvasModal({
     }
 
     return null;
-  }, [issueMap, drag.dragInfo, relations, tickets, openIssueDetail, baseUrl, editingVTId, editingVTTitle, saveVTEditing, okr.virtualTickets]);
+  }, [issueMap, relations, tickets, openIssueDetail, baseUrl, editingVTId, editingVTTitle, saveVTEditing, okr.virtualTickets]);
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
@@ -358,11 +372,12 @@ export default function KRCanvasModal({
             style={{
               transform: `scale(${transform.zoom}) translate(${transform.pan.x}px, ${transform.pan.y}px)`,
               transformOrigin: '0 0',
+              willChange: 'transform',
               position: 'absolute',
               top: 0,
               left: 0,
-              width: '10000px',
-              height: '10000px',
+              width: `${canvasSize.width}px`,
+              height: `${canvasSize.height}px`,
               backgroundColor: '#ffffff',
               backgroundImage:
                 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
@@ -381,7 +396,7 @@ export default function KRCanvasModal({
                   width: `${CARD_W}px`,
                   zIndex: drag.dragInfo?.id === link.id ? 50 : 1,
                 }}
-                className={drag.dragInfo?.id === link.id ? 'cursor-grabbing' : 'cursor-grab'}
+                className={`${drag.dragInfo?.id === link.id ? 'cursor-grabbing shadow-lg ring-2 ring-blue-400' : 'cursor-grab'}`}
                 onMouseDown={(e) => drag.startDrag(e, 'card', link.id, link.x ?? 0, link.y ?? 0)}
               >
                 {renderCard(link)}
@@ -437,7 +452,7 @@ export default function KRCanvasModal({
 
             {/* Arrow SVG inside canvas transform */}
             {relations.arrows.length > 0 && (
-              <svg className="absolute inset-0 pointer-events-none" style={{ width: '10000px', height: '10000px', zIndex: 10 }}>
+              <svg className="absolute inset-0 pointer-events-none" style={{ width: `${canvasSize.width}px`, height: `${canvasSize.height}px`, zIndex: 10 }}>
                 <defs>
                   <marker id="canvas-arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
                     <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />

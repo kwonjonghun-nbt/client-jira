@@ -29,9 +29,9 @@ export function useDashboardStats(issues: NormalizedIssue[] | undefined) {
   }, [issues, dateStart, dateEnd, assigneeFilter]);
 
   const stats = useMemo(() => {
-    if (!issues) return null;
+    if (filteredIssues.length === 0) return null;
     return computeDashboardStats(filteredIssues);
-  }, [issues, filteredIssues]);
+  }, [filteredIssues]);
 
   return {
     filteredIssues,

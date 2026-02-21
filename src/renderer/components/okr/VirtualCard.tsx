@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { OKRLink, VirtualTicket, AnchorPosition, ConnectionEndpointType } from '../../types/jira.types';
 import type { ConnectFrom } from '../../hooks/okr/useCanvasRelations';
 import AnchorDots from './AnchorDots';
@@ -35,7 +36,7 @@ interface VirtualCardProps {
   setRef: (el: HTMLDivElement | null) => void;
 }
 
-export default function VirtualCard({
+function VirtualCard({
   link,
   vt,
   isDragging,
@@ -151,3 +152,5 @@ export default function VirtualCard({
     </div>
   );
 }
+
+export default memo(VirtualCard);

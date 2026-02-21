@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type RefObject } from 'react';
+import { useState, useCallback, useEffect, useMemo, type RefObject } from 'react';
 import type { OKRData, ConnectionEndpointType, AnchorPosition } from '../../types/jira.types';
 import type { ArrowLine, UpdateOKR } from './okr-canvas.types';
 import { routeEdge, buildWaypointPath, type ObstacleRect } from '../../utils/edge-routing';
@@ -38,6 +38,16 @@ export function useCanvasRelations(
     }
   }, [elementRefs]);
 
+  // Pre-filter to current KR data to narrow recalcArrows dependencies
+  const krLinks = useMemo(
+    () => okr.links.filter((l) => l.keyResultId === krId),
+    [okr.links, krId],
+  );
+  const krGroups = useMemo(
+    () => okr.groups.filter((g) => g.keyResultId === krId),
+    [okr.groups, krId],
+  );
+
   // ── Arrow recalculation ───────────────────────────────────────────────
   const recalcArrows = useCallback(() => {
     const canvasEl = canvasRef.current;
@@ -73,7 +83,7 @@ export function useCanvasRelations(
     const newArrows: ArrowLine[] = [];
     for (const rel of okr.relations) {
       // Filter to current KR
-      if (!isRelationInKR(rel, okr.links, okr.groups, krId)) continue;
+      if (!isRelationInKR(rel, krLinks, krGroups, krId)) continue;
 
       const fromRect = getElementRect(rel.fromType, rel.fromId);
       const toRect = getElementRect(rel.toType, rel.toId);
@@ -130,7 +140,7 @@ export function useCanvasRelations(
       });
     }
     setArrows(newArrows);
-  }, [okr.relations, okr.links, okr.groups, elementRefs, krId, zoomRef, canvasRef]);
+  }, [okr.relations, krLinks, krGroups, elementRefs, krId, zoomRef, canvasRef]);
 
   // Auto-recalc on data change + ResizeObserver
   useEffect(() => {

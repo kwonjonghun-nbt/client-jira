@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import type { OKRGroup, OKRLink } from '../../types/jira.types';
 import type { DragInfo } from '../../hooks/okr/okr-canvas.types';
 import { CARD_W, GROUP_HEADER_H, MAX_GROUP_DEPTH } from '../../hooks/okr/okr-canvas.types';
@@ -40,7 +40,7 @@ interface GroupContainerProps {
   startGroupDrag: (e: React.MouseEvent, groupId: string, x: number, y: number, parentGroupId?: string) => void;
 }
 
-export default function GroupContainer({
+function GroupContainer({
   group,
   groupLinks,
   childGroups,
@@ -287,12 +287,17 @@ export default function GroupContainer({
           const startY = e.clientY;
           const startW = group.w ?? 320;
           const startH = group.h ?? 200;
+          let rafId = 0;
           const onMove = (me: MouseEvent) => {
-            const nw = Math.max(200, startW + (me.clientX - startX) / zoom);
-            const nh = Math.max(100, startH + (me.clientY - startY) / zoom);
-            onResizeGroup(group.id, nw, nh);
+            cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+              const nw = Math.max(200, startW + (me.clientX - startX) / zoom);
+              const nh = Math.max(100, startH + (me.clientY - startY) / zoom);
+              onResizeGroup(group.id, nw, nh);
+            });
           };
           const onUp = () => {
+            cancelAnimationFrame(rafId);
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup', onUp);
           };
@@ -309,3 +314,5 @@ export default function GroupContainer({
     </div>
   );
 }
+
+export default memo(GroupContainer);

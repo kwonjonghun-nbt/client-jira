@@ -47,6 +47,8 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [orderOverrides, setOrderOverrides] = useState<OrderOverrides>(loadOrderOverrides);
   const chartRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   const { labelRef, scrollRef, syncScroll } = useScrollSync();
   const { labelWidth, handleResizeStart } = usePanelResize(DEFAULT_LABEL_WIDTH, MIN_LABEL_WIDTH, MAX_LABEL_WIDTH);
@@ -57,10 +59,10 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = -e.deltaY * 0.01;
-        onZoomChange(clamp(zoom + delta, ZOOM_MIN, ZOOM_MAX));
+        onZoomChange(clamp(zoomRef.current + delta, ZOOM_MIN, ZOOM_MAX));
       }
     },
-    [zoom, onZoomChange],
+    [onZoomChange],
   );
 
   useEffect(() => {
@@ -94,6 +96,12 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     if (hiddenRowTypes.size === 0) return visibleNodes;
     return visibleNodes.filter((node) => !hiddenRowTypes.has(node.issue.issueType.toLowerCase()));
   }, [visibleNodes, hiddenRowTypes]);
+
+  const nodeIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    displayNodes.forEach((node, idx) => map.set(node.issue.key, idx));
+    return map;
+  }, [displayNodes]);
 
   const { dragKey, setDragKey, dropTarget, setDropTarget, handleDrop } = useTimelineDragSort(
     visibleNodes,
@@ -152,14 +160,14 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
     el.scrollLeft = Math.max(0, todayOffset - el.clientWidth / 2);
   }, [scrollToTodayTrigger, todayOffset, scrollRef]);
 
-  const toggleCollapse = (key: string) => {
+  const toggleCollapse = useCallback((key: string) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
-  };
+  }, []);
 
   // 가상화: 좌측 라벨 패널을 스크롤 컨테이너로 사용
   const rowVirtualizer = useVirtualizer({
@@ -385,7 +393,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                 node.issue.issueLinks
                   .filter((link) => link.type === 'Blocks' && link.direction === 'outward')
                   .map((link) => {
-                    const tgtIdx = displayNodes.findIndex((n) => n.issue.key === link.linkedIssueKey);
+                    const tgtIdx = nodeIndexMap.get(link.linkedIssueKey) ?? -1;
                     if (tgtIdx === -1) return null;
 
                     const tgtNode = displayNodes[tgtIdx];

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type RefObject } from 'react';
+import { useState, useCallback, useEffect, useRef, type RefObject } from 'react';
 import { clamp } from 'es-toolkit';
 import { MIN_ZOOM, MAX_ZOOM, type Rect } from './okr-canvas.types';
 
@@ -8,6 +8,10 @@ export function useCanvasTransform(
 ) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  zoomRef.current = zoom;
+  panRef.current = pan;
 
   // ── Wheel zoom (cursor-anchored) ────────────────────────────────────────
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -41,9 +45,9 @@ export function useCanvasTransform(
 
     const startX = e.clientX;
     const startY = e.clientY;
-    const startPanX = pan.x;
-    const startPanY = pan.y;
-    const currentZoom = zoom;
+    const startPanX = panRef.current.x;
+    const startPanY = panRef.current.y;
+    const currentZoom = zoomRef.current;
 
     const onMove = (me: MouseEvent) => {
       setPan({
@@ -57,7 +61,7 @@ export function useCanvasTransform(
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [pan, zoom, connectMode]);
+  }, [connectMode]);
 
   // ── Fit all items into viewport ──────────────────────────────────────────
   const fitToView = useCallback((items: Rect[]) => {

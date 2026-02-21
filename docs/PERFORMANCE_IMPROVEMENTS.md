@@ -377,54 +377,54 @@
 
 ### Canvas 렌더링 최적화
 
-- [ ] **P5-1. `renderCard` useCallback 의존성에서 `drag.dragInfo` 분리**
+- [x] **P5-1. `renderCard` useCallback 의존성에서 `drag.dragInfo` 분리**
   - 파일: `src/renderer/components/okr/KRCanvasModal.tsx:156-205`
   - 해결: `dragInfo`를 ref로 분리, `JiraCard`/`VirtualCard`에 `React.memo`
   - 영향: 캔버스 드래그 중 카드 리렌더 제거
 
-- [ ] **P5-2. `GroupContainer` memo + 리사이즈 rAF 스로틀**
+- [x] **P5-2. `GroupContainer` memo + 리사이즈 rAF 스로틀**
   - 파일: `src/renderer/components/okr/GroupContainer.tsx:283-301`
   - 해결: `requestAnimationFrame` 스로틀 + `memo()` 래핑
   - 영향: 그룹 리사이즈 부드러운 동작
 
-- [ ] **P5-3. `OKRPage` 진행률 계산 메모이제이션**
+- [x] **P5-3. `OKRPage` 진행률 계산 메모이제이션**
   - 파일: `src/renderer/pages/OKRPage.tsx:175-280`
   - 해결: `useMemo`로 `objectiveProgressMap`, `krProgressMap` 사전 계산
   - 영향: 불필요한 진행률 재계산 제거
 
-- [ ] **P5-4. Canvas SVG/배경 10,000×10,000px → 동적 크기**
+- [x] **P5-4. Canvas SVG/배경 10,000×10,000px → 동적 크기**
   - 파일: `src/renderer/components/okr/KRCanvasModal.tsx:357-440`
   - 해결: 실제 콘텐츠 바운딩 박스에 맞춰 동적 크기 + `will-change: transform`
   - 영향: GPU 래스터화 부담 대폭 감소
 
-- [ ] **P5-5. `useCanvasRelations` 의존성 범위 축소**
+- [x] **P5-5. `useCanvasRelations` 의존성 범위 축소**
   - 파일: `src/renderer/hooks/okr/useCanvasRelations.ts:133`
   - 해결: KR별 데이터 필터링 후 의존성 축소
   - 영향: 불필요한 ResizeObserver 재등록 방지
 
 ### 상태 & 데이터 패칭
 
-- [ ] **P5-6. `handlePanMouseDown` ref 기반 안정화**
+- [x] **P5-6. `handlePanMouseDown` ref 기반 안정화**
   - 파일: `src/renderer/hooks/okr/useCanvasTransform.ts:37-60`
   - 해결: pan, zoom 값을 ref로 분리, `[connectMode]`만 의존
   - 영향: 뷰포트 이벤트 핸들러 안정화
 
-- [ ] **P5-7. `TimelineChart` 리사이즈 핸들러 ref 분리**
+- [x] **P5-7. `TimelineChart` 리사이즈 핸들러 ref 분리**
   - 파일: `src/renderer/components/timeline/TimelineChart.tsx:313-334`
   - 해결: `labelWidthRef` 사용, `useCallback([], fn)` 안정화
   - 영향: 타임라인 리사이즈 버벅임 해소
 
-- [ ] **P5-8. React Query `staleTime` 확장**
+- [x] **P5-8. React Query `staleTime` 확장**
   - 파일: `src/renderer/index.tsx:10`
   - 해결: `staleTime: 5 * 60 * 1000` (5분) 또는 `Infinity`
   - 영향: 불필요한 IPC 라운드트립 제거
 
-- [ ] **P5-9. `useDashboardStats` memo 불필요 의존성 제거**
+- [x] **P5-9. `useDashboardStats` memo 불필요 의존성 제거**
   - 파일: `src/renderer/hooks/useDashboardStats.ts:37`
   - 해결: `[filteredIssues]`만 유지
   - 영향: 대시보드 업데이트 시 중복 계산 제거
 
-- [ ] **P5-10. `toggleCollapse` / SVG 화살표 O(n²) 최적화**
+- [x] **P5-10. `toggleCollapse` / SVG 화살표 O(n²) 최적화**
   - 파일: `src/renderer/components/timeline/TimelineChart.tsx:291-298, 580-614`
   - 해결: `useCallback` 래핑 + `useMemo`로 `nodeIndexMap` 사전 구축
   - 영향: 타임라인 행 메모이제이션 기반 마련
@@ -560,6 +560,16 @@
 | 2026-02-21 | Q3-14 | `OKRLinkSchema` → `z.discriminatedUnion('type', [...])`, `isJiraLink` 타입 가드 추가 |
 | 2026-02-21 | Q3-18 | `useOKR` 낙관적 업데이트 (onMutate/onError/onSettled) + `useOKRActions` debounced save (500ms) |
 | 2026-02-21 | Q3-24 | `ObjectiveCard`, `AddObjectiveForm`, `OKREmptyState` 컴포넌트 추출, OKRPage 480→183줄 |
+| 2026-02-21 | P5-1 | `renderCard` useCallback에서 `drag.dragInfo` 제거, isDragging 스타일 wrapper div로 이동. `JiraCard`/`VirtualCard` `memo()` 래핑 |
+| 2026-02-21 | P5-2 | `GroupContainer` `memo()` 래핑 + 리사이즈 핸들러 `requestAnimationFrame` 스로틀 |
+| 2026-02-21 | P5-3 | `objectiveProgressMap` `useMemo` 사전 계산, 렌더 루프 내 `calcObjectiveProgress` 반복 호출 제거 |
+| 2026-02-21 | P5-4 | Canvas 10000×10000px → `canvasSize` useMemo 동적 계산 + `will-change: transform` |
+| 2026-02-21 | P5-5 | `useCanvasRelations` — `krLinks`/`krGroups` useMemo 사전 필터링, 다른 KR 변경 시 recalcArrows 재실행 방지 |
+| 2026-02-21 | P5-6 | `handlePanMouseDown` — pan/zoom을 ref로 분리, 의존성 `[pan, zoom, connectMode]` → `[connectMode]` |
+| 2026-02-21 | P5-7 | `TimelineChart` handleWheel — zoom을 `zoomRef`로 분리, 의존성 `[zoom, onZoomChange]` → `[onZoomChange]` |
+| 2026-02-21 | P5-8 | React Query `staleTime` 30초 → 5분 (Electron IPC 기반 앱, 불필요 라운드트립 제거) |
+| 2026-02-21 | P5-9 | `useDashboardStats` stats useMemo 의존성 `[issues, filteredIssues]` → `[filteredIssues]` |
+| 2026-02-21 | P5-10 | `nodeIndexMap` useMemo(Map) 사전 구축으로 SVG 화살표 `findIndex` O(n²) → O(1). `toggleCollapse` useCallback 래핑 |
 
 ---
 

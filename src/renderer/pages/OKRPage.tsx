@@ -43,6 +43,14 @@ export default function OKRPage() {
   const baseUrl = jiraData.data?.source.baseUrl;
   const allIssues = jiraData.data?.issues ?? [];
 
+  const objectiveProgressMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const obj of okr.objectives) {
+      map.set(obj.id, calcObjectiveProgress(obj.id, okr.keyResults, okr.links, issueMap));
+    }
+    return map;
+  }, [okr.objectives, okr.keyResults, okr.links, issueMap]);
+
   // ── Export handler ──────────────────────────────────────────────────────
   const handleExportOKR = useCallback(() => {
     const exportData = buildOKRExportData(okr, issueMap);
@@ -126,12 +134,7 @@ export default function OKRPage() {
             const objectiveKRs = okr.keyResults
               .filter((kr) => kr.objectiveId === objective.id)
               .sort((a, b) => a.order - b.order);
-            const progress = calcObjectiveProgress(
-              objective.id,
-              okr.keyResults,
-              okr.links,
-              issueMap,
-            );
+            const progress = objectiveProgressMap.get(objective.id) ?? 0;
 
             return (
               <ObjectiveCard
