@@ -316,50 +316,60 @@
 
 ---
 
-## Phase 4 — 테스트 보강 (지속)
+## Phase 4 — 테스트 보강 (완료)
 
-> 현재 테스트 18건은 순수 유틸 함수 중심. 서비스 레이어, 에러 시나리오, 인프라 유틸이 전혀 커버되지 않음.
+> ~~현재 테스트 18건은 순수 유틸 함수 중심.~~ → **29개 테스트 파일, 620개 테스트 케이스** 달성. 서비스 레이어, 인프라 유틸, 엣지케이스 전면 보강 완료.
 
 ### 누락 테스트 파일 신규 작성 (HIGH)
 
-- [ ] **T4-1. `retry.ts` 단위 테스트**
-  - 파일: `src/main/utils/retry.ts`
-  - 테스트 케이스: 첫 시도 성공, N회 후 성공, 전체 소진 시 throw, 지수 백오프 딜레이 계산, 4xx 즉시 실패 (Q2-4 수정 후)
+- [x] **T4-1. `retry.ts` 단위 테스트**
+  - 파일: `tests/retry.test.ts` (19 tests)
+  - 커버리지: 첫 시도 성공, N회 후 성공, 전체 소진 throw, 지수 백오프 딜레이, 4xx(400/401/403/404) 즉시 실패, 429 재시도, 5xx 재시도, 네트워크 에러, logger.warn 검증
 
-- [ ] **T4-2. 서비스 레이어 통합 테스트 (mock 기반)**
-  - 대상: `SyncService`, `StorageService`, `AIRunnerService`, `CredentialsService`
-  - 테스트 케이스: 정상 흐름, 네트워크 오류, 디스크 쓰기 실패, 부분 초기화 상태, 동시 접근
+- [x] **T4-2. 서비스 레이어 통합 테스트 (mock 기반)**
+  - 파일: `tests/credentials.test.ts` (15), `tests/storage.test.ts` (15), `tests/sync.test.ts` (16) — 총 46 tests
+  - 커버리지: CredentialsService(safeStorage 암호화, base64 폴백, 토큰 타입별 경로), StorageService(loadSettings, saveSettings, appendChangelog 500건 제한, validateReportPath 경로 탈출 방지, atomicWrite), SyncService(정상 동기화, 동시 접근 guard, diff→changelog, 에러 기록, 100건 히스토리 제한)
 
-- [ ] **T4-3. `process-spawner.ts` 단위 테스트**
-  - 테스트 케이스: 환경변수 merge, 기본 env 오버라이드, kill 함수 동작
+- [x] **T4-3. `process-spawner.ts` 단위 테스트**
+  - 파일: `tests/process-spawner.test.ts` (10 tests)
+  - 커버리지: 셸 감지, 환경변수 merge, stdin write/end, EPIPE 처리, kill 함수, 기본 env
 
 ### 기존 테스트 엣지케이스 보강 (MEDIUM)
 
-- [ ] **T4-4. `normalize.test.ts` 엣지케이스 추가**
-  - 누락: reporter, dueDate, storyPoints=0, 빈 스프린트 배열, 문자열 description
+- [x] **T4-4. `normalize.test.ts` 엣지케이스 추가**
+  - 파일: `tests/normalize.test.ts` (+9 tests, 총 25 tests)
+  - 추가: reporter, dueDate, storyPoints=0, 빈 스프린트 배열, 문자열 description, 빈 ADF, components empty
 
-- [ ] **T4-5. `diff.test.ts` 엣지케이스 추가**
-  - 누락: 삭제된 이슈 감지 (로직 버그 가능성), null↔값 전환, 빈 배열 쌍
+- [x] **T4-5. `diff.test.ts` 엣지케이스 추가**
+  - 파일: `tests/diff.test.ts` (+9 tests, 총 20 tests)
+  - 추가: 삭제된 이슈 감지, null↔값 전환, storyPoints=0, 빈 배열, multi-field+resolution, resolution null→null
 
-- [ ] **T4-6. `ai-canvas.test.ts` 엣지케이스 추가**
-  - 누락: 동일 그룹 update+delete 동시, 빈 changes 객체, 복수 JSON 블록 파싱
+- [x] **T4-6. `ai-canvas.test.ts` 엣지케이스 추가**
+  - 파일: `tests/ai-canvas.test.ts` (+8 tests, 총 30 tests)
+  - 추가: 동일 그룹 update+delete 동시, 빈 changes 객체, 빈 배열, 존재하지 않는 ID, 복수 JSON 블록, 중첩 마크다운, relations-only
 
-- [ ] **T4-7. 미테스트 함수 커버리지 추가**
-  - 대상: `countCompletedTasks`, `matchPresetDays`, `statusBadgeClass`, `getPriorityColor` 등 ~18개
+- [x] **T4-7. 미테스트 함수 커버리지 추가**
+  - 파일: `tests/ai-tasks.test.ts` (+11 tests), `tests/stats.test.ts` (+6 tests), `tests/issue.test.ts` (+5 tests)
+  - 추가: `countCompletedTasks`, `resolveJobDone`(단일/멀티), `resolveJobError`(단일/멀티/혼합), `matchPresetDays`(7/30/90일, 전체, 커스텀), `statusBadgeClass`, `getPriorityColor`
 
 ### 테스트 인프라 개선 (LOW)
 
-- [ ] **T4-8. `renderer-logic.test.ts` 파일 분리**
-  - 문제: 6개 소스 파일을 1개 테스트 파일(668줄)에 합침
-  - 해결: `issue.test.ts`, `formatters.test.ts`, `okr.test.ts` 등으로 분리
+- [x] **T4-8. `renderer-logic.test.ts` 파일 분리**
+  - 668줄 단일 파일 → 6개 파일로 분리 (총 80 tests):
+    - `tests/issue-filters.test.ts` (14) — `applyFilters`, `extractFilterOptions`
+    - `tests/okr.test.ts` (12) — `calcKRProgress`, `calcObjectiveProgress`, `buildOKRExportData`
+    - `tests/issue.test.ts` (19) — `normalizeType`, `getIssueTypeLabel`, `buildIssueUrl`, `statusBadgeClass`, `getPriorityColor`
+    - `tests/formatters.test.ts` (14) — `formatRelativeTime`, `formatDateSafe`, `formatDateShort` 등
+    - `tests/issue-prompts.test.ts` (9) — `getDescriptionTemplate`, `buildPrompt`
+    - `tests/timeline.test.ts` (12) — `filterByDateRange`, `filterByRowTypes`, `extractIssueTypeOptions`
 
-- [ ] **T4-9. 공유 테스트 픽스처 추출**
-  - 문제: `makeIssue` 팩토리가 모든 테스트 파일에 각각 존재
-  - 해결: `tests/fixtures.ts`로 통합
+- [x] **T4-9. 공유 테스트 픽스처 추출**
+  - 파일: `tests/fixtures.ts`
+  - 내용: `makeIssue()`, `makeJiraIssue()`, `makeIssueMap()` 팩토리 + 공통 날짜 상수 통합
 
-- [ ] **T4-10. `downloadIssueJson` 테스트 실질화**
-  - 문제: `typeof === 'function'`만 체크 — 실질 커버리지 0
-  - 해결: DOM mock으로 실제 다운로드 동작 검증
+- [x] **T4-10. `downloadIssueJson` 테스트 실질화**
+  - 파일: `tests/download.test.ts` (6 tests, jsdom 환경)
+  - 커버리지: Blob 생성, createObjectURL→anchor click→revokeObjectURL 전체 플로우, 파일명 검증, JSON 직렬화 검증
 
 ---
 

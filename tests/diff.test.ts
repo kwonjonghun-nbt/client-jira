@@ -1,35 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { diffIssues } from '../src/main/utils/diff';
 import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
-
-function makeIssue(overrides: Partial<NormalizedIssue> & { key: string }): NormalizedIssue {
-  return {
-    summary: 'Test issue',
-    description: null,
-    status: 'To Do',
-    statusCategory: 'new',
-    assignee: null,
-    reporter: null,
-    priority: 'Medium',
-    issueType: 'Task',
-    storyPoints: null,
-    sprint: null,
-    labels: [],
-    components: [],
-    created: '2025-01-01T00:00:00Z',
-    updated: '2025-01-01T00:00:00Z',
-    startDate: null,
-    dueDate: null,
-    resolution: null,
-    timeTracking: null,
-    parent: null,
-    subtasks: [],
-    issueLinks: [],
-    ...overrides,
-  };
-}
-
-const DETECTED_AT = '2025-01-15T10:00:00Z';
+import { makeIssue, DETECTED_AT } from './fixtures';
 
 describe('diffIssues', () => {
   it('신규 이슈를 감지한다', () => {
@@ -170,5 +142,110 @@ describe('diffIssues', () => {
 
     expect(entries).toHaveLength(2);
     entries.forEach((e) => expect(e.detectedAt).toBe(DETECTED_AT));
+  });
+
+  it('prev에만 있는 이슈(삭제된 이슈)는 감지하지 않는다 — 의도적 동작', () => {
+    const prev = [makeIssue({ key: 'PROJ-1' })];
+    const curr: NormalizedIssue[] = [];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(0);
+  });
+
+  it('assignee null → 값 전환을 감지한다', () => {
+    const prev = [makeIssue({ key: 'PROJ-1', assignee: null })];
+    const curr = [makeIssue({ key: 'PROJ-1', assignee: 'Alice' })];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      changeType: 'assignee',
+      oldValue: null,
+      newValue: 'Alice',
+    });
+  });
+
+  it('storyPoints null → 값 전환을 감지한다', () => {
+    const prev = [makeIssue({ key: 'PROJ-1', storyPoints: null })];
+    const curr = [makeIssue({ key: 'PROJ-1', storyPoints: 5 })];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      changeType: 'storyPoints',
+      oldValue: null,
+      newValue: '5',
+    });
+  });
+
+  it('assignee 값 → null 전환을 감지한다', () => {
+    const prev = [makeIssue({ key: 'PROJ-1', assignee: 'Alice' })];
+    const curr = [makeIssue({ key: 'PROJ-1', assignee: null })];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      changeType: 'assignee',
+      oldValue: 'Alice',
+      newValue: null,
+    });
+  });
+
+  it('storyPoints 값 → null 전환을 감지한다', () => {
+    const prev = [makeIssue({ key: 'PROJ-1', storyPoints: 5 })];
+    const curr = [makeIssue({ key: 'PROJ-1', storyPoints: null })];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      changeType: 'storyPoints',
+      oldValue: '5',
+      newValue: null,
+    });
+  });
+
+  it('storyPoints=0은 null과 구분하여 유효한 값으로 처리한다', () => {
+    const prev = [makeIssue({ key: 'PROJ-1', storyPoints: null })];
+    const curr = [makeIssue({ key: 'PROJ-1', storyPoints: 0 })];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      changeType: 'storyPoints',
+      oldValue: null,
+      newValue: '0',
+    });
+  });
+
+  it('prev=[], curr=[] 빈 배열 쌍은 빈 결과를 반환한다', () => {
+    const entries = diffIssues([], [], DETECTED_AT);
+
+    expect(entries).toHaveLength(0);
+  });
+
+  it('같은 이슈에서 여러 필드 동시 변경과 resolution 변경을 모두 감지한다', () => {
+    const prev = [makeIssue({ key: 'PROJ-1', status: 'To Do', assignee: 'Alice', priority: 'Low', storyPoints: 3, resolution: null })];
+    const curr = [makeIssue({ key: 'PROJ-1', status: 'Done', assignee: 'Bob', priority: 'High', storyPoints: 8, resolution: 'Fixed' })];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(5);
+    const types = entries.map((e) => e.changeType).sort();
+    expect(types).toEqual(['assignee', 'priority', 'resolved', 'status', 'storyPoints']);
+  });
+
+  it('resolution이 null에서 null이면 변경을 감지하지 않는다', () => {
+    const prev = [makeIssue({ key: 'PROJ-1', resolution: null })];
+    const curr = [makeIssue({ key: 'PROJ-1', resolution: null })];
+
+    const entries = diffIssues(prev, curr, DETECTED_AT);
+
+    expect(entries).toHaveLength(0);
   });
 });

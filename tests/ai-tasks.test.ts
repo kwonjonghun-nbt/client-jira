@@ -4,8 +4,11 @@ import {
   createTaskId,
   generateTaskTitle,
   countRunningTasks,
+  countCompletedTasks,
   mergeSubJobResults,
   formatElapsedTime,
+  resolveJobDone,
+  resolveJobError,
   type AITask,
 } from '../src/renderer/utils/ai-tasks';
 
@@ -119,6 +122,147 @@ describe('ai-tasks utils', () => {
       const now = Date.now();
       vi.setSystemTime(now);
       expect(formatElapsedTime(now - 7_200_000)).toBe('2시간 전 시작');
+    });
+  });
+
+  describe('countCompletedTasks', () => {
+    it('done과 error 태스크를 카운트한다 (running은 제외)', () => {
+      const tasks: AITask[] = [
+        { id: '1', jobIds: [], type: 'report', title: '', status: 'done', result: '', error: null, createdAt: 0 },
+        { id: '2', jobIds: [], type: 'report', title: '', status: 'error', result: '', error: 'err', createdAt: 0 },
+        { id: '3', jobIds: [], type: 'report', title: '', status: 'running', result: '', error: null, createdAt: 0 },
+      ];
+      expect(countCompletedTasks(tasks)).toBe(2);
+    });
+
+    it('빈 배열이면 0을 반환한다', () => {
+      expect(countCompletedTasks([])).toBe(0);
+    });
+
+    it('모두 running이면 0이다', () => {
+      const tasks: AITask[] = [
+        { id: '1', jobIds: [], type: 'report', title: '', status: 'running', result: '', error: null, createdAt: 0 },
+        { id: '2', jobIds: [], type: 'report', title: '', status: 'running', result: '', error: null, createdAt: 0 },
+      ];
+      expect(countCompletedTasks(tasks)).toBe(0);
+    });
+  });
+
+  describe('resolveJobDone', () => {
+    const baseTask: AITask = {
+      id: 't1',
+      jobIds: ['job-1'],
+      type: 'report',
+      title: 'Test',
+      status: 'running',
+      result: '',
+      error: null,
+      createdAt: 0,
+    };
+
+    it('단일 job 완료: status가 "done"으로 변경', () => {
+      const result = resolveJobDone(baseTask, 'job-1');
+      expect(result.status).toBe('done');
+    });
+
+    it('jobId가 없으면 원본 task 반환', () => {
+      const result = resolveJobDone(baseTask, 'job-999');
+      expect(result).toBe(baseTask);
+    });
+
+    it('multi-job: 하나 완료, 아직 남은 subJob → status는 "running" 유지', () => {
+      const task: AITask = {
+        ...baseTask,
+        jobIds: ['job-1', 'job-2'],
+        subJobs: {
+          'job-1': { assignee: 'Alice', status: 'running', result: '' },
+          'job-2': { assignee: 'Bob', status: 'running', result: '' },
+        },
+      };
+      const result = resolveJobDone(task, 'job-1');
+      expect(result.status).toBe('running');
+      expect(result.subJobs!['job-1'].status).toBe('done');
+      expect(result.subJobs!['job-2'].status).toBe('running');
+    });
+
+    it('multi-job: 마지막 subJob 완료 → status "done", result가 mergeSubJobResults 결과', () => {
+      const task: AITask = {
+        ...baseTask,
+        jobIds: ['job-1', 'job-2'],
+        subJobs: {
+          'job-1': { assignee: 'Alice', status: 'done', result: '내용1' },
+          'job-2': { assignee: 'Bob', status: 'running', result: '' },
+        },
+      };
+      const result = resolveJobDone(task, 'job-2');
+      expect(result.status).toBe('done');
+      expect(result.result).toContain('Alice');
+      expect(result.result).toContain('내용1');
+    });
+  });
+
+  describe('resolveJobError', () => {
+    const baseTask: AITask = {
+      id: 't1',
+      jobIds: ['job-1'],
+      type: 'report',
+      title: 'Test',
+      status: 'running',
+      result: '',
+      error: null,
+      createdAt: 0,
+    };
+
+    it('단일 job 에러: status "error", error 메시지 설정', () => {
+      const result = resolveJobError(baseTask, 'job-1', '실패 메시지');
+      expect(result.status).toBe('error');
+      expect(result.error).toBe('실패 메시지');
+    });
+
+    it('jobId가 없으면 원본 task 반환', () => {
+      const result = resolveJobError(baseTask, 'job-999', '에러');
+      expect(result).toBe(baseTask);
+    });
+
+    it('multi-job: 하나 에러, 남은 subJob → status "running" 유지', () => {
+      const task: AITask = {
+        ...baseTask,
+        jobIds: ['job-1', 'job-2'],
+        subJobs: {
+          'job-1': { assignee: 'Alice', status: 'running', result: '' },
+          'job-2': { assignee: 'Bob', status: 'running', result: '' },
+        },
+      };
+      const result = resolveJobError(task, 'job-1', '에러');
+      expect(result.status).toBe('running');
+      expect(result.subJobs!['job-1'].status).toBe('error');
+      expect(result.subJobs!['job-2'].status).toBe('running');
+    });
+
+    it('multi-job: 모두 에러 → status "error"', () => {
+      const task: AITask = {
+        ...baseTask,
+        jobIds: ['job-1', 'job-2'],
+        subJobs: {
+          'job-1': { assignee: 'Alice', status: 'error', result: '' },
+          'job-2': { assignee: 'Bob', status: 'running', result: '' },
+        },
+      };
+      const result = resolveJobError(task, 'job-2', '에러');
+      expect(result.status).toBe('error');
+    });
+
+    it('multi-job: 일부 done + 일부 error → 최종 status "done"', () => {
+      const task: AITask = {
+        ...baseTask,
+        jobIds: ['job-1', 'job-2'],
+        subJobs: {
+          'job-1': { assignee: 'Alice', status: 'done', result: '내용1' },
+          'job-2': { assignee: 'Bob', status: 'running', result: '' },
+        },
+      };
+      const result = resolveJobError(task, 'job-2', '에러');
+      expect(result.status).toBe('done');
     });
   });
 });

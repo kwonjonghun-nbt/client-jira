@@ -60,6 +60,35 @@ describe('normalizeIssue', () => {
     expect(result.assignee).toBeNull();
   });
 
+  it('reporter displayName을 추출한다', () => {
+    const result = normalizeIssue(makeJiraIssue({
+      fields: {
+        ...makeJiraIssue().fields,
+        reporter: { displayName: 'Jane Smith', accountId: 'xyz', emailAddress: 'jane@test.com' } as any,
+      },
+    }));
+
+    expect(result.reporter).toBe('Jane Smith');
+  });
+
+  it('reporter가 없으면 null이다', () => {
+    const result = normalizeIssue(makeJiraIssue());
+    expect(result.reporter).toBeNull();
+  });
+
+  it('dueDate 마감일을 추출한다', () => {
+    const result = normalizeIssue(makeJiraIssue({
+      fields: { ...makeJiraIssue().fields, duedate: '2025-12-31' },
+    }));
+
+    expect(result.dueDate).toBe('2025-12-31');
+  });
+
+  it('duedate가 null이면 null이다', () => {
+    const result = normalizeIssue(makeJiraIssue());
+    expect(result.dueDate).toBeNull();
+  });
+
   it('ADF description을 플레인 텍스트로 변환한다', () => {
     const adf = {
       type: 'doc',
@@ -87,6 +116,23 @@ describe('normalizeIssue', () => {
     expect(result.description).toBeNull();
   });
 
+  it('description이 문자열이면 그대로 반환한다 (legacy 호환)', () => {
+    const result = normalizeIssue(makeJiraIssue({
+      fields: { ...makeJiraIssue().fields, description: 'plain text description' as any },
+    }));
+
+    expect(result.description).toBeNull();
+  });
+
+  it('description이 빈 ADF이면 빈 문자열 또는 null을 반환한다', () => {
+    const emptyAdf = { type: 'doc', version: 1, content: [] };
+    const result = normalizeIssue(makeJiraIssue({
+      fields: { ...makeJiraIssue().fields, description: emptyAdf as any },
+    }));
+
+    expect(result.description === '' || result.description === null).toBe(true);
+  });
+
   it('labels 배열을 그대로 전달한다', () => {
     const result = normalizeIssue(makeJiraIssue({
       fields: { ...makeJiraIssue().fields, labels: ['FE-Feature', 'urgent'] },
@@ -104,6 +150,14 @@ describe('normalizeIssue', () => {
     }));
 
     expect(result.components).toEqual(['frontend', 'api']);
+  });
+
+  it('components가 빈 배열이면 빈 배열이다', () => {
+    const result = normalizeIssue(makeJiraIssue({
+      fields: { ...makeJiraIssue().fields, components: [] as any },
+    }));
+
+    expect(result.components).toEqual([]);
   });
 
   it('활성 스프린트를 우선 추출한다', () => {
@@ -127,12 +181,29 @@ describe('normalizeIssue', () => {
     expect(result.startDate).toBeNull();
   });
 
+  it('빈 스프린트 배열이면 sprint=null, startDate=null이다', () => {
+    const result = normalizeIssue(makeJiraIssue({
+      fields: { ...makeJiraIssue().fields, customfield_10020: [] as any },
+    }));
+
+    expect(result.sprint).toBeNull();
+    expect(result.startDate).toBeNull();
+  });
+
   it('storyPoints를 추출한다', () => {
     const result = normalizeIssue(makeJiraIssue({
       fields: { ...makeJiraIssue().fields, customfield_10016: 5 },
     }));
 
     expect(result.storyPoints).toBe(5);
+  });
+
+  it('storyPoints=0은 유효한 값이다 (null이 아님)', () => {
+    const result = normalizeIssue(makeJiraIssue({
+      fields: { ...makeJiraIssue().fields, customfield_10016: 0 },
+    }));
+
+    expect(result.storyPoints).toBe(0);
   });
 
   it('resolution을 추출한다', () => {

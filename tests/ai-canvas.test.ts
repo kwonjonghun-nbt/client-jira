@@ -198,6 +198,38 @@ describe('parseCanvasResponse', () => {
     expect(result!.groups).toHaveLength(1);
     expect(result!.links).toHaveLength(1);
   });
+
+  it('복수 JSON 블록이 있는 응답 — 첫 번째를 파싱한다', () => {
+    const raw =
+      '```json\n{"groups": [{"action": "add", "title": "첫 번째"}]}\n```\n' +
+      '```json\n{"groups": [{"action": "add", "title": "두 번째"}]}\n```';
+    const result = parseCanvasResponse(raw);
+    expect(result).not.toBeNull();
+    expect(result!.groups).toHaveLength(1);
+    expect(result!.groups![0].title).toBe('첫 번째');
+  });
+
+  it('깊게 중첩된 마크다운 코드블록 — ```json 내부의 유효한 JSON을 파싱한다', () => {
+    const raw =
+      '분석 결과입니다:\n\n```json\n{\n  "links": [\n    { "action": "update", "id": "link-1", "x": 100, "y": 200 }\n  ]\n}\n```\n\n이상입니다.';
+    const result = parseCanvasResponse(raw);
+    expect(result).not.toBeNull();
+    expect(result!.links).toHaveLength(1);
+    expect(result!.links![0].id).toBe('link-1');
+  });
+
+  it('relations만 있는 변경사항 — groups/links 없이 relations만 파싱된다', () => {
+    const raw = JSON.stringify({
+      relations: [
+        { action: 'add', fromId: 'link-1', toId: 'link-2', fromAnchor: 'bottom', toAnchor: 'top' },
+      ],
+    });
+    const result = parseCanvasResponse(raw);
+    expect(result).not.toBeNull();
+    expect(result!.relations).toHaveLength(1);
+    expect(result!.groups).toBeUndefined();
+    expect(result!.links).toBeUndefined();
+  });
 });
 
 // ─── mergeCanvasChanges ─────────────────────────────────────────────────────
@@ -350,5 +382,68 @@ describe('mergeCanvasChanges', () => {
     const result = mergeCanvasChanges(okr, 'kr-1', changes);
     // 기존 관계만 유지
     expect(result.relations).toHaveLength(1);
+  });
+
+  it('동일 그룹에 update + delete 동시 — delete가 우선 적용된다', () => {
+    const okr = createBaseOKR();
+    const changes: CanvasChanges = {
+      groups: [
+        { action: 'update', id: 'group-1', title: '수정된 제목' },
+        { action: 'delete', id: 'group-1' },
+      ],
+    };
+    const result = mergeCanvasChanges(okr, 'kr-1', changes);
+    // delete가 마지막에 적용되어 그룹이 사라진다
+    expect(result.groups.find((g) => g.id === 'group-1')).toBeUndefined();
+  });
+
+  it('빈 changes 객체 — 원본 OKR이 그대로 반환된다 (updatedAt만 갱신)', () => {
+    const okr = createBaseOKR();
+    const changes: CanvasChanges = {};
+    const result = mergeCanvasChanges(okr, 'kr-1', changes);
+    expect(result.groups).toEqual(okr.groups);
+    expect(result.links).toEqual(okr.links);
+    expect(result.relations).toEqual(okr.relations);
+    expect(result.virtualTickets).toEqual(okr.virtualTickets);
+    expect(result.updatedAt).not.toBe('2024-01-01');
+  });
+
+  it('모든 변경 타입이 빈 배열 — 원본 유지', () => {
+    const okr = createBaseOKR();
+    const changes: CanvasChanges = {
+      groups: [],
+      links: [],
+      relations: [],
+      virtualTickets: [],
+    };
+    const result = mergeCanvasChanges(okr, 'kr-1', changes);
+    expect(result.groups).toEqual(okr.groups);
+    expect(result.links).toEqual(okr.links);
+    expect(result.relations).toEqual(okr.relations);
+    expect(result.virtualTickets).toEqual(okr.virtualTickets);
+  });
+
+  it('존재하지 않는 그룹 ID를 update — 무시된다', () => {
+    const okr = createBaseOKR();
+    const changes: CanvasChanges = {
+      groups: [{ action: 'update', id: 'nonexistent-group', title: '유령 그룹' }],
+    };
+    const result = mergeCanvasChanges(okr, 'kr-1', changes);
+    // 기존 그룹 수 변화 없음
+    expect(result.groups).toHaveLength(okr.groups.length);
+    expect(result.groups.find((g) => g.title === '유령 그룹')).toBeUndefined();
+  });
+
+  it('존재하지 않는 링크 ID를 update — 무시된다', () => {
+    const okr = createBaseOKR();
+    const changes: CanvasChanges = {
+      links: [{ action: 'update', id: 'nonexistent-link', groupId: 'group-1' }],
+    };
+    const result = mergeCanvasChanges(okr, 'kr-1', changes);
+    // 기존 링크 수 변화 없음, 기존 링크 데이터 보존
+    expect(result.links).toHaveLength(okr.links.length);
+    result.links.forEach((l, i) => {
+      expect(l).toEqual(okr.links[i]);
+    });
   });
 });

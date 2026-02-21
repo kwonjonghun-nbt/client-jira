@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { computeLabelStats, computeLabelStatsSummary } from '../src/renderer/utils/stats';
+import { format, subDays } from 'date-fns';
+import { computeLabelStats, computeLabelStatsSummary, matchPresetDays } from '../src/renderer/utils/stats';
 import type { NormalizedIssue } from '../src/renderer/types/jira.types';
 
 function makeIssue(overrides: Partial<NormalizedIssue> & { key: string }): NormalizedIssue {
@@ -627,5 +628,40 @@ describe('computeLabelStatsSummary', () => {
     expect(summary.labelCount).toBe(2);
     expect(summary.totalIssues).toBe(3);
     expect(summary.totalCompleted).toBe(1);
+  });
+});
+
+describe('matchPresetDays', () => {
+  const now = new Date('2025-06-15T12:00:00Z');
+  const today = format(now, 'yyyy-MM-dd');
+
+  it('7일 프리셋 매칭 (startDate = 7일 전, endDate = 오늘)', () => {
+    const startDate = format(subDays(now, 7), 'yyyy-MM-dd');
+    expect(matchPresetDays(startDate, today, now)).toBe(7);
+  });
+
+  it('30일 프리셋 매칭', () => {
+    const startDate = format(subDays(now, 30), 'yyyy-MM-dd');
+    expect(matchPresetDays(startDate, today, now)).toBe(30);
+  });
+
+  it('90일 프리셋 매칭', () => {
+    const startDate = format(subDays(now, 90), 'yyyy-MM-dd');
+    expect(matchPresetDays(startDate, today, now)).toBe(90);
+  });
+
+  it('전체 프리셋: startDate와 endDate가 모두 빈 문자열이면 0', () => {
+    expect(matchPresetDays('', '', now)).toBe(0);
+  });
+
+  it('매칭되지 않는 커스텀 날짜 범위 → null', () => {
+    expect(matchPresetDays('2025-01-01', '2025-03-01', now)).toBeNull();
+  });
+
+  it('now 파라미터로 기준 날짜 지정', () => {
+    const customNow = new Date('2025-01-20T00:00:00Z');
+    const customToday = format(customNow, 'yyyy-MM-dd');
+    const startDate = format(subDays(customNow, 7), 'yyyy-MM-dd');
+    expect(matchPresetDays(startDate, customToday, customNow)).toBe(7);
   });
 });
