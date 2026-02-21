@@ -8,7 +8,7 @@ import {
   buildStructuredReport,
 } from '../src/main/utils/daily-report';
 import type { NormalizedIssue } from '../src/main/schemas/storage.schema';
-import { SlackSettingsSchema, SettingsSchema } from '../src/main/schemas/settings.schema';
+import { SlackSettingsSchema } from '../src/main/schemas/settings.schema';
 
 // 최소 필드만 채운 테스트용 이슈 팩토리
 function makeIssue(overrides: Partial<NormalizedIssue> = {}): NormalizedIssue {
@@ -154,17 +154,6 @@ describe('SlackSettingsSchema', () => {
   it('잘못된 시간 형식은 거부한다', () => {
     expect(() => SlackSettingsSchema.parse({ dailyReportTime: '9:30' })).toThrow();
     expect(() => SlackSettingsSchema.parse({ dailyReportTime: 'invalid' })).toThrow();
-  });
-
-  it('기존 Settings 스키마에 slack 필드가 포함된다', () => {
-    const settings = SettingsSchema.parse({
-      jira: { baseUrl: 'https://test.atlassian.net', email: 'test@test.com' },
-      collection: { projects: [], assignees: [], customJql: '' },
-      schedule: { enabled: true, times: ['09:00'] },
-      storage: { retentionDays: 90 },
-    });
-    expect(settings.slack).toBeDefined();
-    expect(settings.slack.enabled).toBe(false);
   });
 
   it('스레드 댓글 설정을 파싱한다', () => {

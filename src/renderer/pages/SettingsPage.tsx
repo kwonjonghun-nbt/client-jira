@@ -4,8 +4,6 @@ import ProjectSelector from '../components/settings/ProjectSelector';
 import AssigneeInput from '../components/settings/AssigneeInput';
 import ScheduleConfig from '../components/settings/ScheduleConfig';
 import StorageConfig from '../components/settings/StorageConfig';
-import SlackConfig from '../components/settings/SlackConfig';
-import DMReminderConfig from '../components/settings/DMReminderConfig';
 import EmailConfig from '../components/settings/EmailConfig';
 import TeamManagement from '../components/settings/TeamManagement';
 import SettingsListView from '../components/settings/SettingsListView';
@@ -144,51 +142,6 @@ export default function SettingsPage() {
               setDraft({ ...draft, storage: { ...draft.storage, retentionDays } })
             }
           />
-        </section>
-      )}
-
-      {settingsSection === 'slack' && (
-        <section className="space-y-4">
-          <SlackConfig
-            enabled={draft.slack.enabled}
-            webhookUrl={draft.slack.webhookUrl}
-            dailyReportTime={draft.slack.dailyReportTime}
-            replyToThread={draft.slack.replyToThread}
-            botToken={draft.slack.botToken}
-            channelId={draft.slack.channelId}
-            threadSearchText={draft.slack.threadSearchText}
-            onToggle={(enabled) =>
-              setDraft({ ...draft, slack: { ...draft.slack, enabled } })
-            }
-            onChangeWebhookUrl={(webhookUrl) =>
-              setDraft({ ...draft, slack: { ...draft.slack, webhookUrl } })
-            }
-            onChangeDailyReportTime={(dailyReportTime) =>
-              setDraft({ ...draft, slack: { ...draft.slack, dailyReportTime } })
-            }
-            onChangeReplyToThread={(replyToThread) =>
-              setDraft({ ...draft, slack: { ...draft.slack, replyToThread } })
-            }
-            onChangeBotToken={(botToken) =>
-              setDraft({ ...draft, slack: { ...draft.slack, botToken } })
-            }
-            onChangeChannelId={(channelId) =>
-              setDraft({ ...draft, slack: { ...draft.slack, channelId } })
-            }
-            onChangeThreadSearchText={(threadSearchText) =>
-              setDraft({ ...draft, slack: { ...draft.slack, threadSearchText } })
-            }
-          />
-          {draft.slack.enabled && (
-            <DMReminderConfig
-              dmReminder={draft.slack.dmReminder}
-              botToken={draft.slack.botToken}
-              assignees={draft.collection.assignees}
-              onChange={(dmReminder) =>
-                setDraft({ ...draft, slack: { ...draft.slack, dmReminder } })
-              }
-            />
-          )}
         </section>
       )}
 

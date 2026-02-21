@@ -17,9 +17,6 @@ export default function DMReminderConfig({
 }: DMReminderConfigProps) {
   const [testingDM, setTestingDM] = useState<string | null>(null);
   const [dmTestResult, setDmTestResult] = useState<Record<string, { success: boolean; error?: string }>>({});
-  const [triggering, setTriggering] = useState(false);
-  const [triggerResult, setTriggerResult] = useState<{ success: boolean; error?: string } | null>(null);
-
   const handleToggle = (enabled: boolean) => {
     onChange({ ...dmReminder, enabled });
   };
@@ -74,20 +71,6 @@ export default function DMReminderConfig({
       setDmTestResult((prev) => ({ ...prev, [userId]: { success: false, error: message } }));
     } finally {
       setTestingDM(null);
-    }
-  };
-
-  const handleTrigger = async () => {
-    setTriggering(true);
-    setTriggerResult(null);
-    try {
-      const result = await window.electronAPI.slack.triggerDMReminder();
-      setTriggerResult(result);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      setTriggerResult({ success: false, error: message });
-    } finally {
-      setTriggering(false);
     }
   };
 
@@ -224,23 +207,6 @@ export default function DMReminderConfig({
             )}
           </div>
 
-          {/* 수동 트리거 */}
-          <div className="pt-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleTrigger}
-              isLoading={triggering}
-              disabled={!botToken || dmReminder.userMappings.filter((m) => m.enabled && m.slackUserId).length === 0}
-            >
-              지금 DM 리마인더 전송
-            </Button>
-            {triggerResult && (
-              <p className={`text-xs mt-1 ${triggerResult.success ? 'text-green-600' : 'text-red-500'}`}>
-                {triggerResult.success ? '리마인더가 전송되었습니다' : `실패: ${triggerResult.error}`}
-              </p>
-            )}
-          </div>
         </div>
       )}
     </div>

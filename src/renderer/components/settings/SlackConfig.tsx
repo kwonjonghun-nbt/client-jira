@@ -36,8 +36,6 @@ export default function SlackConfig({
 }: SlackConfigProps) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
-  const [triggering, setTriggering] = useState(false);
-  const [triggerResult, setTriggerResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [testingBot, setTestingBot] = useState(false);
   const [botTestResult, setBotTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [searching, setSearching] = useState(false);
@@ -55,20 +53,6 @@ export default function SlackConfig({
       setTestResult({ success: false, error: message });
     } finally {
       setTesting(false);
-    }
-  };
-
-  const handleTriggerReport = async () => {
-    setTriggering(true);
-    setTriggerResult(null);
-    try {
-      const result = await window.electronAPI.slack.triggerDailyReport();
-      setTriggerResult(result);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      setTriggerResult({ success: false, error: message });
-    } finally {
-      setTriggering(false);
     }
   };
 
@@ -101,8 +85,6 @@ export default function SlackConfig({
       setSearching(false);
     }
   };
-
-  const canTrigger = webhookUrl || (replyToThread && botToken && channelId && threadSearchText);
 
   return (
     <div className="space-y-3">
@@ -264,22 +246,6 @@ export default function SlackConfig({
             )}
           </div>
 
-          <div className="pt-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleTriggerReport}
-              isLoading={triggering}
-              disabled={!canTrigger}
-            >
-              지금 리포트 생성/전송
-            </Button>
-            {triggerResult && (
-              <p className={`text-xs mt-1 ${triggerResult.success ? 'text-green-600' : 'text-red-500'}`}>
-                {triggerResult.success ? '리포트가 생성되어 슬랙으로 전송되었습니다' : `실패: ${triggerResult.error}`}
-              </p>
-            )}
-          </div>
         </div>
       )}
     </div>

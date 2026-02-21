@@ -42,7 +42,8 @@ export class StorageService {
         logger.warn('Settings validation failed, merging with defaults:', JSON.stringify(result.error));
         const merged = SettingsSchema.safeParse({ ...DEFAULT_SETTINGS, ...parsed });
         if (merged.success) {
-          const migrated = migrateToTeams(merged.data);
+          // 레거시 slack 필드를 팀으로 마이그레이션 (Zod가 strip하므로 raw에서 전달)
+          const migrated = migrateToTeams({ ...merged.data, slack: parsed.slack });
           if (migrated !== merged.data) {
             await this.saveSettings(migrated);
             logger.info('[Settings] Migrated to teams structure');
@@ -53,7 +54,8 @@ export class StorageService {
         return DEFAULT_SETTINGS;
       }
       // 팀 마이그레이션: teams가 비어있고 assignees가 있으면 기본 팀 생성
-      const migrated = migrateToTeams(result.data);
+      // 레거시 slack 필드를 팀으로 마이그레이션 (Zod가 strip하므로 raw에서 전달)
+      const migrated = migrateToTeams({ ...result.data, slack: parsed.slack });
       if (migrated !== result.data) {
         await this.saveSettings(migrated);
         logger.info('[Settings] Migrated to teams structure');

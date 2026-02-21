@@ -36,29 +36,16 @@ export async function reinitializeJiraServices(services: AppServices): Promise<v
     services.scheduler = new SchedulerService(services.sync, services.mainWindow);
     services.scheduler.start(settings.schedule);
 
-    // Restart daily report scheduler
-    services.dailyReportScheduler?.stop();
+    // Restart team schedulers
     if (services.storage && services.slack) {
-      const { DailyReportScheduler } = await import('./daily-report-scheduler');
-      services.dailyReportScheduler = new DailyReportScheduler(
-        services.storage,
-        services.slack,
-        services.mainWindow,
-      );
-      services.dailyReportScheduler.start(settings.slack);
-
-      // Restart DM reminder scheduler
-      services.dmReminderScheduler?.stop();
-      const { DMReminderScheduler } = await import('./dm-reminder-scheduler');
-      services.dmReminderScheduler = new DMReminderScheduler(services.slack);
-      services.dmReminderScheduler.start(settings.slack);
-
-      // Restart team schedulers
       for (const ts of services.teamSchedulers.values()) {
         ts.dailyReport.stop();
         ts.dmReminder.stop();
       }
       services.teamSchedulers.clear();
+
+      const { DailyReportScheduler } = await import('./daily-report-scheduler');
+      const { DMReminderScheduler } = await import('./dm-reminder-scheduler');
 
       for (const team of settings.teams) {
         if (team.slack.enabled) {

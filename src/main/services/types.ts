@@ -28,8 +28,6 @@ export interface AppServices {
   aiRunner: AIRunnerService | null;
   updater: UpdaterService | null;
   slack: SlackService | null;
-  dailyReportScheduler: DailyReportScheduler | null;
-  dmReminderScheduler: DMReminderScheduler | null;
   email: EmailService | null;
   teamSchedulers: Map<string, TeamSchedulers>;
 }

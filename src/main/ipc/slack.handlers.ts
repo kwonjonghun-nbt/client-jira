@@ -7,13 +7,6 @@ export function registerSlackHandlers(services: AppServices): void {
     return services.slack.testWebhook(webhookUrl);
   });
 
-  ipcMain.handle('slack:trigger-daily-report', async () => {
-    if (!services.dailyReportScheduler) {
-      throw new Error('Daily report scheduler not available');
-    }
-    return services.dailyReportScheduler.triggerManual();
-  });
-
   ipcMain.handle('slack:test-bot-token', async (_event, botToken: string, channelId: string) => {
     if (!services.slack) throw new Error('Slack service not available');
     return services.slack.testBotToken(botToken, channelId);
@@ -36,11 +29,4 @@ export function registerSlackHandlers(services: AppServices): void {
     return services.slack.testDM(botToken, userId);
   });
 
-  ipcMain.handle('slack:trigger-dm-reminder', async () => {
-    if (!services.dmReminderScheduler || !services.storage) {
-      throw new Error('DM reminder scheduler not available');
-    }
-    const settings = await services.storage.loadSettings();
-    return services.dmReminderScheduler.triggerNow(settings.slack);
-  });
 }

@@ -95,7 +95,6 @@ export const SettingsSchema = z.object({
   collection: CollectionSchema,
   schedule: ScheduleSchema,
   storage: StorageSettingsSchema,
-  slack: SlackSettingsSchema.default({ enabled: false, webhookUrl: '', dailyReportTime: '11:20', replyToThread: false, botToken: '', channelId: '', threadSearchText: '', dmReminder: { enabled: false, schedules: [{ time: '10:30', message: '오늘의 지라 업무를 최신화 하셨나요?' }, { time: '15:00', message: '계획하신 업무 일정에 변경사항이나 이슈로 인한 일정 변동은 없나요?' }, { time: '18:30', message: '오늘 업무내용을 정리해보세요.' }], userMappings: [] } }),
   email: EmailSettingsSchema.default({ enabled: false, senderEmail: '', clientId: '', clientSecret: '' }),
   teams: z.array(TeamSchema).default([]),
 });
@@ -129,24 +128,6 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   storage: {
     retentionDays: 90,
-  },
-  slack: {
-    enabled: false,
-    webhookUrl: '',
-    dailyReportTime: '11:20',
-    replyToThread: false,
-    botToken: '',
-    channelId: '',
-    threadSearchText: '',
-    dmReminder: {
-      enabled: false,
-      schedules: [
-        { time: '10:30', message: '오늘의 지라 업무를 최신화 하셨나요?' },
-        { time: '15:00', message: '계획하신 업무 일정에 변경사항이나 이슈로 인한 일정 변동은 없나요?' },
-        { time: '18:30', message: '오늘 업무내용을 정리해보세요.' },
-      ],
-      userMappings: [],
-    },
   },
   email: {
     enabled: false,

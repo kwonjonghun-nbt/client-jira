@@ -23,8 +23,6 @@ const services: AppServices = {
   aiRunner: null,
   updater: null,
   slack: null,
-  dailyReportScheduler: null,
-  dmReminderScheduler: null,
   email: null,
   teamSchedulers: new Map(),
 };
@@ -99,23 +97,12 @@ async function initializeNetworkServices(): Promise<void> {
     const { EmailService } = await import('./services/email');
     services.email = new EmailService(services.credentials);
 
-    // Initialize Slack + Daily Report Scheduler (independent of Jira connection)
+    // Initialize Slack + 팀별 스케줄러 생성
     const { SlackService } = await import('./services/slack');
     services.slack = new SlackService();
 
     const { DailyReportScheduler } = await import('./services/daily-report-scheduler');
-    services.dailyReportScheduler = new DailyReportScheduler(
-      services.storage,
-      services.slack,
-      services.mainWindow,
-    );
-    services.dailyReportScheduler.start(settings.slack);
-
     const { DMReminderScheduler } = await import('./services/dm-reminder-scheduler');
-    services.dmReminderScheduler = new DMReminderScheduler(services.slack);
-    services.dmReminderScheduler.start(settings.slack);
-
-    // 팀별 스케줄러 생성
     services.teamSchedulers.clear();
     for (const team of settings.teams) {
       if (team.slack.enabled) {
@@ -175,7 +162,6 @@ app.whenReady().then(async () => {
       services.mainWindow = win;
       services.aiRunner?.updateWindow(win);
       services.scheduler?.updateWindow(win);
-      services.dailyReportScheduler?.updateWindow(win);
       for (const ts of services.teamSchedulers.values()) {
         ts.dailyReport.updateWindow(win);
       }
@@ -191,8 +177,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   services.scheduler?.stop();
-  services.dailyReportScheduler?.stop();
-  services.dmReminderScheduler?.stop();
   for (const ts of services.teamSchedulers.values()) {
     ts.dailyReport.stop();
     ts.dmReminder.stop();

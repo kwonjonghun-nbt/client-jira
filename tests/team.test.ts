@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { migrateToTeams } from '../src/main/utils/settings-migration';
 import { filterIssuesByTeam, filterStoredDataByTeam } from '../src/renderer/utils/team-filters';
-import { DEFAULT_SETTINGS } from '../src/main/schemas/settings.schema';
-import type { Settings, Team } from '../src/main/schemas/settings.schema';
+import { DEFAULT_SETTINGS, SlackSettingsSchema } from '../src/main/schemas/settings.schema';
+import type { Settings, Team, SlackSettings } from '../src/main/schemas/settings.schema';
 import type { NormalizedIssue, StoredData } from '../src/main/schemas/storage.schema';
+
+const DEFAULT_SLACK: SlackSettings = SlackSettingsSchema.parse({});
 
 // --- migrateToTeams ---
 
@@ -16,7 +18,7 @@ describe('migrateToTeams', () => {
         name: '기존 팀',
         color: '#EF4444',
         assignees: ['alice'],
-        slack: DEFAULT_SETTINGS.slack,
+        slack: DEFAULT_SLACK,
       }],
     };
     const result = migrateToTeams(settings);
@@ -34,14 +36,14 @@ describe('migrateToTeams', () => {
   });
 
   it('기존 assignees + slack을 "기본 팀"으로 마이그레이션', () => {
-    const settings: Settings = {
+    const settings = {
       ...DEFAULT_SETTINGS,
       collection: {
         ...DEFAULT_SETTINGS.collection,
         assignees: ['alice', 'bob'],
       },
       slack: {
-        ...DEFAULT_SETTINGS.slack,
+        ...DEFAULT_SLACK,
         enabled: true,
         webhookUrl: 'https://hooks.slack.com/test',
       },
@@ -108,7 +110,7 @@ const makeTeam = (assignees: string[]): Team => ({
   name: 'FE팀',
   color: '#3B82F6',
   assignees,
-  slack: DEFAULT_SETTINGS.slack,
+  slack: DEFAULT_SLACK,
 });
 
 describe('filterIssuesByTeam', () => {

@@ -6,7 +6,6 @@ const SECTION_TITLES: Record<NonNullable<SettingsSection>, string> = {
   collection: '수집 대상',
   schedule: '스케줄',
   storage: '저장',
-  slack: '슬랙 리포트',
   email: '이메일 리포트',
   ai: 'AI 에이전트',
   update: '앱 업데이트',

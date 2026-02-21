@@ -17,8 +17,12 @@ export function registerSettingsHandlers(services: AppServices): void {
         if (result.email && clientSecret) {
           result.email.clientSecret = clientSecret;
         }
-        if (result.slack && botToken) {
-          result.slack.botToken = botToken;
+        if (botToken) {
+          for (const team of result.teams) {
+            if (team.slack) {
+              team.slack.botToken = botToken;
+            }
+          }
         }
       }
       return result;
@@ -44,12 +48,16 @@ export function registerSettingsHandlers(services: AppServices): void {
           }
           s.email = { ...s.email, clientSecret: '' };
         }
-        if (s.slack && typeof s.slack === 'object') {
-          const botToken = s.slack.botToken;
-          if (botToken && typeof botToken === 'string' && botToken.trim()) {
-            await services.credentials.saveSlackBotToken(botToken);
+        if (Array.isArray(s.teams)) {
+          for (const team of s.teams) {
+            if (team?.slack && typeof team.slack === 'object') {
+              const botToken = team.slack.botToken;
+              if (botToken && typeof botToken === 'string' && botToken.trim()) {
+                await services.credentials.saveSlackBotToken(botToken);
+              }
+              team.slack = { ...team.slack, botToken: '' };
+            }
           }
-          s.slack = { ...s.slack, botToken: '' };
         }
       }
       await services.storage.saveSettings(settings);

@@ -12,7 +12,6 @@ const SETTINGS_CATEGORIES: SettingsCategory[] = [
   { key: 'collection', title: '수집 대상', description: '프로젝트, 담당자 필터링' },
   { key: 'schedule', title: '스케줄', description: '자동 동기화 주기 설정' },
   { key: 'storage', title: '저장', description: '데이터 보관 기간' },
-  { key: 'slack', title: '슬랙 리포트', description: '웹훅, 일일 리포트, DM 리마인더' },
   { key: 'email', title: '이메일 리포트', description: 'Gmail OAuth 발송 설정' },
   { key: 'ai', title: 'AI 에이전트', description: 'AI 모델 선택' },
   { key: 'update', title: '앱 업데이트', description: '버전 확인 및 업데이트' },

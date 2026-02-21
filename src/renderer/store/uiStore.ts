@@ -9,7 +9,7 @@ interface Filters {
 
 type Page = 'dashboard' | 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports' | 'okr';
 
-export type SettingsSection = 'jira' | 'collection' | 'schedule' | 'storage' | 'slack' | 'email' | 'ai' | 'update' | 'teams' | null;
+export type SettingsSection = 'jira' | 'collection' | 'schedule' | 'storage' | 'email' | 'ai' | 'update' | 'teams' | null;
 
 interface ConfirmDialogState {
   title: string;

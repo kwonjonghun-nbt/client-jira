@@ -142,16 +142,12 @@ const api = {
   slack: {
     testWebhook: (webhookUrl: string) =>
       ipcRenderer.invoke('slack:test-webhook', webhookUrl),
-    triggerDailyReport: () =>
-      ipcRenderer.invoke('slack:trigger-daily-report'),
     testBotToken: (botToken: string, channelId: string) =>
       ipcRenderer.invoke('slack:test-bot-token', botToken, channelId),
     findThreadMessage: (botToken: string, channelId: string, searchText: string) =>
       ipcRenderer.invoke('slack:find-thread-message', botToken, channelId, searchText),
     testDM: (botToken: string, userId: string) =>
       ipcRenderer.invoke('slack:test-dm', botToken, userId),
-    triggerDMReminder: () =>
-      ipcRenderer.invoke('slack:trigger-dm-reminder'),
   },
   email: {
     startAuth: (clientId: string, clientSecret: string) =>
