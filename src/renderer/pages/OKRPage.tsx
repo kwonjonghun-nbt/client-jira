@@ -67,8 +67,24 @@ export default function OKRPage() {
   // ── Loading state ───────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <Spinner size="lg" />
+      <div className="h-full p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-40 animate-pulse bg-gray-200 rounded" />
+          <div className="flex gap-2">
+            <div className="h-9 w-24 animate-pulse bg-gray-200 rounded-lg" />
+            <div className="h-9 w-32 animate-pulse bg-gray-200 rounded-lg" />
+          </div>
+        </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="h-6 w-48 animate-pulse bg-gray-200 rounded" />
+            <div className="h-4 w-full animate-pulse bg-gray-100 rounded-full" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-20 animate-pulse bg-gray-100 rounded-lg" />
+              <div className="h-20 animate-pulse bg-gray-100 rounded-lg" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

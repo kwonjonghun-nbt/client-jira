@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
 import { CARD_W, CARD_H, assignDefaultPosition, type Rect, type UpdateOKR } from './okr-canvas.types';
 import { computeUnlinkWork, computeDeleteVirtualTicket } from '../../utils/okr-canvas-operations';
+import { useUIStore } from '../../store/uiStore';
 
 export function useTicketActions(krId: string, updateOKR: UpdateOKR) {
+  const showConfirm = useUIStore((s) => s.showConfirm);
   const linkJiraIssue = useCallback((issueKey: string) => {
     updateOKR((d) => {
       const links = d.links.filter((l) => l.keyResultId === krId);
@@ -102,12 +104,17 @@ export function useTicketActions(krId: string, updateOKR: UpdateOKR) {
   }, [updateOKR]);
 
   const deleteVirtualTicket = useCallback((vtId: string) => {
-    if (!window.confirm('이 가상 티켓을 삭제하시겠습니까?')) return;
-    updateOKR((d) => ({
-      ...d,
-      ...computeDeleteVirtualTicket(d, vtId),
-    }));
-  }, [updateOKR]);
+    showConfirm({
+      title: '가상 티켓 삭제',
+      message: '이 가상 티켓을 삭제하시겠습니까?',
+      onConfirm: () => {
+        updateOKR((d) => ({
+          ...d,
+          ...computeDeleteVirtualTicket(d, vtId),
+        }));
+      },
+    });
+  }, [updateOKR, showConfirm]);
 
   return { linkJiraIssue, linkJiraIssues, createAndLinkVirtual, unlinkWork, deleteVirtualTicket };
 }

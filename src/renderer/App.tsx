@@ -4,6 +4,9 @@ import SyncProgress from './components/sync/SyncProgress';
 import IssueDetailModal from './components/issue/IssueDetailModal';
 import AITaskPanel from './components/ai-tasks/AITaskPanel';
 import AITaskDetailModal from './components/ai-tasks/AITaskDetailModal';
+import Toaster from './components/common/Toaster';
+import ConfirmDialog from './components/common/ConfirmDialog';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { useUIStore } from './store/uiStore';
 import { useAITaskListener } from './hooks/useAITaskListener';
 import { useJiraIssues } from './hooks/useJiraIssues';
@@ -32,16 +35,18 @@ export default function App() {
 
   return (
     <Layout>
-      <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="text-gray-400 text-sm">Loading...</div></div>}>
-        {currentPage === 'dashboard' && <DashboardPage />}
-        {currentPage === 'main' && <MainPage />}
-        {currentPage === 'timeline' && <TimelinePage />}
-        {currentPage === 'stats' && <StatsPage />}
-        {currentPage === 'label-notes' && <LabelNotesPage />}
-        {currentPage === 'reports' && <ReportsPage />}
-        {currentPage === 'okr' && <OKRPage />}
-        {currentPage === 'settings' && <SettingsPage />}
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="text-gray-400 text-sm">Loading...</div></div>}>
+          {currentPage === 'dashboard' && <DashboardPage />}
+          {currentPage === 'main' && <MainPage />}
+          {currentPage === 'timeline' && <TimelinePage />}
+          {currentPage === 'stats' && <StatsPage />}
+          {currentPage === 'label-notes' && <LabelNotesPage />}
+          {currentPage === 'reports' && <ReportsPage />}
+          {currentPage === 'okr' && <OKRPage />}
+          {currentPage === 'settings' && <SettingsPage />}
+        </Suspense>
+      </ErrorBoundary>
       <SyncProgress />
       {selectedIssue && (
         <IssueDetailModal
@@ -52,6 +57,8 @@ export default function App() {
       )}
       <AITaskPanel />
       <AITaskDetailModal />
+      <ConfirmDialog />
+      <Toaster />
     </Layout>
   );
 }

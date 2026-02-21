@@ -16,8 +16,20 @@ export default function MainPage() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Spinner size="lg" />
+      <div className="h-full flex flex-col p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-32 animate-pulse bg-gray-200 rounded" />
+          <div className="flex gap-2">
+            <div className="h-9 w-48 animate-pulse bg-gray-200 rounded-lg" />
+            <div className="h-9 w-24 animate-pulse bg-gray-200 rounded-lg" />
+          </div>
+        </div>
+        <div className="h-10 animate-pulse bg-gray-200 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-12 animate-pulse bg-gray-200 rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }

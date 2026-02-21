@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { NormalizedIssue } from '../../types/jira.types';
+import { useUIStore } from '../../store/uiStore';
 import { normalizeType } from '../../utils/issue';
 import { formatDate } from '../../utils/formatters';
 
@@ -35,6 +36,7 @@ const issueTypeLabels: Record<string, string> = {
 
 export default function TimelineBar({ issue, left, width, baseUrl }: TimelineBarProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const openIssueDetail = useUIStore((s) => s.openIssueDetail);
   const normalized = normalizeType(issue.issueType);
   const barColor = issueTypeBarColor[normalized] ?? 'bg-gray-400';
   const overlay = statusOverlay[issue.statusCategory] ?? '';
@@ -46,12 +48,8 @@ export default function TimelineBar({ issue, left, width, baseUrl }: TimelineBar
   const barHeight = isEpic ? 'h-7' : isSubtask ? 'h-4' : 'h-5';
   const topOffset = isEpic ? 'top-0.5' : isSubtask ? 'top-2' : 'top-1';
 
-  const issueUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/browse/${issue.key}` : null;
-
   const handleClick = () => {
-    if (issueUrl) {
-      window.electronAPI.shell.openExternal(issueUrl);
-    }
+    openIssueDetail(issue.key, baseUrl);
   };
 
   return (

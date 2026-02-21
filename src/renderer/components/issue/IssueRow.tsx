@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import type { NormalizedIssue } from '../../types/jira.types';
 import { useUIStore } from '../../store/uiStore';
-import { normalizeType, issueTypeColors, statusBadgeClass, getPriorityColor, getIssueTypeLabel, buildIssueUrl } from '../../utils/issue';
+import { normalizeType, issueTypeColors, statusBadgeClass, getPriorityColor, getIssueTypeLabel } from '../../utils/issue';
 import { formatDateShort } from '../../utils/formatters';
 
 interface IssueRowProps {
@@ -16,22 +16,17 @@ export default memo(function IssueRow({ issue, baseUrl }: IssueRowProps) {
   const normalizedType = normalizeType(issue.issueType);
   const typeColor = issueTypeColors[normalizedType] ?? 'bg-gray-100 text-gray-700';
   const typeLabel = getIssueTypeLabel(normalizedType, issue.issueType);
-  const issueUrl = buildIssueUrl(baseUrl, issue.key);
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
       <td className="px-4 py-2.5">
-        {issueUrl ? (
-          <button
-            type="button"
-            onClick={() => window.electronAPI.shell.openExternal(issueUrl)}
-            className="font-mono text-xs text-blue-600 font-medium hover:underline cursor-pointer bg-transparent border-none p-0"
-          >
-            {issue.key}
-          </button>
-        ) : (
-          <span className="font-mono text-xs text-blue-600 font-medium">{issue.key}</span>
-        )}
+        <button
+          type="button"
+          onClick={() => openIssueDetail(issue.key, baseUrl)}
+          className="font-mono text-xs text-blue-600 font-medium hover:underline cursor-pointer bg-transparent border-none p-0"
+        >
+          {issue.key}
+        </button>
       </td>
       <td className="px-4 py-2.5">
         <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${typeColor}`}>

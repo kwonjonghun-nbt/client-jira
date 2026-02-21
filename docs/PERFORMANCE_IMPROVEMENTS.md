@@ -465,63 +465,62 @@
 
 ---
 
-## Phase 7 — UX/사용성 개선
+## Phase 7 — UX/사용성 개선 (완료)
+
+> 12개 UX/사용성 항목 전면 개선 완료. 토스트 알림, 커스텀 모달, 스켈레톤 로딩, 접근성, 필터 영속화 등 사용자 경험 전반 개선.
 
 ### CRITICAL UX
 
-- [ ] **U7-1. 글로벌 토스트/알림 시스템 도입**
-  - 문제: 성공/실패 피드백 없이 작업 수행
-  - 해결: `react-hot-toast` 또는 Zustand 기반 토스트 시스템
+- [x] **U7-1. 글로벌 토스트/알림 시스템 도입**
+  - 해결: `sonner` 라이브러리 도입 + `Toaster` 래퍼 컴포넌트. 모든 mutation 훅에 `toast.success`/`toast.error` 적용
   - 영향: 모든 mutation에 일관된 피드백 제공
 
-- [ ] **U7-2. `window.confirm()` → 커스텀 확인 모달 + undo**
-  - 파일: `ReportsPage.tsx:35`, `useOKRActions.ts:74,124`, `useGroupActions.ts:80`, `useTicketActions.ts:105`
-  - 해결: 커스텀 확인 모달 + 5초 undo 토스트
+- [x] **U7-2. `window.confirm()` → 커스텀 확인 모달**
+  - 해결: Zustand `confirmDialog` 상태 + `ConfirmDialog` 컴포넌트. 5곳 `window.confirm` 교체 (useOKRCrud×2, useGroupActions, useTicketActions, ReportsPage)
   - 영향: 데이터 안전성 + UX 일관성
 
 ### HIGH UX
 
-- [ ] **U7-3. 스켈레톤 로딩 도입**
-  - 해결: 페이지별 스켈레톤 컴포넌트
+- [x] **U7-3. 스켈레톤 로딩 도입**
+  - 해결: 4개 페이지(Dashboard, Main, Stats, OKR) `<Spinner>` → `animate-pulse` 스켈레톤 UI로 교체
   - 영향: 체감 속도 대폭 개선
 
-- [ ] **U7-4. 필터 상태 페이지 이동 시 영속화**
-  - 해결: Zustand에 페이지별 필터 상태 저장
+- [x] **U7-4. 필터 상태 페이지 이동 시 영속화**
+  - 해결: `uiStore`에 `pageFilters: Partial<Record<Page, Filters>>` 추가. `setPage` 시 현재 필터 저장 + 대상 페이지 필터 복원
   - 영향: 페이지 간 워크플로우 효율 개선
 
-- [ ] **U7-5. Canvas 온보딩/도움말 추가**
-  - 해결: 첫 사용 시 툴팁 투어 또는 `?` 도움말 오버레이
+- [x] **U7-5. Canvas 온보딩/도움말 추가**
+  - 해결: `CanvasHelpOverlay` 컴포넌트 + `KRCanvasModal` 헤더에 `?` 도움말 버튼 추가
   - 영향: 기능 발견성 향상
 
-- [ ] **U7-6. 이슈 키 클릭 → 상세 모달 (외부 브라우저 대신)**
-  - 해결: 키 클릭 → 상세 모달, "Jira에서 보기"는 모달 내부로
+- [x] **U7-6. 이슈 키 클릭 → 상세 모달 (외부 브라우저 대신)**
+  - 해결: `IssueRow`, `TimelineBar`, `TimelineChart` 이슈 키 클릭 → `openIssueDetail()` 호출로 변경. "Jira에서 열기"는 모달 내부에서 제공
   - 영향: 인앱 워크플로우 유지
 
-- [ ] **U7-7. Error Boundary 추가**
-  - 해결: 페이지 단위 Error Boundary
+- [x] **U7-7. Error Boundary 추가**
+  - 해결: `ErrorBoundary` 클래스 컴포넌트 생성, `App.tsx`에서 페이지 콘텐츠 래핑
   - 영향: 앱 안정성 확보
 
 ### MEDIUM UX
 
-- [ ] **U7-8. 접근성(a11y) 개선**
-  - 해결: 모달 포커스 트랩, `role="navigation"`, `aria-current`, 아이콘 버튼 `aria-label`
+- [x] **U7-8. 접근성(a11y) 개선**
+  - 해결: Sidebar `role="navigation"` + `aria-label` + `aria-current="page"`. IssueDetailModal `role="dialog"` + `aria-modal` + `aria-labelledby`. SyncProgress `role="status"` + `aria-live="polite"`. 모든 아이콘 버튼에 `aria-label`
   - 영향: 키보드/스크린리더 접근성
 
-- [ ] **U7-9. 빈 상태(Empty State) UI 통일**
-  - 해결: 공용 `EmptyState` 컴포넌트
+- [x] **U7-9. 빈 상태(Empty State) UI 통일**
+  - 해결: 공용 `EmptyState` 컴포넌트 (아이콘, 제목, 설명, 선택적 액션 버튼)
   - 영향: UI 일관성
 
-- [ ] **U7-10. 사이드바 아이콘 SVG 교체 + 기본 확장**
-  - 해결: SVG 아이콘 + 초기 확장 상태
+- [x] **U7-10. 사이드바 아이콘 SVG 교체 + 기본 확장**
+  - 해결: 이모지 → SVG 아이콘 컴포넌트 9개 교체 + `sidebarExpanded` 초기값 `true`
   - 영향: 첫 사용 경험 개선
 
-- [ ] **U7-11. 낙관적 업데이트(Optimistic Update) 적용**
-  - 해결: 로컬 mutation에 React Query `onMutate`/`onError`/`onSettled`
+- [x] **U7-11. 낙관적 업데이트(Optimistic Update) 적용**
+  - 해결: `useSettings`, `useLabelNotes` 훅에 `onMutate`/`onError`/`onSettled` 패턴 추가. `useOKR`은 기존 패턴 유지 + `toast.error` 추가
   - 영향: 로컬 작업 즉시 반영
 
-- [ ] **U7-12. SyncProgress 오버레이 위치 충돌 해결**
-  - 파일: `src/renderer/components/sync/SyncProgress.tsx:25`
-  - 해결: z-index/위치 조정 또는 StatusBar 통합
+- [x] **U7-12. SyncProgress 오버레이 위치 충돌 해결**
+  - 해결: `bottom-10` → `bottom-4`, `z-50` → `z-40` + `role="status"` + `aria-live="polite"`
   - 영향: Timeline 페이지 조작성
 
 ---
@@ -576,6 +575,18 @@
 | 2026-02-21 | P6-4 | `saveLatest` + `saveSnapshot` → `Promise.all()` 병렬 쓰기 |
 | 2026-02-21 | P6-5 | `listReports` 순차 `for` 루프 → `Promise.all(mdFiles.map(...))` 병렬 stat |
 | 2026-02-21 | P6-6 | `normalizeIssues` ADF 변환 `issueKey:updated` 키 기반 모듈 레벨 캐시 + 배치 외 키 자동 정리 |
+| 2026-02-21 | U7-1 | `sonner` 토스트 라이브러리 도입 + `Toaster` 래퍼. 모든 mutation 훅에 toast 피드백 적용 |
+| 2026-02-21 | U7-2 | Zustand `confirmDialog` 상태 + `ConfirmDialog` 컴포넌트. `window.confirm` 5곳 교체 |
+| 2026-02-21 | U7-3 | Dashboard, Main, Stats, OKR 4개 페이지 스켈레톤 로딩 (`animate-pulse`) 도입 |
+| 2026-02-21 | U7-4 | `uiStore` `pageFilters` 추가. 페이지 전환 시 필터 저장/복원 |
+| 2026-02-21 | U7-5 | `CanvasHelpOverlay` 컴포넌트 + KRCanvasModal `?` 도움말 버튼 |
+| 2026-02-21 | U7-6 | IssueRow, TimelineBar, TimelineChart 이슈 키 클릭 → `openIssueDetail()` 모달로 변경 |
+| 2026-02-21 | U7-7 | `ErrorBoundary` 클래스 컴포넌트 + App.tsx 페이지 콘텐츠 래핑 |
+| 2026-02-21 | U7-8 | Sidebar/IssueDetailModal/SyncProgress/KRCanvasModal a11y 속성 추가 (role, aria-*) |
+| 2026-02-21 | U7-9 | 공용 `EmptyState` 컴포넌트 생성 (아이콘, 제목, 설명, 액션 버튼) |
+| 2026-02-21 | U7-10 | Sidebar 이모지 → SVG 아이콘 9개 교체 + `sidebarExpanded` 기본값 `true` |
+| 2026-02-21 | U7-11 | `useSettings`, `useLabelNotes` 낙관적 업데이트 패턴 추가. `useOKR` toast.error 추가 |
+| 2026-02-21 | U7-12 | SyncProgress `bottom-4`, `z-40` + `role="status"` `aria-live="polite"` |
 
 ---
 

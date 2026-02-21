@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { LabelNote } from '../types/jira.types';
 
 const QUERY_KEY = ['label-notes'];
@@ -14,8 +15,20 @@ export function useLabelNotes() {
   const saveMutation = useMutation({
     mutationFn: (updated: LabelNote[]) =>
       window.electronAPI.storage.saveLabelNotes(updated),
-    onSuccess: (_data, variables) => {
-      queryClient.setQueryData(QUERY_KEY, variables);
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEY });
+      const previous = queryClient.getQueryData<LabelNote[]>(QUERY_KEY);
+      queryClient.setQueryData(QUERY_KEY, newData);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(QUERY_KEY, context.previous);
+      }
+      toast.error('라벨 메모 저장에 실패했습니다');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
   });
 

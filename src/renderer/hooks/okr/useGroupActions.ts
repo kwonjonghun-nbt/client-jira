@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
 import { CARD_W, CARD_H, GROUP_HEADER_H, assignDefaultPosition, type Rect, type UpdateOKR } from './okr-canvas.types';
 import { computeDeleteGroup } from '../../utils/okr-canvas-operations';
+import { useUIStore } from '../../store/uiStore';
 
 export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
+  const showConfirm = useUIStore((s) => s.showConfirm);
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroupTitle, setNewGroupTitle] = useState('');
   const [addingSubgroupForId, setAddingSubgroupForId] = useState<string | null>(null);
@@ -77,12 +79,17 @@ export function useGroupActions(krId: string, updateOKR: UpdateOKR) {
   }, [newGroupTitle, updateOKR, krId]);
 
   const deleteGroup = useCallback((groupId: string) => {
-    if (!window.confirm('이 그룹을 삭제하시겠습니까? 포함된 카드는 그룹 해제됩니다.')) return;
-    updateOKR((d) => ({
-      ...d,
-      ...computeDeleteGroup(d, groupId),
-    }));
-  }, [updateOKR]);
+    showConfirm({
+      title: '그룹 삭제',
+      message: '이 그룹을 삭제하시겠습니까? 포함된 카드는 그룹 해제됩니다.',
+      onConfirm: () => {
+        updateOKR((d) => ({
+          ...d,
+          ...computeDeleteGroup(d, groupId),
+        }));
+      },
+    });
+  }, [updateOKR, showConfirm]);
 
   const renameGroup = useCallback(() => {
     if (!editingGroupId || !editingGroupTitle.trim()) {

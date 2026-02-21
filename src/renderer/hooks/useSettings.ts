@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { Settings } from '../types/settings.types';
 import type { JiraProject } from '../types/jira.types';
 
@@ -12,9 +13,23 @@ export function useSettings() {
 
   const saveSettings = useMutation({
     mutationFn: (settings: Settings) => window.electronAPI.settings.save(settings),
-    onSuccess: (_data, variables) => {
-      // 캐시를 직접 업데이트하여 즉시 반영
-      queryClient.setQueryData(['settings'], variables);
+    onMutate: async (newSettings) => {
+      await queryClient.cancelQueries({ queryKey: ['settings'] });
+      const previous = queryClient.getQueryData<Settings | null>(['settings']);
+      queryClient.setQueryData(['settings'], newSettings);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(['settings'], context.previous);
+      }
+      toast.error('설정 저장에 실패했습니다');
+    },
+    onSuccess: () => {
+      toast.success('설정이 저장되었습니다');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
     },
   });
 

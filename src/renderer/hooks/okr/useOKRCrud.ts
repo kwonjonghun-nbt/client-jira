@@ -1,11 +1,13 @@
 import { useState, useCallback } from 'react';
 import type { OKRData } from '../../types/jira.types';
 import { CARD_W, CARD_H, assignDefaultPosition, type Rect } from './okr-canvas.types';
+import { useUIStore } from '../../store/uiStore';
 
 export function useOKRCrud(
   okr: OKRData,
   updateOKR: (updater: (draft: OKRData) => OKRData) => void,
 ) {
+  const showConfirm = useUIStore((s) => s.showConfirm);
   const [addingObjective, setAddingObjective] = useState(false);
   const [newObjectiveTitle, setNewObjectiveTitle] = useState('');
   const [addingKRForObjective, setAddingKRForObjective] = useState<string | null>(null);
@@ -27,33 +29,38 @@ export function useOKRCrud(
   }, [newObjectiveTitle, updateOKR]);
 
   const deleteObjective = useCallback((objectiveId: string) => {
-    if (!window.confirm('이 목표와 하위 KR, 연결된 작업을 모두 삭제하시겠습니까?')) return;
-    updateOKR((d) => {
-      const krIds = new Set(
-        d.keyResults.filter((kr) => kr.objectiveId === objectiveId).map((kr) => kr.id),
-      );
-      const remainingLinks = d.links.filter((l) => !krIds.has(l.keyResultId));
-      const linkedVTIds = new Set(
-        remainingLinks.filter((l) => l.type === 'virtual').map((l) => l.virtualTicketId),
-      );
-      const removedLinkIds = new Set(
-        d.links.filter((l) => krIds.has(l.keyResultId)).map((l) => l.id),
-      );
-      return {
-        ...d,
-        objectives: d.objectives.filter((o) => o.id !== objectiveId),
-        keyResults: d.keyResults.filter((kr) => kr.objectiveId !== objectiveId),
-        links: remainingLinks,
-        groups: d.groups.filter((g) => !krIds.has(g.keyResultId)),
-        virtualTickets: d.virtualTickets.filter((vt) => linkedVTIds.has(vt.id)),
-        relations: d.relations.filter(
-          (r) =>
-            !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
-            !(r.toType === 'link' && removedLinkIds.has(r.toId)),
-        ),
-      };
+    showConfirm({
+      title: '목표 삭제',
+      message: '이 목표와 하위 KR, 연결된 작업을 모두 삭제하시겠습니까?',
+      onConfirm: () => {
+        updateOKR((d) => {
+          const krIds = new Set(
+            d.keyResults.filter((kr) => kr.objectiveId === objectiveId).map((kr) => kr.id),
+          );
+          const remainingLinks = d.links.filter((l) => !krIds.has(l.keyResultId));
+          const linkedVTIds = new Set(
+            remainingLinks.filter((l) => l.type === 'virtual').map((l) => l.virtualTicketId),
+          );
+          const removedLinkIds = new Set(
+            d.links.filter((l) => krIds.has(l.keyResultId)).map((l) => l.id),
+          );
+          return {
+            ...d,
+            objectives: d.objectives.filter((o) => o.id !== objectiveId),
+            keyResults: d.keyResults.filter((kr) => kr.objectiveId !== objectiveId),
+            links: remainingLinks,
+            groups: d.groups.filter((g) => !krIds.has(g.keyResultId)),
+            virtualTickets: d.virtualTickets.filter((vt) => linkedVTIds.has(vt.id)),
+            relations: d.relations.filter(
+              (r) =>
+                !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
+                !(r.toType === 'link' && removedLinkIds.has(r.toId)),
+            ),
+          };
+        });
+      },
     });
-  }, [updateOKR]);
+  }, [updateOKR, showConfirm]);
 
   // ── CRUD: Key Results ─────────────────────────────────────────────────────
   const addKeyResult = useCallback((objectiveId: string) => {
@@ -76,29 +83,34 @@ export function useOKRCrud(
   }, [newKRTitle, updateOKR]);
 
   const deleteKeyResult = useCallback((krId: string) => {
-    if (!window.confirm('이 KR과 연결된 작업을 모두 삭제하시겠습니까?')) return;
-    updateOKR((d) => {
-      const removedLinkIds = new Set(
-        d.links.filter((l) => l.keyResultId === krId).map((l) => l.id),
-      );
-      const remainingLinks = d.links.filter((l) => l.keyResultId !== krId);
-      const linkedVTIds = new Set(
-        remainingLinks.filter((l) => l.type === 'virtual').map((l) => l.virtualTicketId),
-      );
-      return {
-        ...d,
-        keyResults: d.keyResults.filter((kr) => kr.id !== krId),
-        links: remainingLinks,
-        groups: d.groups.filter((g) => g.keyResultId !== krId),
-        virtualTickets: d.virtualTickets.filter((vt) => linkedVTIds.has(vt.id)),
-        relations: d.relations.filter(
-          (r) =>
-            !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
-            !(r.toType === 'link' && removedLinkIds.has(r.toId)),
-        ),
-      };
+    showConfirm({
+      title: 'KR 삭제',
+      message: '이 KR과 연결된 작업을 모두 삭제하시겠습니까?',
+      onConfirm: () => {
+        updateOKR((d) => {
+          const removedLinkIds = new Set(
+            d.links.filter((l) => l.keyResultId === krId).map((l) => l.id),
+          );
+          const remainingLinks = d.links.filter((l) => l.keyResultId !== krId);
+          const linkedVTIds = new Set(
+            remainingLinks.filter((l) => l.type === 'virtual').map((l) => l.virtualTicketId),
+          );
+          return {
+            ...d,
+            keyResults: d.keyResults.filter((kr) => kr.id !== krId),
+            links: remainingLinks,
+            groups: d.groups.filter((g) => g.keyResultId !== krId),
+            virtualTickets: d.virtualTickets.filter((vt) => linkedVTIds.has(vt.id)),
+            relations: d.relations.filter(
+              (r) =>
+                !(r.fromType === 'link' && removedLinkIds.has(r.fromId)) &&
+                !(r.toType === 'link' && removedLinkIds.has(r.toId)),
+            ),
+          };
+        });
+      },
     });
-  }, [updateOKR]);
+  }, [updateOKR, showConfirm]);
 
   // ── CRUD: Links ───────────────────────────────────────────────────────────
   const linkJiraIssues = useCallback(

@@ -1,6 +1,31 @@
+import type { ReactNode } from 'react';
 import { useUIStore } from '../../store/uiStore';
 import { useAITaskStore } from '../../store/aiTaskStore';
 import { countRunningTasks, countCompletedTasks } from '../../utils/ai-tasks';
+import {
+  HomeIcon,
+  ListIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  TagIcon,
+  DocumentIcon,
+  TargetIcon,
+  CogIcon,
+  RobotIcon,
+} from '../common/Icons';
+
+type Page = 'dashboard' | 'main' | 'timeline' | 'stats' | 'label-notes' | 'reports' | 'okr' | 'settings';
+
+const navItems: { page: Page; label: string; icon: ReactNode }[] = [
+  { page: 'dashboard', label: '대시보드', icon: <HomeIcon /> },
+  { page: 'main', label: '과제', icon: <ListIcon /> },
+  { page: 'timeline', label: '타임라인', icon: <CalendarIcon /> },
+  { page: 'stats', label: '통계', icon: <ChartBarIcon /> },
+  { page: 'label-notes', label: '라벨 메모', icon: <TagIcon /> },
+  { page: 'reports', label: '리포트', icon: <DocumentIcon /> },
+  { page: 'okr', label: 'OKR', icon: <TargetIcon /> },
+  { page: 'settings', label: '설정', icon: <CogIcon /> },
+];
 
 export default function Sidebar() {
   const currentPage = useUIStore((s) => s.currentPage);
@@ -13,19 +38,10 @@ export default function Sidebar() {
   const runningCount = countRunningTasks(tasks);
   const completedCount = countCompletedTasks(tasks);
 
-  const navItems = [
-    { page: 'dashboard' as const, label: '대시보드', icon: '🏠' },
-    { page: 'main' as const, label: '과제', icon: '📋' },
-    { page: 'timeline' as const, label: '타임라인', icon: '📅' },
-    { page: 'stats' as const, label: '통계', icon: '📊' },
-    { page: 'label-notes' as const, label: '라벨 메모', icon: '🏷️' },
-    { page: 'reports' as const, label: '리포트', icon: '📄' },
-    { page: 'okr' as const, label: 'OKR', icon: '🎯' },
-    { page: 'settings' as const, label: '설정', icon: '⚙️' },
-  ];
-
   return (
     <aside
+      role="navigation"
+      aria-label="메인 내비게이션"
       className={`
         ${expanded ? 'w-48' : 'w-16'}
         bg-gray-900 flex flex-col py-4 gap-2 shrink-0
@@ -34,6 +50,7 @@ export default function Sidebar() {
     >
       <button
         onClick={toggleSidebar}
+        aria-label={expanded ? '사이드바 접기' : '사이드바 펼치기'}
         className="flex items-center justify-center text-white font-bold text-xs mb-4 cursor-pointer hover:text-blue-400 transition-colors mx-auto"
       >
         {expanded ? '◀ CJ' : 'CJ'}
@@ -44,8 +61,10 @@ export default function Sidebar() {
           key={item.page}
           onClick={() => setPage(item.page)}
           title={expanded ? undefined : item.label}
+          aria-label={item.label}
+          aria-current={currentPage === item.page ? 'page' : undefined}
           className={`
-            mx-3 h-10 rounded-lg flex items-center gap-3 text-lg
+            mx-3 h-10 rounded-lg flex items-center gap-3
             transition-colors cursor-pointer
             ${expanded ? 'px-3' : 'justify-center'}
             ${currentPage === item.page
@@ -65,8 +84,9 @@ export default function Sidebar() {
       <button
         onClick={togglePanel}
         title={expanded ? undefined : 'AI 작업'}
+        aria-label="AI 작업"
         className={`
-          mx-3 h-10 rounded-lg flex items-center gap-3 text-lg
+          mx-3 h-10 rounded-lg flex items-center gap-3
           transition-colors cursor-pointer relative
           ${expanded ? 'px-3' : 'justify-center'}
           ${panelOpen
@@ -75,7 +95,7 @@ export default function Sidebar() {
           ${runningCount > 0 ? 'animate-pulse' : ''}
         `}
       >
-        <span className="shrink-0">🤖</span>
+        <span className="shrink-0"><RobotIcon /></span>
         {expanded && (
           <span className="text-sm truncate">AI 작업</span>
         )}

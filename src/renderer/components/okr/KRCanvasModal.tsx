@@ -9,7 +9,8 @@ import { findBestInsertIndex } from '../../utils/anchor-points';
 import { useUIStore } from '../../store/uiStore';
 import { calcKRProgress } from '../../utils/okr';
 import { useCanvasAI } from '../../hooks/okr/useCanvasAI';
-import { XIcon, LinkIcon, ArrowRightIcon, PlusIcon } from '../common/Icons';
+import { XIcon, LinkIcon, ArrowRightIcon, PlusIcon, QuestionIcon } from '../common/Icons';
+import CanvasHelpOverlay from './CanvasHelpOverlay';
 import JiraCard from './JiraCard';
 import VirtualCard from './VirtualCard';
 import GroupContainer from './GroupContainer';
@@ -77,6 +78,7 @@ export default function KRCanvasModal({
 
   // ── Local UI state ────────────────────────────────────────────────────
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [editingVTId, setEditingVTId] = useState<string | null>(null);
   const [editingVTTitle, setEditingVTTitle] = useState('');
 
@@ -310,11 +312,23 @@ export default function KRCanvasModal({
             </button>
           </div>
 
+          {/* Help */}
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            title="사용법"
+            aria-label="캔버스 사용법"
+            className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 ml-2"
+          >
+            <QuestionIcon />
+          </button>
+
           {/* Close */}
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 ml-2"
+            aria-label="캔버스 닫기"
+            className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"
           >
             <XIcon />
           </button>
@@ -569,6 +583,8 @@ export default function KRCanvasModal({
           onClose={() => setLinkModalOpen(false)}
         />
       )}
+
+      {helpOpen && <CanvasHelpOverlay onClose={() => setHelpOpen(false)} />}
     </div>
   );
 }

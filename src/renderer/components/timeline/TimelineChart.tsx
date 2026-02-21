@@ -262,7 +262,7 @@ export default function TimelineChart({ issues, baseUrl, viewMode, zoom, onZoomC
                 {baseUrl ? (
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); window.electronAPI.shell.openExternal(`${baseUrl.replace(/\/+$/, '')}/browse/${node.issue.key}`); }}
+                    onClick={(e) => { e.stopPropagation(); openIssueDetail(node.issue.key, baseUrl); }}
                     className={`px-1 py-0.5 rounded text-[9px] font-medium shrink-0 mr-1.5 cursor-pointer border-none hover:opacity-70 ${badgeClass}`}
                   >
                     {node.issue.key}

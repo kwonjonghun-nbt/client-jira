@@ -51,6 +51,9 @@ export default function IssueDetailModal({ issue, baseUrl, onClose }: IssueDetai
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="issue-detail-title"
     >
       <div
         className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
@@ -75,6 +78,7 @@ export default function IssueDetailModal({ issue, baseUrl, onClose }: IssueDetai
           <button
             type="button"
             onClick={onClose}
+            aria-label="닫기"
             className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 cursor-pointer bg-transparent border-none text-lg"
           >
             ×
@@ -83,7 +87,7 @@ export default function IssueDetailModal({ issue, baseUrl, onClose }: IssueDetai
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-6 py-4">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">{issue.summary}</h2>
+          <h2 id="issue-detail-title" className="text-lg font-bold text-gray-900 mb-4">{issue.summary}</h2>
 
           {/* Meta grid */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-5">

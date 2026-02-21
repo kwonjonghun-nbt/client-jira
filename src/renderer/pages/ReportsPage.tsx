@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { useUIStore } from '../store/uiStore';
 import Spinner from '../components/common/Spinner';
 import ReportDetailView from '../components/report/ReportDetailView';
 import ReportPromptSection from '../components/report/ReportPromptSection';
@@ -31,17 +33,27 @@ export default function ReportsPage() {
     filter.endDate,
   );
 
-  const handleDelete = useCallback(async (filename: string) => {
-    if (!confirm(`"${filename.replace(/\.md$/, '')}" 리포트를 삭제하시겠습니까?`)) return;
-    setDeleting(filename);
-    try {
-      await window.electronAPI.storage.deleteReport(filename);
-      await queryClient.invalidateQueries({ queryKey: ['reports'] });
-      if (selectedFile === filename) setSelectedFile(null);
-    } finally {
-      setDeleting(null);
-    }
-  }, [queryClient, selectedFile]);
+  const showConfirm = useUIStore((s) => s.showConfirm);
+
+  const handleDelete = useCallback((filename: string) => {
+    showConfirm({
+      title: '리포트 삭제',
+      message: `"${filename.replace(/\.md$/, '')}" 리포트를 삭제하시겠습니까?`,
+      onConfirm: async () => {
+        setDeleting(filename);
+        try {
+          await window.electronAPI.storage.deleteReport(filename);
+          await queryClient.invalidateQueries({ queryKey: ['reports'] });
+          if (selectedFile === filename) setSelectedFile(null);
+          toast.success('리포트가 삭제되었습니다');
+        } catch {
+          toast.error('리포트 삭제에 실패했습니다');
+        } finally {
+          setDeleting(null);
+        }
+      },
+    });
+  }, [queryClient, selectedFile, showConfirm]);
 
   const handleDownloadJson = useCallback(() => {
     const data = buildIssueExportData(filter.filteredIssues);
