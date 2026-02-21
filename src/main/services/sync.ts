@@ -84,8 +84,10 @@ export class SyncService {
         }
       }
 
-      await this.storage.saveLatest(data);
-      await this.storage.saveSnapshot(data);
+      await Promise.all([
+        this.storage.saveLatest(data),
+        this.storage.saveSnapshot(data),
+      ]);
 
       // Update meta
       const meta = await this.storage.getMeta();

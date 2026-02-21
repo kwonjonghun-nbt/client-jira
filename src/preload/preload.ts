@@ -117,7 +117,7 @@ const api = {
     create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) =>
       ipcRenderer.invoke('terminal:create', aiType, initialPrompt, cols, rows),
     write: (id: string, data: string) =>
-      ipcRenderer.invoke('terminal:write', id, data),
+      ipcRenderer.send('terminal:write', id, data),
     resize: (id: string, cols: number, rows: number) =>
       ipcRenderer.invoke('terminal:resize', id, cols, rows),
     close: (id: string) =>

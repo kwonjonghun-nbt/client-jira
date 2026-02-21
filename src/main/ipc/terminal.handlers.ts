@@ -12,7 +12,7 @@ export function registerTerminalHandlers(services: AppServices): void {
     return services.terminal.create(services.mainWindow, aiType as 'claude' | 'gemini' | undefined, initialPrompt, cols, rows);
   });
 
-  ipcMain.handle('terminal:write', (_event, id: string, data: string) => {
+  ipcMain.on('terminal:write', (_event, id: string, data: string) => {
     services.terminal?.write(id, data);
   });
 

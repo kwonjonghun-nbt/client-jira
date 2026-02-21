@@ -77,7 +77,7 @@ export class StorageService {
 
   async saveLatest(data: StoredData): Promise<void> {
     const validated = StoredDataSchema.parse(data);
-    await this.atomicWrite(getLatestPath(), JSON.stringify(validated, null, 2));
+    await this.atomicWrite(getLatestPath(), JSON.stringify(validated));
     logger.info(`Latest data saved: ${validated.totalCount} issues`);
   }
 
@@ -98,8 +98,7 @@ export class StorageService {
     await fs.mkdir(snapshotDir, { recursive: true });
 
     const snapshotPath = getSnapshotPath(now);
-    const validated = StoredDataSchema.parse(data);
-    await fs.writeFile(snapshotPath, JSON.stringify(validated, null, 2), 'utf-8');
+    await fs.writeFile(snapshotPath, JSON.stringify(data), 'utf-8');
     logger.info(`Snapshot saved: ${snapshotPath}`);
   }
 
@@ -116,7 +115,7 @@ export class StorageService {
 
   async saveMeta(meta: MetaData): Promise<void> {
     const validated = MetaDataSchema.parse(meta);
-    await this.atomicWrite(getMetaPath(), JSON.stringify(validated, null, 2));
+    await this.atomicWrite(getMetaPath(), JSON.stringify(validated));
   }
 
   // --- Label Notes ---
@@ -132,7 +131,7 @@ export class StorageService {
 
   async saveLabelNotes(notes: unknown): Promise<void> {
     const validated = LabelNotesDataSchema.parse(notes);
-    await this.atomicWrite(getLabelNotesPath(), JSON.stringify(validated, null, 2));
+    await this.atomicWrite(getLabelNotesPath(), JSON.stringify(validated));
     logger.info(`Label notes saved: ${validated.length} entries`);
   }
 
@@ -149,7 +148,7 @@ export class StorageService {
 
   async saveChangelog(data: ChangelogData): Promise<void> {
     const validated = ChangelogDataSchema.parse(data);
-    await this.atomicWrite(getChangelogPath(), JSON.stringify(validated, null, 2));
+    await this.atomicWrite(getChangelogPath(), JSON.stringify(validated));
   }
 
   async appendChangelog(entries: ChangelogEntry[], syncedAt: string): Promise<void> {
@@ -174,7 +173,7 @@ export class StorageService {
 
   async saveOKR(data: unknown): Promise<void> {
     const validated = OKRDataSchema.parse(data);
-    await this.atomicWrite(getOKRPath(), JSON.stringify(validated, null, 2));
+    await this.atomicWrite(getOKRPath(), JSON.stringify(validated));
     logger.info(`OKR data saved: ${validated.objectives.length} objectives`);
   }
 
@@ -186,15 +185,16 @@ export class StorageService {
       await fs.mkdir(dir, { recursive: true });
       const entries = await fs.readdir(dir);
       const mdFiles = entries.filter((e) => e.endsWith('.md'));
-      const results: { filename: string; title: string; modifiedAt: string }[] = [];
-      for (const file of mdFiles) {
-        const stat = await fs.stat(path.join(dir, file));
-        results.push({
-          filename: file,
-          title: file.replace(/\.md$/, ''),
-          modifiedAt: stat.mtime.toISOString(),
-        });
-      }
+      const results = await Promise.all(
+        mdFiles.map(async (file) => {
+          const stat = await fs.stat(path.join(dir, file));
+          return {
+            filename: file,
+            title: file.replace(/\.md$/, ''),
+            modifiedAt: stat.mtime.toISOString(),
+          };
+        }),
+      );
       results.sort((a, b) => compareDesc(parseISO(a.modifiedAt), parseISO(b.modifiedAt)));
       return results;
     } catch {

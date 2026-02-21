@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { normalizeIssue, normalizeIssues } from '../src/main/utils/normalize';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { normalizeIssue, normalizeIssues, _clearAdfCacheForTesting } from '../src/main/utils/normalize';
 import type { JiraIssue } from '../src/main/schemas/jira.schema';
 
 function makeJiraIssue(overrides?: Partial<JiraIssue>): JiraIssue {
@@ -33,6 +33,9 @@ function makeJiraIssue(overrides?: Partial<JiraIssue>): JiraIssue {
 }
 
 describe('normalizeIssue', () => {
+  beforeEach(() => {
+    _clearAdfCacheForTesting();
+  });
   it('기본 필드를 정규화한다', () => {
     const result = normalizeIssue(makeJiraIssue());
 
@@ -281,6 +284,9 @@ describe('normalizeIssue', () => {
 });
 
 describe('normalizeIssues', () => {
+  beforeEach(() => {
+    _clearAdfCacheForTesting();
+  });
   it('여러 이슈를 일괄 정규화한다', () => {
     const issues = [
       makeJiraIssue({ key: 'PROJ-1' }),

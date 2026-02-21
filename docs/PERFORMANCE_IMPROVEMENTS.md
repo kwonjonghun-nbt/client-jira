@@ -433,32 +433,32 @@
 
 ## Phase 6 — Electron/Main 프로세스 최적화
 
-- [ ] **P6-1. `terminal:write` invoke → send 변경**
+- [x] **P6-1. `terminal:write` invoke → send 변경**
   - 파일: `src/preload/preload.ts:119-122`
   - 해결: `ipcRenderer.send` (fire-and-forget) 변경
   - 영향: 터미널 입력 지연 제거
 
-- [ ] **P6-2. Email OAuth 타이머 성공 시 해제**
+- [x] **P6-2. Email OAuth 타이머 성공 시 해제**
   - 파일: `src/main/services/email.ts:57-59`
   - 해결: `clearTimeout` 추가
   - 영향: 불필요한 메모리 참조 제거
 
-- [ ] **P6-3. Storage pretty-print + Zod 이중 검증 제거**
+- [x] **P6-3. Storage pretty-print + Zod 이중 검증 제거**
   - 파일: `src/main/services/storage.ts:62-85`
   - 해결: pretty-print 제거 (또는 dev only), 이미 검증된 데이터는 Zod 스킵
   - 영향: 파일 크기 -25%, 직렬화/검증 시간 절감
 
-- [ ] **P6-4. `saveLatest` + `saveSnapshot` 병렬 쓰기**
+- [x] **P6-4. `saveLatest` + `saveSnapshot` 병렬 쓰기**
   - 파일: `src/main/services/sync.ts:87-88`
   - 해결: `Promise.all([saveLatest, saveSnapshot])`
   - 영향: 싱크 쓰기 시간 -50%
 
-- [ ] **P6-5. `listReports` 순차 stat → 병렬화**
+- [x] **P6-5. `listReports` 순차 stat → 병렬화**
   - 파일: `src/main/services/storage.ts:173-183`
   - 해결: `Promise.all(mdFiles.map(...))`
   - 영향: 리포트 목록 로딩 병렬화
 
-- [ ] **P6-6. `normalizeIssues` ADF 변환 캐싱**
+- [x] **P6-6. `normalizeIssues` ADF 변환 캐싱**
   - 파일: `src/main/utils/normalize.ts:7-14`
   - 해결: `issueKey:updated` 키 기반 모듈 레벨 캐시
   - 영향: 싱크당 ADF 변환 ~99% 절감
@@ -570,6 +570,12 @@
 | 2026-02-21 | P5-8 | React Query `staleTime` 30초 → 5분 (Electron IPC 기반 앱, 불필요 라운드트립 제거) |
 | 2026-02-21 | P5-9 | `useDashboardStats` stats useMemo 의존성 `[issues, filteredIssues]` → `[filteredIssues]` |
 | 2026-02-21 | P5-10 | `nodeIndexMap` useMemo(Map) 사전 구축으로 SVG 화살표 `findIndex` O(n²) → O(1). `toggleCollapse` useCallback 래핑 |
+| 2026-02-21 | P6-1 | `terminal:write` `ipcRenderer.invoke` → `ipcRenderer.send` (fire-and-forget). Main 핸들러 `ipcMain.handle` → `ipcMain.on` |
+| 2026-02-21 | P6-2 | Email OAuth `setTimeout` → `clearTimeout` 추가 (성공/실패 시 즉시 해제) |
+| 2026-02-21 | P6-3 | Storage `JSON.stringify(_, null, 2)` → `JSON.stringify(_)` (settings 제외). `saveSnapshot` Zod 이중 검증 제거 |
+| 2026-02-21 | P6-4 | `saveLatest` + `saveSnapshot` → `Promise.all()` 병렬 쓰기 |
+| 2026-02-21 | P6-5 | `listReports` 순차 `for` 루프 → `Promise.all(mdFiles.map(...))` 병렬 stat |
+| 2026-02-21 | P6-6 | `normalizeIssues` ADF 변환 `issueKey:updated` 키 기반 모듈 레벨 캐시 + 배치 외 키 자동 정리 |
 
 ---
 

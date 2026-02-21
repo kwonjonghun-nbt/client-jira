@@ -57,7 +57,7 @@ export interface ElectronAPI {
   };
   terminal: {
     create: (aiType?: string, initialPrompt?: string, cols?: number, rows?: number) => Promise<string>;
-    write: (id: string, data: string) => Promise<void>;
+    write: (id: string, data: string) => void;
     resize: (id: string, cols: number, rows: number) => Promise<void>;
     close: (id: string) => Promise<void>;
     onData: (callback: (id: string, data: string) => void) => () => void;

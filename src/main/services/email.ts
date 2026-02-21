@@ -21,6 +21,8 @@ export class EmailService {
 
     try {
       const { code, port } = await new Promise<{ code: string; port: number }>((resolve, reject) => {
+        let timeoutId: ReturnType<typeof setTimeout>;
+
         server = http.createServer((req, res) => {
           const url = new URL(req.url ?? '', `http://localhost`);
           const code = url.searchParams.get('code');
@@ -29,9 +31,11 @@ export class EmailService {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           if (error) {
             res.end('<html><body><h2>인증 실패</h2><p>창을 닫아주세요.</p></body></html>');
+            clearTimeout(timeoutId);
             reject(new Error(`Google 인증 거부: ${error}`));
           } else if (code) {
             res.end('<html><body><h2>인증 완료</h2><p>이 창을 닫고 앱으로 돌아가주세요.</p></body></html>');
+            clearTimeout(timeoutId);
             resolve({ code, port: (server!.address() as { port: number }).port });
           } else {
             res.end('<html><body><p>잘못된 요청입니다.</p></body></html>');
@@ -52,7 +56,7 @@ export class EmailService {
           shell.openExternal(authUrl);
         });
 
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           reject(new Error('인증 시간이 초과되었습니다. 다시 시도해주세요.'));
         }, 180_000);
       });
