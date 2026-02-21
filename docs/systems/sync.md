@@ -18,7 +18,7 @@ Jira REST API v3에서 이슈를 수집하고, 정규화하여 로컬에 저장�
 - `fetchIssueChangelog(issueKey)` — 이슈 changelog 조회 (페이지네이션)
 - 모든 API 호출에 `retry` 유틸 적용 (지수 백오프, 최대 3회)
 
-수집 필드: `summary`, `description`, `status`, `assignee`, `reporter`, `priority`, `issuetype`, `created`, `updated`, `duedate`, `labels`, `components`, `resolution`, `timetracking`, `parent`, `subtasks`, `issuelinks`, `customfield_10016` (Story Points), `customfield_10020` (Sprint)
+수집 필드: `summary`, `description`, `status`, `assignee` (displayName + emailAddress), `reporter`, `priority`, `issuetype`, `created`, `updated`, `duedate`, `labels`, `components`, `resolution`, `timetracking`, `parent`, `subtasks`, `issuelinks`, `customfield_10016` (Story Points), `customfield_10020` (Sprint)
 
 ### sync (`services/sync.ts`)
 
@@ -42,7 +42,7 @@ Jira Raw 응답을 `NormalizedIssue` 형태로 변환:
 ```
 NormalizedIssue {
   key, summary, description, status, statusCategory,
-  issueType, priority, assignee, reporter,
+  issueType, priority, assignee, assigneeEmail, reporter,
   storyPoints, sprint,
   labels, components, created, updated,
   startDate, dueDate, resolution,
@@ -51,6 +51,7 @@ NormalizedIssue {
 ```
 
 - `description`: ADF(Atlassian Document Format) JSON → Markdown 문자열로 변환 (`adf-to-markdown` 라이브러리, `convertADFToMarkdown` 함수)
+- `assigneeEmail`: `fields.assignee.emailAddress`에서 추출 (팀 필터에서 displayName + email 양쪽 매칭에 사용)
 - `storyPoints`: `customfield_10016`에서 추출
 - `sprint`: `customfield_10020` 배열에서 active sprint 우선, 없으면 첫 번째 sprint name
 - `startDate`: active sprint의 startDate

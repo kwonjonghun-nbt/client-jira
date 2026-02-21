@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useUIStore } from '../../store/uiStore';
 import { useAITaskStore } from '../../store/aiTaskStore';
 import { countRunningTasks, countCompletedTasks } from '../../utils/ai-tasks';
+import TeamSelector from './TeamSelector';
 import {
   HomeIcon,
   ListIcon,
@@ -55,6 +56,8 @@ export default function Sidebar() {
       >
         {expanded ? '◀ CJ' : 'CJ'}
       </button>
+
+      <TeamSelector />
 
       {navItems.map((item) => (
         <button

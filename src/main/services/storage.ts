@@ -8,6 +8,7 @@ import { logger } from '../utils/logger';
 import type { StoredData, MetaData, LabelNote, ChangelogData, ChangelogEntry, OKRData } from '../schemas/storage.schema';
 import type { Settings } from '../schemas/settings.schema';
 import { migrateOKRRelations } from '../utils/okr-migration';
+import { migrateToTeams } from '../utils/settings-migration';
 
 export class StorageService {
   private writeQueue = Promise.resolve();
@@ -41,13 +42,24 @@ export class StorageService {
         logger.warn('Settings validation failed, merging with defaults:', JSON.stringify(result.error));
         const merged = SettingsSchema.safeParse({ ...DEFAULT_SETTINGS, ...parsed });
         if (merged.success) {
-          return merged.data;
+          const migrated = migrateToTeams(merged.data);
+          if (migrated !== merged.data) {
+            await this.saveSettings(migrated);
+            logger.info('[Settings] Migrated to teams structure');
+          }
+          return migrated;
         }
         logger.warn('Settings merge with defaults also failed, returning DEFAULT_SETTINGS');
         return DEFAULT_SETTINGS;
       }
-      logger.info(`[Settings] Loaded successfully: baseUrl=${result.data.jira.baseUrl}`);
-      return result.data;
+      // 팀 마이그레이션: teams가 비어있고 assignees가 있으면 기본 팀 생성
+      const migrated = migrateToTeams(result.data);
+      if (migrated !== result.data) {
+        await this.saveSettings(migrated);
+        logger.info('[Settings] Migrated to teams structure');
+      }
+      logger.info(`[Settings] Loaded successfully: baseUrl=${migrated.jira.baseUrl}`);
+      return migrated;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       logger.warn(`[Settings] Load failed from ${settingsPath}:`, message);

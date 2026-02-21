@@ -8,7 +8,7 @@ import ReportPromptSection from '../components/report/ReportPromptSection';
 import ReportSaveForm from '../components/report/ReportSaveForm';
 import ReportList from '../components/report/ReportList';
 import { useReports, useReport } from '../hooks/useReports';
-import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useTeamIssues } from '../hooks/useTeamIssues';
 import { useReportFilter } from '../hooks/useReportFilter';
 import { useReportPrompt } from '../hooks/useReportPrompt';
 import { useReportAI } from '../hooks/useReportAI';
@@ -17,7 +17,7 @@ import { buildIssueExportData } from '../utils/reports';
 export default function ReportsPage() {
   const queryClient = useQueryClient();
   const { reports, isLoading } = useReports();
-  const { data: storedData } = useJiraIssues();
+  const { data: storedData } = useTeamIssues();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const { content, isLoading: isLoadingContent } = useReport(selectedFile);
   const [deleting, setDeleting] = useState<string | null>(null);

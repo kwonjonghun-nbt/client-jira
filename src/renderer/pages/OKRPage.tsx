@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import Spinner from '../components/common/Spinner';
 import { useOKR } from '../hooks/useOKR';
-import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useTeamIssues } from '../hooks/useTeamIssues';
 import { useUIStore } from '../store/uiStore';
 import { useOKRActions } from '../hooks/useOKRActions';
 import { calcObjectiveProgress, buildOKRExportData } from '../utils/okr';
@@ -16,7 +16,7 @@ import type { NormalizedIssue } from '../types/jira.types';
 
 export default function OKRPage() {
   const { data, isLoading, save } = useOKR();
-  const jiraData = useJiraIssues();
+  const jiraData = useTeamIssues();
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);
 
   // ── Hooks composition ───────────────────────────────────────────────────
@@ -36,7 +36,7 @@ export default function OKRPage() {
   // ── Derived data ────────────────────────────────────────────────────────
   const issueMap = useMemo(() => {
     const map = new Map<string, NormalizedIssue>();
-    jiraData.data?.issues.forEach((i) => map.set(i.key, i));
+    jiraData.data?.issues.forEach((i: NormalizedIssue) => map.set(i.key, i));
     return map;
   }, [jiraData.data]);
 

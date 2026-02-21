@@ -7,6 +7,7 @@ import StorageConfig from '../components/settings/StorageConfig';
 import SlackConfig from '../components/settings/SlackConfig';
 import DMReminderConfig from '../components/settings/DMReminderConfig';
 import EmailConfig from '../components/settings/EmailConfig';
+import TeamManagement from '../components/settings/TeamManagement';
 import SettingsListView from '../components/settings/SettingsListView';
 import SettingsDetailView from '../components/settings/SettingsDetailView';
 import Button from '../components/common/Button';
@@ -74,6 +75,18 @@ export default function SettingsPage() {
 
   return (
     <SettingsDetailView section={settingsSection} onBack={() => setSettingsSection(null)}>
+      {settingsSection === 'teams' && (
+        <section className="space-y-4">
+          <TeamManagement
+            teams={draft.teams}
+            allAssignees={draft.collection.assignees}
+            onChange={(teams) => setDraft({ ...draft, teams })}
+            draft={draft}
+            onDraftChange={setDraft}
+          />
+        </section>
+      )}
+
       {settingsSection === 'jira' && (
         <section className="space-y-4">
           <JiraConnectionForm

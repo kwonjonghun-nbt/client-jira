@@ -7,6 +7,7 @@ interface SettingsCategory {
 }
 
 const SETTINGS_CATEGORIES: SettingsCategory[] = [
+  { key: 'teams', title: '팀 관리', description: '팀 생성, 멤버 배분, 팀별 슬랙 설정' },
   { key: 'jira', title: 'Jira 연결', description: '서버 URL, 이메일, API 토큰' },
   { key: 'collection', title: '수집 대상', description: '프로젝트, 담당자 필터링' },
   { key: 'schedule', title: '스케줄', description: '자동 동기화 주기 설정' },

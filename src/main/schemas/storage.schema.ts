@@ -9,6 +9,7 @@ export const NormalizedIssueSchema = z.object({
   status: z.string(),
   statusCategory: z.string(),
   assignee: z.string().nullable(),
+  assigneeEmail: z.string().nullable().optional(),
   reporter: z.string().nullable(),
   priority: z.string().nullable(),
   issueType: z.string(),

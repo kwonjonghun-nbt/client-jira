@@ -31,7 +31,7 @@ Data Layer        → schemas/, types/, ipc/  스키마·타입·외부 통신
 
 | 디렉토리 | 역할 |
 |----------|------|
-| `services/` | 비즈니스 로직 (sync, storage, ai-runner, terminal, scheduler, slack, daily-report-scheduler, dm-reminder-scheduler, email) |
+| `services/` | 비즈니스 로직 (sync, storage, ai-runner, terminal, scheduler, slack, daily-report-scheduler, dm-reminder-scheduler, email, 팀별 스케줄러) |
 | `ipc/` | IPC 핸들러 (Main↔Renderer 통신) |
 | `schemas/` | Zod 스키마 (설정, 이슈 정규화) |
 | `utils/` | 순수 변환 함수 (normalize, diff) |
@@ -66,7 +66,8 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 3. **변경 추적**: `diff`가 이전 데이터와 비교하여 changelog 생성
 4. **저장**: `storage`가 JSON 파일로 영속화
 5. **조회**: Renderer가 IPC를 통해 데이터 요청 → React Query 캐시
-6. **표시**: hooks가 파생값 계산 → components가 렌더링
+6. **팀 필터**: `useTeamIssues` 훅이 선택된 팀의 assignees로 이슈 필터링 (displayName + email 양쪽 매칭)
+7. **표시**: hooks가 파생값 계산 → components가 렌더링
 
 ## IPC 통신
 
@@ -88,8 +89,9 @@ Jira API → jira-client → sync → normalize → storage (JSON)
 
 - `currentPage` — 현재 활성 페이지
 - `settingsSection` — 설정 상세 섹션 (null이면 리스트, 값이면 해당 상세)
+- `selectedTeamId` — 선택된 팀 ID (null이면 전체)
 - `selectedIssue` — 이슈 상세 모달 대상
-- `setPage()`, `setSettingsSection()`, `openIssueDetail()`, `closeIssueDetail()`
+- `setPage()`, `setTeam()`, `setSettingsSection()`, `openIssueDetail()`, `closeIssueDetail()`
 
 ### aiConfigStore (Zustand)
 

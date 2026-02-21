@@ -67,6 +67,29 @@ export const EmailSettingsSchema = z.object({
   clientSecret: z.string().default(''),
 });
 
+// --- Team ---
+
+export const TEAM_COLORS = [
+  '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+  '#EC4899', '#06B6D4', '#F97316',
+] as const;
+
+export const TeamSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string().default('#3B82F6'),
+  assignees: z.array(z.string()).default([]),
+  slack: SlackSettingsSchema.default({
+    enabled: false, webhookUrl: '', dailyReportTime: '11:20',
+    replyToThread: false, botToken: '', channelId: '', threadSearchText: '',
+    dmReminder: { enabled: false, schedules: [
+      { time: '10:30', message: '오늘의 지라 업무를 최신화 하셨나요?' },
+      { time: '15:00', message: '계획하신 업무 일정에 변경사항이나 이슈로 인한 일정 변동은 없나요?' },
+      { time: '18:30', message: '오늘 업무내용을 정리해보세요.' },
+    ], userMappings: [] },
+  }),
+});
+
 export const SettingsSchema = z.object({
   jira: JiraConnectionSchema,
   collection: CollectionSchema,
@@ -74,6 +97,7 @@ export const SettingsSchema = z.object({
   storage: StorageSettingsSchema,
   slack: SlackSettingsSchema.default({ enabled: false, webhookUrl: '', dailyReportTime: '11:20', replyToThread: false, botToken: '', channelId: '', threadSearchText: '', dmReminder: { enabled: false, schedules: [{ time: '10:30', message: '오늘의 지라 업무를 최신화 하셨나요?' }, { time: '15:00', message: '계획하신 업무 일정에 변경사항이나 이슈로 인한 일정 변동은 없나요?' }, { time: '18:30', message: '오늘 업무내용을 정리해보세요.' }], userMappings: [] } }),
   email: EmailSettingsSchema.default({ enabled: false, senderEmail: '', clientId: '', clientSecret: '' }),
+  teams: z.array(TeamSchema).default([]),
 });
 
 // Type exports
@@ -86,6 +110,7 @@ export type DMUserMapping = z.infer<typeof DMUserMappingSchema>;
 export type DMReminderSettings = z.infer<typeof DMReminderSettingsSchema>;
 export type SlackSettings = z.infer<typeof SlackSettingsSchema>;
 export type EmailSettings = z.infer<typeof EmailSettingsSchema>;
+export type Team = z.infer<typeof TeamSchema>;
 export type Settings = z.infer<typeof SettingsSchema>;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -129,4 +154,5 @@ export const DEFAULT_SETTINGS: Settings = {
     clientId: '',
     clientSecret: '',
   },
+  teams: [],
 };

@@ -27,12 +27,14 @@ export class DailyReportScheduler {
   private mainWindow: BrowserWindow | null;
   private running = false;
   private agent: AIAgent;
+  private teamAssignees: string[] | null;
 
-  constructor(storage: StorageService, slack: SlackService, mainWindow: BrowserWindow | null, agent: AIAgent = claudeAgent) {
+  constructor(storage: StorageService, slack: SlackService, mainWindow: BrowserWindow | null, agent: AIAgent = claudeAgent, teamAssignees: string[] | null = null) {
     this.storage = storage;
     this.slack = slack;
     this.mainWindow = mainWindow;
     this.agent = agent;
+    this.teamAssignees = teamAssignees;
   }
 
   start(settings: SlackSettings): void {
@@ -90,10 +92,19 @@ export class DailyReportScheduler {
     this.running = true;
 
     try {
-      const latestData = await this.storage.getLatest();
-      if (!latestData || latestData.issues.length === 0) {
+      const rawData = await this.storage.getLatest();
+      if (!rawData || rawData.issues.length === 0) {
         logger.warn('No issue data available for daily report');
         return { success: false, error: 'No issue data' };
+      }
+
+      // 팀 assignees가 설정된 경우 해당 팀 멤버의 이슈만 필터링
+      let latestData = rawData;
+      if (this.teamAssignees) {
+        const assigneeSet = new Set(this.teamAssignees);
+        latestData = { ...rawData, issues: rawData.issues.filter((i) =>
+          (i.assignee && assigneeSet.has(i.assignee)) || (i.assigneeEmail && assigneeSet.has(i.assigneeEmail)),
+        ) };
       }
 
       // 스레드 댓글 모드: 대상 메시지를 미리 찾아둔다

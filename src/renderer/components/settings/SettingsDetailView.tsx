@@ -1,6 +1,7 @@
 import type { SettingsSection } from '../../store/uiStore';
 
 const SECTION_TITLES: Record<NonNullable<SettingsSection>, string> = {
+  teams: '팀 관리',
   jira: 'Jira 연결',
   collection: '수집 대상',
   schedule: '스케줄',

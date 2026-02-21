@@ -12,6 +12,11 @@ import type { SyncService } from './sync';
 import type { TerminalService } from './terminal';
 import type { UpdaterService } from './updater';
 
+export interface TeamSchedulers {
+  dailyReport: DailyReportScheduler;
+  dmReminder: DMReminderScheduler;
+}
+
 export interface AppServices {
   mainWindow: BrowserWindow | null;
   storage: StorageService | null;
@@ -26,4 +31,5 @@ export interface AppServices {
   dailyReportScheduler: DailyReportScheduler | null;
   dmReminderScheduler: DMReminderScheduler | null;
   email: EmailService | null;
+  teamSchedulers: Map<string, TeamSchedulers>;
 }

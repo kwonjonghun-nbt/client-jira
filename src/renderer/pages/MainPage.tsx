@@ -4,12 +4,12 @@ import IssueSearch from '../components/issue/IssueSearch';
 import SyncButton from '../components/sync/SyncButton';
 import SyncStatusDisplay from '../components/sync/SyncStatus';
 import Spinner from '../components/common/Spinner';
-import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useTeamIssues } from '../hooks/useTeamIssues';
 import { useFilters } from '../hooks/useFilters';
 import { useUIStore } from '../store/uiStore';
 
 export default function MainPage() {
-  const { data, isLoading, error } = useJiraIssues();
+  const { data, isLoading, error } = useTeamIssues();
   const issues = data?.issues ?? [];
   const { filters, setFilter, toggleStatus, filteredIssues, filterOptions } = useFilters(issues);
   const setPage = useUIStore((s) => s.setPage);

@@ -42,6 +42,7 @@ export function normalizeIssue(issue: JiraIssue): NormalizedIssue {
     status: fields.status.name,
     statusCategory: fields.status.statusCategory.key,
     assignee: fields.assignee?.displayName ?? null,
+    assigneeEmail: fields.assignee?.emailAddress ?? null,
     reporter: fields.reporter?.displayName ?? null,
     priority: fields.priority?.name ?? null,
     issueType: fields.issuetype.name,

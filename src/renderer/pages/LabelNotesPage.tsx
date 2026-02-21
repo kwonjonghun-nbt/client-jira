@@ -1,10 +1,10 @@
 import Spinner from '../components/common/Spinner';
 import LabelNoteCard from '../components/label-notes/LabelNoteCard';
-import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useTeamIssues } from '../hooks/useTeamIssues';
 import { useLabelNotesPage } from '../hooks/useLabelNotesPage';
 
 export default function LabelNotesPage() {
-  const { data } = useJiraIssues();
+  const { data } = useTeamIssues();
   const {
     notes,
     isLoading,

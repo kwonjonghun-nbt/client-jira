@@ -7,14 +7,14 @@ import WorkloadChart from '../components/dashboard/WorkloadChart';
 import RecentUpdates from '../components/dashboard/RecentUpdates';
 import TypeDistribution from '../components/dashboard/TypeDistribution';
 import ChangeTracking from '../components/dashboard/ChangeTracking';
-import { useJiraIssues } from '../hooks/useJiraIssues';
+import { useTeamIssues } from '../hooks/useTeamIssues';
 import { useChangelog } from '../hooks/useChangelog';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useUIStore } from '../store/uiStore';
 import { DATE_PRESETS } from '../utils/dashboard';
 
 export default function DashboardPage() {
-  const { data, isLoading } = useJiraIssues();
+  const { data, isLoading } = useTeamIssues();
   const { data: changelog } = useChangelog();
   const setPage = useUIStore((s) => s.setPage);
   const openIssueDetail = useUIStore((s) => s.openIssueDetail);

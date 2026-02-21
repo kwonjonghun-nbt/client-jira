@@ -34,7 +34,8 @@ export type {
   DMReminderSettings,
   SlackSettings,
   EmailSettings,
+  Team,
   Settings,
 } from '../../main/schemas/settings.schema';
 
-export { DEFAULT_SETTINGS } from '../../main/schemas/settings.schema';
+export { DEFAULT_SETTINGS, TEAM_COLORS } from '../../main/schemas/settings.schema';

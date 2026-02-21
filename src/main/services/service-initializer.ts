@@ -46,14 +46,40 @@ export async function reinitializeJiraServices(services: AppServices): Promise<v
         services.mainWindow,
       );
       services.dailyReportScheduler.start(settings.slack);
-    }
 
-    // Restart DM reminder scheduler
-    services.dmReminderScheduler?.stop();
-    if (services.slack) {
+      // Restart DM reminder scheduler
+      services.dmReminderScheduler?.stop();
       const { DMReminderScheduler } = await import('./dm-reminder-scheduler');
       services.dmReminderScheduler = new DMReminderScheduler(services.slack);
       services.dmReminderScheduler.start(settings.slack);
+
+      // Restart team schedulers
+      for (const ts of services.teamSchedulers.values()) {
+        ts.dailyReport.stop();
+        ts.dmReminder.stop();
+      }
+      services.teamSchedulers.clear();
+
+      for (const team of settings.teams) {
+        if (team.slack.enabled) {
+          const teamDaily = new DailyReportScheduler(
+            services.storage,
+            services.slack,
+            services.mainWindow,
+            undefined,
+            team.assignees,
+          );
+          teamDaily.start(team.slack);
+
+          const teamDM = new DMReminderScheduler(services.slack);
+          teamDM.start(team.slack);
+
+          services.teamSchedulers.set(team.id, {
+            dailyReport: teamDaily,
+            dmReminder: teamDM,
+          });
+        }
+      }
     }
 
     console.log('[reinit] Jira services re-initialized successfully');

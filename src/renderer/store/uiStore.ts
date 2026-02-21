@@ -9,7 +9,7 @@ interface Filters {
 
 type Page = 'dashboard' | 'main' | 'settings' | 'timeline' | 'stats' | 'label-notes' | 'reports' | 'okr';
 
-export type SettingsSection = 'jira' | 'collection' | 'schedule' | 'storage' | 'slack' | 'email' | 'ai' | 'update' | null;
+export type SettingsSection = 'jira' | 'collection' | 'schedule' | 'storage' | 'slack' | 'email' | 'ai' | 'update' | 'teams' | null;
 
 interface ConfirmDialogState {
   title: string;
@@ -22,6 +22,7 @@ type PageFilters = Partial<Record<Page, Filters>>;
 interface UIState {
   currentPage: Page;
   sidebarExpanded: boolean;
+  selectedTeamId: string | null;
   filters: Filters;
   pageFilters: PageFilters;
   selectedIssueKey: string | null;
@@ -30,6 +31,7 @@ interface UIState {
   confirmDialog: ConfirmDialogState | null;
   toggleSidebar: () => void;
   setPage: (page: Page) => void;
+  setTeam: (teamId: string | null) => void;
   setFilter: (key: 'project' | 'assignee' | 'search', value: string) => void;
   toggleStatus: (status: string) => void;
   clearFilters: () => void;
@@ -50,6 +52,7 @@ const DEFAULT_FILTERS: Filters = {
 export const useUIStore = create<UIState>((set) => ({
   currentPage: 'dashboard',
   sidebarExpanded: true,
+  selectedTeamId: null,
   filters: DEFAULT_FILTERS,
   pageFilters: {},
   selectedIssueKey: null,
@@ -57,6 +60,7 @@ export const useUIStore = create<UIState>((set) => ({
   confirmDialog: null,
   toggleSidebar: () => set((state) => ({ sidebarExpanded: !state.sidebarExpanded })),
   settingsSection: null,
+  setTeam: (teamId) => set({ selectedTeamId: teamId }),
   setPage: (page) =>
     set((state) => ({
       currentPage: page,

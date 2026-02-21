@@ -26,6 +26,7 @@ const services: AppServices = {
   dailyReportScheduler: null,
   dmReminderScheduler: null,
   email: null,
+  teamSchedulers: new Map(),
 };
 
 const createWindow = (): BrowserWindow => {
@@ -114,6 +115,29 @@ async function initializeNetworkServices(): Promise<void> {
     services.dmReminderScheduler = new DMReminderScheduler(services.slack);
     services.dmReminderScheduler.start(settings.slack);
 
+    // 팀별 스케줄러 생성
+    services.teamSchedulers.clear();
+    for (const team of settings.teams) {
+      if (team.slack.enabled) {
+        const teamDaily = new DailyReportScheduler(
+          services.storage,
+          services.slack,
+          services.mainWindow,
+          undefined,
+          team.assignees,
+        );
+        teamDaily.start(team.slack);
+
+        const teamDM = new DMReminderScheduler(services.slack);
+        teamDM.start(team.slack);
+
+        services.teamSchedulers.set(team.id, {
+          dailyReport: teamDaily,
+          dmReminder: teamDM,
+        });
+      }
+    }
+
     console.log('Services initialized successfully');
   } catch (error) {
     console.error('Failed to initialize services:', error);
@@ -152,6 +176,9 @@ app.whenReady().then(async () => {
       services.aiRunner?.updateWindow(win);
       services.scheduler?.updateWindow(win);
       services.dailyReportScheduler?.updateWindow(win);
+      for (const ts of services.teamSchedulers.values()) {
+        ts.dailyReport.updateWindow(win);
+      }
     }
   });
 });
@@ -166,6 +193,11 @@ app.on('before-quit', () => {
   services.scheduler?.stop();
   services.dailyReportScheduler?.stop();
   services.dmReminderScheduler?.stop();
+  for (const ts of services.teamSchedulers.values()) {
+    ts.dailyReport.stop();
+    ts.dmReminder.stop();
+  }
+  services.teamSchedulers.clear();
   services.aiRunner?.destroyAll();
   services.terminal?.closeAll();
 });

@@ -74,6 +74,7 @@ const MOCK_SETTINGS: Settings = {
     },
   },
   email: { enabled: false, senderEmail: '', clientId: '', clientSecret: '' },
+  teams: [],
 };
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
